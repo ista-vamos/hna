@@ -28,13 +28,13 @@ neg: "!" _prio3
 _prio3: is_prefix | "(" _qf_formula ")"
 is_prefix: traceformula "<=" traceformula
 
-?traceformula: "[" plus "]" -> stutter_reduce
-                | plus
+?traceformula: plus
 ?plus: concat "+" concat | concat
 ?concat: iter_or_conc ("." iter_or_conc)*
 ?iter_or_conc: _conc "*" -> iter
               | _conc
-_conc: constant | seq | progvar | "(" traceformula")"
+_conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce
+stutter_reduce: "[" traceformula "]"
 seq: constant+
 
 progvar: name "(" tracevar ")"
