@@ -1,0 +1,37 @@
+
+source_dir = "@CMAKE_CURRENT_SOURCE_DIR@"
+
+vamos_buffers_DIR         = "@vamos-buffers_DIR@"
+vamos_buffers_BINARY_DIR  = "@vamos-buffers_BINARY_DIR@"
+vamos_buffers_SOURCE_DIR  = "@vamos-buffers_SOURCE_DIR@"
+
+vamos_buffers_LIBRARIES_DIRS_core = "@vamos-buffers_LIBRARIES_DIRS_core@"
+vamos_buffers_LIBRARIES_DIRS_shmbuf = "@vamos-buffers_LIBRARIES_DIRS_shmbuf@"
+vamos_buffers_LIBRARIES_DIRS_streams = "@vamos-buffers_LIBRARIES_DIRS_streams@"
+vamos_buffers_INCLUDE_DIR = "@vamos-buffers_DIR@/../../include"
+
+vamos_buffers_BUILD_TYPE               = "@vamos-buffers_BUILD_TYPE@"
+vamos_buffers_C_COMPILER               = "@vamos-buffers_C_COMPILER@"
+
+vamos_buffers_OPTION_ENABLE_IPO        = "@vamos-buffers_OPTION_ENABLE_IPO@".upper()
+
+vamos_common_PYTHONPATH  = "@vamos-common_PYTHONPATH@"
+
+from os.path import dirname
+
+def get_cmake_var(name):
+    cache = "@CMAKE_CURRENT_SOURCE_DIR@/CMakeCache.txt"
+    with open(cache, "r") as f:
+        for line in f:
+            if line.startswith(name):
+                parts = line.split("=", 3)
+                if len(parts) != 3:
+                    continue
+                lhs = parts[0]
+                if ":" in lhs:
+                    lhs = lhs[:lhs.find(":")]
+                if lhs != name:
+                    continue
+
+                return parts[2]
+    return None
