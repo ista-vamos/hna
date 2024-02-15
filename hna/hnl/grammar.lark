@@ -1,0 +1,48 @@
+
+// right now we support only in prenex form
+start: _prenex_formula
+
+_prenex_formula: quantified_formula
+
+quantified_formula: _quantified_syntax1 | _quantified_syntax2 | _quantified_syntax3
+_quantified_syntax1: quantifier "." _after_quantifier1
+_quantified_syntax2: quantifier "(" _after_quantifier2 ")"
+_quantified_syntax3: quantifier "." _after_quantifier3 | quantifier ":" qf_formula
+_after_quantifier1: _quantified_syntax1 | qf_formula
+_after_quantifier2: _quantified_syntax2 | qf_formula
+_after_quantifier3: _quantified_syntax3 | qf_formula
+
+quantifier: (forall | exists)
+forall: "forall" tracevar ("," tracevar)*
+exists: "exists" tracevar ("," tracevar)*
+
+qf_formula: _qf_formula
+_qf_formula: _prio1 (_prio1)*
+_prio1: and | or
+?and: _prio2 "&&" _prio2 | _prio2
+?or: _prio2 "||" _prio2 | _prio2
+
+_prio2: neg | _prio3
+neg: "!" _prio3
+
+_prio3: is_prefix | "(" _qf_formula ")"
+is_prefix: traceformula "<=" traceformula
+
+?traceformula: "[" plus "]" -> stutter_reduce
+                | plus
+?plus: concat "+" concat | concat
+?concat: iter_or_conc ("." iter_or_conc)*
+?iter_or_conc: _conc "*" -> iter
+              | _conc
+_conc: constant | seq | progvar | "(" traceformula")"
+seq: constant+
+
+progvar: name "(" tracevar ")"
+constant: /[a-zA-Z0-9]/
+
+name: NAME
+tracevar: NAME
+
+%import common.CNAME -> NAME
+%import common.WS
+%ignore WS
