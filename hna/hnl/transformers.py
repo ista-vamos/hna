@@ -2,6 +2,7 @@ from lark import Transformer
 from formula import *
 from functools import reduce
 
+
 class ProcessAST(Transformer):
     def start(self, items):
         return items[0]
@@ -57,6 +58,7 @@ def rec_concat(elem, rest):
     if not rest:
         return elem
     return Concat(elem, rec_concat(rest[0], rest[1:]))
+
 
 def prnode(lvl, node, *args):
     print(" " * lvl * 2, node)

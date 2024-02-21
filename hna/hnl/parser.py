@@ -39,7 +39,6 @@ class Parser(LarkParser):
         return transform_ast(super().parse_text(text))
 
 
-
 def main():
     if len(sys.argv) != 2:
         print("Usage: parser.py [file|formula]", file=sys.stderr)
@@ -52,6 +51,18 @@ def main():
         formula = parser.parse_text(sys.argv[1])
 
     print(formula)
+    print("Quantifiers: ", [str(q) for q in formula.quantifiers()])
+    print("Trace variables: ", [str(t) for t in formula.trace_variables()])
+    print("Program variables: ", [str(p) for p in formula.program_variables()])
+    print("Constants: ", [str(c) for c in formula.constants()])
+
+    problems = formula.problems()
+    if not formula.is_simple():
+        problems.append("Formula is not simple, we require that for now")
+    for problem in problems:
+        print("\033[1;31m", problem, "\033[0m")
+    if problems:
+        exit(1)
 
 
 if __name__ == "__main__":
