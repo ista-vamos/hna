@@ -1,9 +1,10 @@
-from os.path import isfile
 import logging
 import sys
+from os.path import isfile
 
 from lark import Lark, logger
 
+from formula import TraceFormula
 from transformers import transform_ast
 
 
@@ -51,10 +52,12 @@ def main():
         formula = parser.parse_text(sys.argv[1])
 
     print(formula)
+    print("Simplified:", formula.simplify())
     print("Quantifiers: ", [str(q) for q in formula.quantifiers()])
     print("Trace variables: ", [str(t) for t in formula.trace_variables()])
     print("Program variables: ", [str(p) for p in formula.program_variables()])
-    print("Constants: ", [str(c) for c in formula.constants()])
+    constants = formula.constants()
+    print("Constants: ", [str(c) for c in constants])
 
     problems = formula.problems()
     if not formula.is_simple():
@@ -63,6 +66,19 @@ def main():
         print("\033[1;31m", problem, "\033[0m")
     if problems:
         exit(1)
+
+    print("Derivatives:")
+
+    def der(F):
+        if not isinstance(F, TraceFormula):
+            return
+        print("-----")
+        print(f"F = {F}")
+        for c in constants:
+            print(f"F/{c} = {F.derivative(c)}")
+        print("-----")
+
+    formula.visit(der)
 
 
 if __name__ == "__main__":

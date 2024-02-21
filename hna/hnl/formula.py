@@ -44,14 +44,25 @@ class Formula:
         """
         return []
 
-    def visit(self, fn):
+    def visit_bottom_up(self, fn):
         """
-        Visit recursively all children and then this formula
+        Visit recursively all children bottom up
         and call `fn(self)` for each visited formula.
         """
         for child in self.children:
             child.visit(fn)
         fn(self)
+
+    def visit_top_down(self, fn):
+        """
+        Visit recursively all children top down
+        and call `fn(self)` for each visited formula.
+        """
+        fn(self)
+        for child in self.children:
+            child.visit(fn)
+
+    visit = visit_bottom_up
 
     def is_simple(self):
         """
@@ -59,6 +70,12 @@ class Formula:
         multiple program variables on either side of prefixing relation.
         """
         return all((c.is_simple() for c in self.children))
+
+    def simplify(self):
+        """
+        Simpify the formula. This is not in-situ operation, it returns possibly a new object
+        """
+        return self
 
 
 class PrenexFormula(Formula):
@@ -105,6 +122,15 @@ class TraceFormula(Formula):
     Part of HNL that describes trace properties
     """
 
+    def derivative(self, wrt):
+        raise NotImplementedError(f"derivative() not implemented for {self}")
+
+    def nullable(self):
+        """
+        Return True if the formula is nullable, i.e., if its language contains epsilon
+        """
+        return False
+
 
 class TraceVariable(TraceFormula):
     def __init__(self, name):
@@ -118,7 +144,7 @@ class TraceVariable(TraceFormula):
         return hash(self.name)
 
     def __eq__(self, other):
-        return self.name == other.name
+        return isinstance(other, TraceVariable) and self.name == other.name
 
     def trace_variables(self):
         return [self]
@@ -132,7 +158,11 @@ class ProgramVariable(TraceFormula):
         self.trace = trace
 
     def __eq__(self, other):
-        return self.name == other.name and self.trace == other.trace
+        return (
+            isinstance(other, ProgramVariable)
+            and self.name == other.name
+            and self.trace == other.trace
+        )
 
     def __hash__(self):
         return (self.name, self.trace).__hash__()
@@ -146,8 +176,45 @@ class ProgramVariable(TraceFormula):
     def program_variable_occurrences(self):
         return [self]
 
+    def derivative(self, wrt):
+        return ProgramVariable(f"{self.name}'", self.trace)
+
     def __str__(self):
         return f"{self.name}({self.trace})"
+
+
+class Epsilon(TraceFormula):
+    def __eq__(self, other):
+        return isinstance(other, Epsilon)
+
+    def __str__(self):
+        return "ε"
+
+    def derivative(self, wrt):
+        return EMPTY_SET
+
+    def nullable(self):
+        return True
+
+
+class EmptySet(TraceFormula):
+    """
+    Special trace formula representing empty set
+    that we need because of derivatives
+    """
+
+    def __eq__(self, other):
+        return isinstance(other, EmptySet)
+
+    def __str__(self):
+        return "∅"
+
+    def derivative(self, wrt):
+        return EMPTY_SET
+
+
+EPSILON = Epsilon()
+EMPTY_SET = EmptySet()
 
 
 class Constant(TraceFormula):
@@ -156,13 +223,16 @@ class Constant(TraceFormula):
         self.value = value
 
     def __eq__(self, other):
-        return self.value == other.value
+        return isinstance(other, Constant) and self.value == other.value
 
     def __hash__(self):
         return self.value.__hash__()
 
     def constants(self):
         return [self]
+
+    def derivative(self, wrt):
+        return Epsilon() if wrt == self else EmptySet()
 
     def __str__(self):
         return str(self.value)
@@ -179,6 +249,28 @@ class Concat(TraceFormula):
         #    return f"{self.children[0]}.{self.children[1]}"
         return f"({self.children[0]}.{self.children[1]})"
 
+    def nullable(self):
+        return self.children[0].nullable() and self.children[1].nullable()
+
+    def simplify(self):
+        children = [self.children[0].simplify(), self.children[1].simplify()]
+        if EPSILON == children[0]:
+            return children[1]
+        if EPSILON == children[1]:
+            return children[0]
+        if EMPTY_SET in children:
+            return EMPTY_SET
+        return Concat(*children)
+
+    def derivative(self, wrt):
+        d = self.children[0].derivative(wrt)
+        return Plus(
+            Concat(d, self.children[1]),
+            self.children[1].derivative(wrt)
+            if self.children[0].nullable()
+            else EMPTY_SET,
+        ).simplify()
+
 
 class Plus(TraceFormula):
     def __init__(self, formula1, formula2):
@@ -188,6 +280,22 @@ class Plus(TraceFormula):
 
     def __str__(self):
         return f"({self.children[0]} + {self.children[1]})"
+
+    def simplify(self):
+        l = self.children[0].simplify()
+        r = self.children[1].simplify()
+        if l == EMPTY_SET:
+            return r
+        if r == EMPTY_SET:
+            return l
+        return Plus(l, r)
+
+    def nullable(self):
+        return self.children[0].nullable() or self.children[1].nullable()
+
+    def derivative(self, wrt):
+        l, r = self.children[0].derivative(wrt), self.children[1].derivative(wrt)
+        return Plus(l, r).simplify()
 
 
 class Iter(TraceFormula):
@@ -200,6 +308,15 @@ class Iter(TraceFormula):
             return f"{self.children[0]}*"
         return f"({self.children[0]})*"
 
+    def derivative(self, wrt):
+        return Concat(self.children[0].derivative(wrt), self).simplify()
+
+    def nullable(self):
+        return True
+
+    def simplify(self):
+        return Iter(self.children[0].simplify())
+
 
 class StutterReduce(TraceFormula):
     def __init__(self, formula):
@@ -208,6 +325,12 @@ class StutterReduce(TraceFormula):
 
     def __str__(self):
         return f"⌊{self.children[0]}⌋"
+
+    def nullable(self):
+        return self.children[0].nullable()
+
+    def simplify(self):
+        return Iter(self.children[0].simplify())
 
 
 class Quantifier(Formula):
