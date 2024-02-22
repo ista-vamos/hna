@@ -4,7 +4,7 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from formula import TraceFormula
+from formula import TraceFormula, RepConstant
 from transformers import transform_ast
 
 
@@ -51,8 +51,11 @@ def main():
     else:
         formula = parser.parse_text(sys.argv[1])
 
-    print(formula)
+    print("Formula: ", formula)
     print("Simplified:", formula.simplify())
+    print("Removed stutter-red:", formula.remove_stutter_reductions())
+    print("Formula again: ", formula)
+    print("-----")
     print("Quantifiers: ", [str(q) for q in formula.quantifiers()])
     print("Trace variables: ", [str(t) for t in formula.trace_variables()])
     print("Program variables: ", [str(p) for p in formula.program_variables()])
@@ -67,7 +70,8 @@ def main():
     if problems:
         exit(1)
 
-    print("Derivatives:")
+    print("==================================================")
+    print("All derivatives (empty are not shown):")
 
     def der(F):
         if not isinstance(F, TraceFormula):
@@ -75,7 +79,13 @@ def main():
         print("-----")
         print(f"F = {F}")
         for c in constants:
-            print(f"F/{c} = {F.derivative(c)}")
+            D = F.derivative(c)
+            if not D.is_empty():
+                print(f"F/{c} = {D}")
+        for c in constants:
+            D = F.derivative(RepConstant(c))
+            if not D.is_empty():
+                print(f"F/{RepConstant(c)} = {D}")
         print("-----")
 
     formula.visit(der)

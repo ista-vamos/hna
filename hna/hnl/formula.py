@@ -1,3 +1,31 @@
+from copy import copy
+
+"""
+formula.py defines a formula of HNL logic and
+basic methods for their manipulation.
+
+NOTE: The methods are not very optimized and we could definitely improve on that,
+but so far they haven't been a bottle-neck.
+"""
+
+
+class DerivativesSet(set):
+    def __init__(self, *args):
+        super().__init__((x.simplify() for x in args))
+
+    def __add__(self, other):
+        return DerivativesSet(*self, *other)
+
+    def derivative(self, wrt):
+        return DerivativesSet((x.derivative(wrt) for x in self))
+
+    def is_empty(self):
+        return len(self) == 0
+
+    def __str__(self):
+        return f"{{{','.join(map(str, self))}}}"
+
+
 class Formula:
     """
     Formula of Hypernode Logic (HNL)
@@ -6,6 +34,12 @@ class Formula:
     def __init__(self, children=None):
         self.children = children or []
         all(map(lambda x: isinstance(x, Formula), self.children)), children
+
+    def __hash__(self):
+        return str(self).__hash__()
+
+    def __eq__(self, other):
+        return str(self) == str(other)
 
     def quantifiers(self):
         """
@@ -21,7 +55,7 @@ class Formula:
 
     def program_variable_occurrences(self):
         """
-        Get all occurences of trace variables from this formula
+        Get all occurrences of trace variables from this formula
         """
         return [t for c in self.children for t in c.program_variable_occurrences()]
 
@@ -39,7 +73,7 @@ class Formula:
 
     def problems(self):
         """
-        Perform some well-definedness checks on the formula
+        Perform some checks if the formula is well-defined
         and return a list of problems that were found if any.
         """
         return []
@@ -73,15 +107,57 @@ class Formula:
 
     def simplify(self):
         """
-        Simpify the formula. This is not in-situ operation, it returns possibly a new object
+        Simplify the formula. This is not in-situ operation, it returns possibly a new object
         """
         return self
+
+    def remove_stutter_reductions(self):
+        """
+        Create a formula from this one that is the same expect that every
+        sub-formula of the form `StutterReduction(F)` is replaced by `F`
+        """
+        # XXX: we use only a shallow copy because the sub-formulas
+        # should not be modified in-place anywhere.
+        # If this assumption is violated, we must use a deep copy
+        new_self = copy(self)
+
+        children = []
+        for c in self.children:
+            x = c
+            while isinstance(x, StutterReduce):
+                x = x.children[0]
+            nc = x.remove_stutter_reductions()
+            children.append(nc)
+        new_self.children = children
+
+        return new_self
+
+
+class FormulaWithLookahead(Formula):
+    def __init__(self, formula, lookahead):
+        super().__init__([formula])
+        self.formula = formula
+        self.lookahead = lookahead
+
+    def simplify(self):
+        x = self.formula.simplify()
+        if x == EPSILON:
+            return x
+        return FormulaWithLookahead(x, self.lookahead.simplify())
+
+    def remove_stutter_reductions(self):
+        return FormulaWithLookahead(
+            self.formula.remove_stutter_reductions(), self.lookahead
+        )
+
+    def __str__(self):
+        return f"({self.formula} | {self.lookahead})"
 
 
 class PrenexFormula(Formula):
     """
     Formula in prenex form -- we have quantifiers as a prefix
-    of the formula and thus we keep them separated.
+    of the formula, and thus we keep them separated.
     """
 
     def __init__(self, quantifiers: list, formula: Formula):
@@ -101,17 +177,23 @@ class PrenexFormula(Formula):
         tv = self.formula.trace_variables()
         if len(self.quantifier_prefix) != len(tv):
             problems.append(
-                f"Number of quantifiers and trace variables do not match: are all quantifiers used or isn't there name shadowning?"
+                f"Number of quantifiers and trace variables do not match: "
+                "are all quantifiers used or isn't there name shadowing?"
             )
         tv = set(tv)
         qs = set((q.var for q in self.quantifier_prefix))
-        D = qs.difference(tv)
-        if D:
-            problems.append(f"Quantifiers {[str(d) for d in D]} unused")
-        D = tv.difference(qs)
-        if D:
-            problems.append(f"Free trace variables {[str(d) for d in D]}")
+        diff = qs.difference(tv)
+        if diff:
+            problems.append(f"Quantifiers {[str(d) for d in diff]} unused")
+        diff = tv.difference(qs)
+        if diff:
+            problems.append(f"Free trace variables {[str(d) for d in diff]}")
         return super().problems() + problems
+
+    def remove_stutter_reductions(self):
+        return PrenexFormula(
+            self.quantifier_prefix, self.formula.remove_stutter_reductions()
+        )
 
     def __str__(self):
         return f"{' '.join(map(str, self.quantifier_prefix))}: {self.formula}"
@@ -130,6 +212,15 @@ class TraceFormula(Formula):
         Return True if the formula is nullable, i.e., if its language contains epsilon
         """
         return False
+
+    def first(self):
+        """
+        Set of symbols that can be the first symbol in a word represented by this formula.
+        NOTE: since we do not keep the alphabet with each formula,
+        first() returns not only constants, but can return also program variables that stand
+        for "any symbol the variable can have" which is typically any symbol from the alphabet.
+        """
+        raise NotImplementedError("first() not implemented for {self}")
 
 
 class TraceVariable(TraceFormula):
@@ -177,49 +268,83 @@ class ProgramVariable(TraceFormula):
         return [self]
 
     def derivative(self, wrt):
-        return ProgramVariable(f"{self.name}'", self.trace)
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        return DerivativesSet(PrimedProgramVariable(self))
 
     def __str__(self):
         return f"{self.name}({self.trace})"
+
+    def first(self):
+        return {self}
+
+
+class PrimedProgramVariable(ProgramVariable):
+    """
+    Program variable with the prime mark saying
+    that a symbol was consumed from it.
+    """
+
+    def __init__(self, var):
+        super().__init__(f"{var.name}'", var.trace)
+
+    def derivative(self, wrt):
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        return DerivativesSet(self)
+
+    def unprime(self) -> ProgramVariable:
+        return ProgramVariable(self.name, self.trace)
 
 
 class Epsilon(TraceFormula):
     def __eq__(self, other):
         return isinstance(other, Epsilon)
 
+    def __hash__(self):
+        return super().__hash__()
+
     def __str__(self):
         return "ε"
 
     def derivative(self, wrt):
-        return EMPTY_SET
+        return DerivativesSet()
 
     def nullable(self):
         return True
 
+    def first(self):
+        return set()
 
-class EmptySet(TraceFormula):
-    """
-    Special trace formula representing empty set
-    that we need because of derivatives
-    """
 
-    def __eq__(self, other):
-        return isinstance(other, EmptySet)
-
-    def __str__(self):
-        return "∅"
-
-    def derivative(self, wrt):
-        return EMPTY_SET
+# class EmptySet(TraceFormula):
+#     """
+#     Special trace formula representing empty set
+#     that we need because of derivatives
+#     """
+#
+#     def __eq__(self, other):
+#         return isinstance(other, EmptySet)
+#
+#     def __hash__(self):
+#         return super().__hash__()
+#
+#     def __str__(self):
+#         return "∅"
+#
+#     def derivative(self, wrt):
+#         return DerivativesSet()
 
 
 EPSILON = Epsilon()
-EMPTY_SET = EmptySet()
 
 
 class Constant(TraceFormula):
     def __init__(self, value):
         super().__init__()
+        assert isinstance(
+            value, str
+        ), f"Constant value is supposed to be a string, but got {value} : {type(value)}"
         self.value = value
 
     def __eq__(self, other):
@@ -232,10 +357,40 @@ class Constant(TraceFormula):
         return [self]
 
     def derivative(self, wrt):
-        return Epsilon() if wrt == self else EmptySet()
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        if wrt == self:
+            return DerivativesSet(EPSILON)
+        return DerivativesSet()
 
     def __str__(self):
         return str(self.value)
+
+    def first(self):
+        return {self}
+
+
+class RepConstant(Constant):
+    """
+    Repetition of a constant -- this expression represents the _maximal_
+    possible repetition of a constant. It does not make sense for generation,
+    but it does make sense for derivatives -- derivative w.r.t rep(a) cuts off as many
+    a's from a word as possible.
+    """
+
+    def __init__(self, value):
+        if isinstance(value, Constant):
+            value = value.value
+        super().__init__(value)
+
+    def remove_rep(self) -> Constant:
+        """
+        Get the bare constant without repetition
+        """
+        return Constant(self.value)
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}⊕"
 
 
 class Concat(TraceFormula):
@@ -258,18 +413,20 @@ class Concat(TraceFormula):
             return children[1]
         if EPSILON == children[1]:
             return children[0]
-        if EMPTY_SET in children:
-            return EMPTY_SET
         return Concat(*children)
 
     def derivative(self, wrt):
-        d = self.children[0].derivative(wrt)
-        return Plus(
-            Concat(d, self.children[1]),
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        der = self.children[0].derivative(wrt)
+        return DerivativesSet(*(Concat(x, self.children[1]) for x in der)) + (
             self.children[1].derivative(wrt)
             if self.children[0].nullable()
-            else EMPTY_SET,
-        ).simplify()
+            else DerivativesSet()
+        )
+
+    def first(self):
+        return self.children[0].first()
 
 
 class Plus(TraceFormula):
@@ -281,21 +438,25 @@ class Plus(TraceFormula):
     def __str__(self):
         return f"({self.children[0]} + {self.children[1]})"
 
-    def simplify(self):
-        l = self.children[0].simplify()
-        r = self.children[1].simplify()
-        if l == EMPTY_SET:
-            return r
-        if r == EMPTY_SET:
-            return l
-        return Plus(l, r)
+    # def simplify(self):
+    #    l = self.children[0].simplify()
+    #    r = self.children[1].simplify()
+    #    if l == EMPTY_SET:
+    #        return r
+    #    if r == EMPTY_SET:
+    #        return l
+    #    return Plus(l, r)
 
     def nullable(self):
         return self.children[0].nullable() or self.children[1].nullable()
 
     def derivative(self, wrt):
-        l, r = self.children[0].derivative(wrt), self.children[1].derivative(wrt)
-        return Plus(l, r).simplify()
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        return self.children[0].derivative(wrt) + self.children[1].derivative(wrt)
+
+    def first(self):
+        return self.children[0].first().union(self.children[1].first())
 
 
 class Iter(TraceFormula):
@@ -309,13 +470,20 @@ class Iter(TraceFormula):
         return f"({self.children[0]})*"
 
     def derivative(self, wrt):
-        return Concat(self.children[0].derivative(wrt), self).simplify()
+        if isinstance(wrt, RepConstant):
+            return DerivativesSet()
+        return DerivativesSet(
+            *(Concat(x, self) for x in self.children[0].derivative(wrt))
+        )
 
     def nullable(self):
         return True
 
     def simplify(self):
         return Iter(self.children[0].simplify())
+
+    def first(self):
+        return self.children[0].first()
 
 
 class StutterReduce(TraceFormula):
@@ -330,7 +498,44 @@ class StutterReduce(TraceFormula):
         return self.children[0].nullable()
 
     def simplify(self):
-        return Iter(self.children[0].simplify())
+        c = self.children[0]
+        while isinstance(c, StutterReduce):
+            c = self.children[0]
+        if isinstance(c, Constant) or c == EPSILON:
+            return c
+        return StutterReduce(c.simplify())
+
+    def derivative(self, wrt):
+        if not isinstance(wrt, RepConstant):
+            return DerivativesSet()
+
+        c = wrt.remove_rep()
+        return DerivativesSet(
+            *(
+                FormulaWithLookahead(StutterReduce(x), Not(wrt.remove_rep()))
+                for x in derivatives_fixpoint(
+                    self.children[0].remove_stutter_reductions(), c
+                )
+                if x.first() != {c}
+            )
+        )
+
+    def first(self):
+        return self.children[0].first()
+
+
+def derivatives_fixpoint(formula, wrt):
+    result = formula.derivative(wrt)
+    new_result = result + DerivativesSet(
+        *(y for x in result for y in x.derivative(wrt))
+    )
+    while new_result != result:
+        result = new_result
+        new_result = result + DerivativesSet(
+            *(y for x in result for y in x.derivative(wrt))
+        )
+
+    return result
 
 
 class Quantifier(Formula):
