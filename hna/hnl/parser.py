@@ -4,8 +4,9 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from formula import TraceFormula, RepConstant
+from formula import TraceFormula, RepConstant, IsPrefix
 from transformers import transform_ast
+from formula2automata import formula_to_automaton
 
 
 class LarkParser:
@@ -38,6 +39,9 @@ class Parser(LarkParser):
 
     def parse_text(self, text):
         return transform_ast(super().parse_text(text))
+
+
+counter = 0
 
 
 def main():
@@ -89,6 +93,28 @@ def main():
         print("-----")
 
     formula.visit(der)
+
+    def aut(F):
+        if not isinstance(F, IsPrefix):
+            return
+        print("-----")
+        print(f"F = {F}")
+
+        A = formula_to_automaton(F.children[0])
+        global counter
+        counter += 1
+        print(f"Output to : /tmp/F-{counter}.dot")
+        with open(f"/tmp/F-{counter}.dot", "w") as f:
+            A.to_dot(f)
+        A = formula_to_automaton(F.children[1])
+        counter += 1
+        print(f"Output to : /tmp/F-{counter}.dot")
+        with open(f"/tmp/F-{counter}.dot", "w") as f:
+            A.to_dot(f)
+
+        print("-----")
+
+    formula.visit(aut)
 
 
 if __name__ == "__main__":

@@ -152,6 +152,20 @@ class FormulaWithLookahead(Formula):
             self.formula.remove_stutter_reductions(), self.lookahead
         )
 
+    def derivative(self, wrt) -> Formula:
+        # check the match of the lookahead
+        lh = self.lookahead
+        if isinstance(lh, Not):
+            assert isinstance(lh.children[0], Constant), lh
+            if lh.children[0] == wrt:
+                return DerivativesSet()
+        else:
+            assert isinstance(lh, Constant), lh
+            if lh != wrt:
+                return DerivativesSet()
+
+        return self.formula.derivative(wrt)
+
     def __str__(self) -> str:
         return f"({self.formula} | {self.lookahead})"
 
@@ -297,6 +311,9 @@ class ProgramVariable(TraceFormula):
             return DerivativesSet()
         return DerivativesSet(PrimedProgramVariable(self))
 
+    def nullable(self) -> bool:
+        return True
+
     def __str__(self) -> str:
         return f"{self.name}({self.trace})"
 
@@ -390,7 +407,7 @@ class Concat(TraceFormula):
     def nullable(self) -> bool:
         return self.children[0].nullable() and self.children[1].nullable()
 
-    def simplify(self) -> "Concat":
+    def simplify(self) -> Formula:
         children = [self.children[0].simplify(), self.children[1].simplify()]
         if EPSILON == children[0]:
             return children[1]
@@ -399,10 +416,18 @@ class Concat(TraceFormula):
         return Concat(*children)
 
     def derivative(self, wrt: Union[Constant, RepConstant]) -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
-            return DerivativesSet()
         der = self.children[0].derivative(wrt)
-        return DerivativesSet(*(Concat(x, self.children[1]) for x in der)) + (
+        first_part = DerivativesSet(
+            *(
+                Concat(x, self.children[1])
+                if not isinstance(x, FormulaWithLookahead)
+                else FormulaWithLookahead(
+                    Concat(x.formula, self.children[1]), x.lookahead
+                )
+                for x in der
+            )
+        )
+        return first_part + (
             self.children[1].derivative(wrt)
             if self.children[0].nullable()
             else DerivativesSet()
@@ -438,8 +463,6 @@ class Plus(TraceFormula):
         return self.children[0].nullable() or self.children[1].nullable()
 
     def derivative(self, wrt: Union[RepConstant, Constant]) -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
-            return DerivativesSet()
         return self.children[0].derivative(wrt) + self.children[1].derivative(wrt)
 
     def first(self) -> Set[Union[Constant, ProgramVariable]]:
@@ -457,8 +480,6 @@ class Iter(TraceFormula):
         return f"({self.children[0]})*"
 
     def derivative(self, wrt: Union[RepConstant, Constant]) -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
-            return DerivativesSet()
         return DerivativesSet(
             *(Concat(x, self) for x in self.children[0].derivative(wrt))
         )
@@ -466,7 +487,7 @@ class Iter(TraceFormula):
     def nullable(self) -> bool:
         return True
 
-    def simplify(self) -> "Iter":
+    def simplify(self) -> Formula:
         return Iter(self.children[0].simplify())
 
     def first(self) -> Set[Union[Constant, ProgramVariable]]:
@@ -474,7 +495,7 @@ class Iter(TraceFormula):
 
 
 class StutterReduce(TraceFormula):
-    def __init__(self, formula: Union[PrimedProgramVariable, Plus]) -> None:
+    def __init__(self, formula: Formula) -> None:
         assert isinstance(formula, TraceFormula), formula
         super().__init__([formula])
 
@@ -484,7 +505,7 @@ class StutterReduce(TraceFormula):
     def nullable(self):
         return self.children[0].nullable()
 
-    def simplify(self) -> "StutterReduce":
+    def simplify(self) -> Formula:
         c = self.children[0]
         while isinstance(c, StutterReduce):
             c = self.children[0]
