@@ -152,19 +152,31 @@ class FormulaWithLookahead(Formula):
             self.formula.remove_stutter_reductions(), self.lookahead
         )
 
-    def derivative(self, wrt) -> Formula:
-        # check the match of the lookahead
+    def _lookahead_matches_letter(self, a):
         lh = self.lookahead
         if isinstance(lh, Not):
             assert isinstance(lh.children[0], Constant), lh
-            if lh.children[0] == wrt:
-                return DerivativesSet()
+            if lh.children[0].equiv(a):
+                return False
         else:
             assert isinstance(lh, Constant), lh
-            if lh != wrt:
-                return DerivativesSet()
+            if not lh.equiv(a):
+                return False
+
+        return True
+
+    def derivative(self, wrt) -> Formula:
+        # check the match of the lookahead
+        if not self._lookahead_matches_letter(wrt):
+            return DerivativesSet()
 
         return self.formula.derivative(wrt)
+
+    def first(self):
+        return {a for a in self.formula.first() if self._lookahead_matches_letter(a)}
+
+    def nullable(self) -> bool:
+        return bool(self.first()) and self.formula.nullable()
 
     def __str__(self) -> str:
         return f"({self.formula} | {self.lookahead})"
@@ -353,6 +365,12 @@ class Constant(TraceFormula):
     def __hash__(self) -> int:
         return self.value.__hash__()
 
+    def equiv(self, other):
+        """
+        Return True if constants are equivalent ignoring repetition/trace mark
+        """
+        return isinstance(other, (Constant, RepConstant)) and self.value == other.value
+
     def constants(self) -> List["Constant"]:
         return [self]
 
@@ -388,6 +406,12 @@ class RepConstant(Constant):
         Get the bare constant without repetition
         """
         return Constant(self.value)
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, RepConstant) and self.value == other.value
+
+    def __hash__(self) -> int:
+        return str(self).__hash__()
 
     def __str__(self) -> str:
         return f"{super().__str__()}⊕"
