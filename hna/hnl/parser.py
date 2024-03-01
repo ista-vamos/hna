@@ -4,7 +4,7 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from formula import TraceFormula, RepConstant, IsPrefix
+from formula import TraceFormula, IsPrefix, Constant
 from transformers import transform_ast
 from formula2automata import formula_to_automaton, compose_automata
 
@@ -74,25 +74,21 @@ def main():
     if problems:
         exit(1)
 
-    print("==================================================")
-    print("All derivatives (empty are not shown):")
+    # print("==================================================")
+    # print("All derivatives (empty are not shown):")
 
-    def der(F):
-        if not isinstance(F, TraceFormula):
-            return
-        print("-----")
-        print(f"F = {F}")
-        for c in constants:
-            D = F.derivative(c)
-            if not D.is_empty():
-                print(f"F/{c} = {D}")
-        for c in constants:
-            D = F.derivative(RepConstant(c))
-            if not D.is_empty():
-                print(f"F/{RepConstant(c)} = {D}")
-        print("-----")
+    # def der(F):
+    #    if not isinstance(F, TraceFormula):
+    #        return
+    #    print("-----")
+    #    print(f"F = {F}")
+    #    for c in (x.with_marks(marks) for x in constants for marks in Constant.marks_combinations()):
+    #        D = F.derivative(c)
+    #        if not D.is_empty():
+    #            print(f"F/{c} = {D}")
+    #    print("-----")
 
-    formula.visit(der)
+    # formula.visit(der)
 
     def aut(F):
         if not isinstance(F, IsPrefix):

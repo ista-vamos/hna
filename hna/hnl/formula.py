@@ -138,8 +138,8 @@ class Formula:
 class FormulaWithLookahead(Formula):
     def __init__(self, formula: Formula, lookahead: Formula) -> None:
         super().__init__([formula])
-        self.formula = formula
-        self.lookahead = lookahead
+        self.formula: Formula = formula
+        self.lookahead: Formula = lookahead
 
     def simplify(self) -> Formula:
         x = self.formula.simplify()
@@ -172,11 +172,21 @@ class FormulaWithLookahead(Formula):
 
         return self.formula.derivative(wrt)
 
+    def non_empty(self):
+        for a in self.formula.first():
+            if isinstance(a, ProgramVariable) or self._lookahead_matches_letter(a):
+                return True
+        return False
+
     def first(self):
-        return {a for a in self.formula.first() if self._lookahead_matches_letter(a)}
+        return {
+            a
+            for a in self.formula.first()
+            if isinstance(a, ProgramVariable) or self._lookahead_matches_letter(a)
+        }
 
     def nullable(self) -> bool:
-        return bool(self.first()) and self.formula.nullable()
+        return self.non_empty() and self.formula.nullable()
 
     def __str__(self) -> str:
         return f"({self.formula} | {self.lookahead})"
@@ -250,6 +260,9 @@ class TraceFormula(Formula):
         """
         raise NotImplementedError("first() not implemented for {self}")
 
+    def non_empty(self):
+        return self.first() != {}
+
 
 class TraceVariable(TraceFormula):
     def __init__(self, name: Token) -> None:
@@ -318,10 +331,10 @@ class ProgramVariable(TraceFormula):
     def program_variable_occurrences(self) -> List["ProgramVariable"]:
         return [self]
 
-    def derivative(self, wrt: Union["Constant", "RepConstant"]) -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
+    def derivative(self, wrt: "Constant") -> DerivativesSet:
+        if wrt.is_rep() or not wrt.is_x():
             return DerivativesSet()
-        return DerivativesSet(PrimedProgramVariable(self))
+        return DerivativesSet(self)
 
     def nullable(self) -> bool:
         return True
@@ -330,91 +343,100 @@ class ProgramVariable(TraceFormula):
         return f"{self.name}({self.trace})"
 
     def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
+        """
+        Because we do not keep the alphabet with each formula,
+        first() returns not only constants, but it can return also program variables that stand
+        for "any symbol the variable can have" which is typically any symbol from the alphabet.
+        """
         return {self}
 
 
-class PrimedProgramVariable(ProgramVariable):
-    """
-    Program variable with the prime mark saying
-    that a symbol was consumed from it.
-    """
-
-    def __init__(self, var: ProgramVariable) -> None:
-        super().__init__(f"{var.name}'", var.trace)
-
-    def derivative(self, wrt: "Constant") -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
-            return DerivativesSet()
-        return DerivativesSet(self)
-
-    def unprime(self) -> ProgramVariable:
-        return ProgramVariable(self.name, self.trace)
-
-
 class Constant(TraceFormula):
-    def __init__(self, value: Token) -> None:
+    NO_MARK = 0
+    # constants marked with `x` represent letters read from the trace
+    X_MARK = 1
+    # Repetition of a constant -- this expression represents the _maximal_
+    # possible repetition of a constant. It does not make sense for generation,
+    # but it does make sense for derivatives -- derivative w.r.t rep(a) cuts off as many
+    # a's from a word as possible.
+    REP_MARK = 2
+    REP_X_MARK = X_MARK | REP_MARK
+
+    @classmethod
+    def marks_combinations(cls):
+        """
+        Return iterable with all possible combinations of marks
+        """
+        return range(0, 2**Constant.REP_MARK)
+
+    def __init__(self, value: str, marks=NO_MARK) -> None:
         super().__init__()
         assert isinstance(
             value, str
         ), f"Constant value is supposed to be a string, but got {value} : {type(value)}"
         self.value = value
+        assert 0 <= marks <= 3, f"Unknown marks: {marks}"
+        self.marks = marks
+
+    def is_rep(self):
+        return self.marks & Constant.REP_MARK
+
+    def is_x(self):
+        return self.marks & Constant.X_MARK
+
+    def remove_marks(self):
+        return Constant(self.value)
+
+    def remove_mark(self, marks):
+        return Constant(self.value, self.marks & ~marks)
+
+    def remove_rep(self):
+        return self.remove_mark(Constant.REP_MARK)
+
+    def with_marks(self, marks):
+        return Constant(self.value, self.marks | marks)
+
+    def with_rep(self):
+        return self.with_marks(Constant.REP_MARK)
+
+    def with_x(self):
+        return self.with_marks(Constant.X_MARK)
+
+    def with_rep_x(self):
+        return self.with_marks(Constant.REP_X_MARK)
 
     def __eq__(self, other: "Constant") -> bool:
-        return isinstance(other, Constant) and self.value == other.value
+        return (
+            isinstance(other, Constant)
+            and self.value == other.value
+            and self.marks == other.marks
+        )
 
     def __hash__(self) -> int:
-        return self.value.__hash__()
+        return (self.value, self.marks).__hash__()
 
     def equiv(self, other):
         """
         Return True if constants are equivalent ignoring repetition/trace mark
         """
-        return isinstance(other, (Constant, RepConstant)) and self.value == other.value
+        assert isinstance(other, Constant), (other, type(other))
+        return self.value == other.value
 
     def constants(self) -> List["Constant"]:
         return [self]
 
-    def derivative(self, wrt: Union["RepConstant", "Constant"]) -> DerivativesSet:
-        if isinstance(wrt, RepConstant):
+    def derivative(self, wrt: "Constant") -> DerivativesSet:
+        if wrt.is_rep():
             return DerivativesSet()
         if wrt == self:
             return DerivativesSet(EPSILON)
         return DerivativesSet()
 
     def __str__(self) -> str:
-        return str(self.value)
+        return f"{self.value}{'⊕' if self.is_rep() else ''}{'ₓ' if self.is_x() else ''}"
 
     def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
         return {self}
-
-
-class RepConstant(Constant):
-    """
-    Repetition of a constant -- this expression represents the _maximal_
-    possible repetition of a constant. It does not make sense for generation,
-    but it does make sense for derivatives -- derivative w.r.t rep(a) cuts off as many
-    a's from a word as possible.
-    """
-
-    def __init__(self, value: Constant) -> None:
-        if isinstance(value, Constant):
-            value = value.value
-        super().__init__(value)
-
-    def remove_rep(self) -> Constant:
-        """
-        Get the bare constant without repetition
-        """
-        return Constant(self.value)
-
-    def __eq__(self, other) -> bool:
-        return isinstance(other, RepConstant) and self.value == other.value
-
-    def __hash__(self) -> int:
-        return str(self).__hash__()
-
-    def __str__(self) -> str:
-        return f"{super().__str__()}⊕"
 
 
 class Concat(TraceFormula):
@@ -439,7 +461,7 @@ class Concat(TraceFormula):
             return children[0]
         return Concat(*children)
 
-    def derivative(self, wrt: Union[Constant, RepConstant]) -> DerivativesSet:
+    def derivative(self, wrt: Constant) -> DerivativesSet:
         der = self.children[0].derivative(wrt)
         first_part = DerivativesSet(
             *(
@@ -486,7 +508,7 @@ class Plus(TraceFormula):
     def nullable(self):
         return self.children[0].nullable() or self.children[1].nullable()
 
-    def derivative(self, wrt: Union[RepConstant, Constant]) -> DerivativesSet:
+    def derivative(self, wrt: Constant) -> DerivativesSet:
         return self.children[0].derivative(wrt) + self.children[1].derivative(wrt)
 
     def first(self) -> Set[Union[Constant, ProgramVariable]]:
@@ -503,7 +525,7 @@ class Iter(TraceFormula):
             return f"{self.children[0]}*"
         return f"({self.children[0]})*"
 
-    def derivative(self, wrt: Union[RepConstant, Constant]) -> DerivativesSet:
+    def derivative(self, wrt: Constant) -> DerivativesSet:
         return DerivativesSet(
             *(Concat(x, self) for x in self.children[0].derivative(wrt))
         )
@@ -537,18 +559,19 @@ class StutterReduce(TraceFormula):
             return c
         return StutterReduce(c.simplify())
 
-    def derivative(self, wrt: Union[Constant, RepConstant]) -> DerivativesSet:
-        if not isinstance(wrt, RepConstant):
+    def derivative(self, wrt: Constant) -> DerivativesSet:
+        if not wrt.is_rep():
             return DerivativesSet()
 
-        c = wrt.remove_rep()
+        c_no_rep = wrt.remove_rep()
+        c_unmarked = wrt.remove_marks()
         return DerivativesSet(
             *(
-                FormulaWithLookahead(StutterReduce(x), Not(c))
+                FormulaWithLookahead(StutterReduce(x), Not(c_unmarked))
                 for x in derivatives_fixpoint(
-                    self.children[0].remove_stutter_reductions(), c
+                    self.children[0].remove_stutter_reductions(), c_no_rep
                 )
-                if x.first() != {c}
+                if x.first() != {c_unmarked}
             )
         )
 

@@ -1,7 +1,7 @@
 from hna.automata.automaton import Automaton, State, Transition
 from itertools import chain
 
-from formula import RepConstant, EPSILON
+from formula import EPSILON, Constant
 
 
 def formula_to_automaton(formula, alphabet=None):
@@ -17,7 +17,12 @@ def formula_to_automaton(formula, alphabet=None):
         state = new_states.pop()
         assert A.get(state) is not None
 
-        for a in chain(alphabet, map(lambda x: RepConstant(x), alphabet)):
+        for a in chain(
+            alphabet,
+            map(lambda x: x.with_rep(), alphabet),
+            map(lambda x: x.with_x(), alphabet),
+            map(lambda x: x.with_rep_x(), alphabet),
+        ):
             for next_state in state.derivative(a):
                 print("  d: ", next_state)
                 if A.get(next_state) is None:
@@ -47,10 +52,9 @@ class TupleLabel(tuple):
 
 def gen_letter_pairs(alphabet):
     for a in alphabet:
-        yield a, a
-        yield a, RepConstant(a)
-        yield RepConstant(a), a
-        yield RepConstant(a), RepConstant(a)
+        for marks1 in Constant.marks_combinations():
+            for marks2 in Constant.marks_combinations():
+                yield a.with_marks(marks1), a.with_marks(marks2)
 
 
 def compose_automata(A1, A2, prune=True):
