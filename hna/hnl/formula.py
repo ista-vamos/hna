@@ -103,7 +103,8 @@ class Formula:
     def is_simple(self) -> bool:
         """
         Return True if the formula is simple, i.e., it does not contain
-        multiple program variables on either side of prefixing relation.
+        multiple program variables on either side of prefixing relation
+        TODO: and is not inside iteration
         """
         return all((c.is_simple() for c in self.children))
 
@@ -393,6 +394,9 @@ class Constant(TraceFormula):
     def remove_rep(self):
         return self.remove_mark(Constant.REP_MARK)
 
+    def remove_x(self):
+        return self.remove_mark(Constant.X_MARK)
+
     def with_marks(self, marks):
         return Constant(self.value, self.marks | marks)
 
@@ -565,12 +569,26 @@ class StutterReduce(TraceFormula):
 
         c_no_rep = wrt.remove_rep()
         c_unmarked = wrt.remove_marks()
+
+        stutter_free_subformula = self.children[0].remove_stutter_reductions()
+        reachable_derivatives = DerivativesSet()
+
+        if wrt.is_x():
+            print("IS X: ", self, wrt)
+            print("... ", stutter_free_subformula, wrt.remove_marks())
+            for d in derivatives_fixpoint(stutter_free_subformula,
+                                          wrt.remove_marks()):
+                print("d: ", d)
+                reachable_derivatives.update(derivatives_fixpoint(d, c_no_rep))
+
+        reachable_derivatives.update(derivatives_fixpoint(
+                    stutter_free_subformula, c_no_rep
+        ))
+
         return DerivativesSet(
             *(
                 FormulaWithLookahead(StutterReduce(x), Not(c_unmarked))
-                for x in derivatives_fixpoint(
-                    self.children[0].remove_stutter_reductions(), c_no_rep
-                )
+                for x in reachable_derivatives
                 if x.first() != {c_unmarked}
             )
         )

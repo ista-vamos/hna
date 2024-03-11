@@ -1,6 +1,8 @@
-from lark import Transformer
-from formula import *
 from functools import reduce
+
+from lark import Transformer
+
+from .formula import *
 
 
 class ProcessAST(Transformer):

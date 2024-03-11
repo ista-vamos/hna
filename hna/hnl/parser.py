@@ -4,9 +4,9 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from formula import TraceFormula, IsPrefix, Constant
-from transformers import transform_ast
-from formula2automata import formula_to_automaton, compose_automata
+from . formula import TraceFormula, IsPrefix, Constant
+from . transformers import transform_ast
+from . formula2automata import formula_to_automaton, compose_automata
 
 
 class LarkParser:
@@ -89,6 +89,10 @@ def main():
     #    print("-----")
 
     # formula.visit(der)
+
+    from hna.codegen.hnl import CodeGenCpp
+    cg = CodeGenCpp()
+    cg.generate(formula)
 
     def aut(F):
         if not isinstance(F, IsPrefix):
