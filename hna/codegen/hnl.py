@@ -353,7 +353,6 @@ class CodeGenCpp(CodeGen):
 
     def generate_atomic_comparison_automaton(self, formula):
         num = len(self._formula_to_automaton) + 1
-        print(f"sub-formula = {formula}")
 
         alphabet = formula.constants()
         A1 = formula_to_automaton(formula.children[0], alphabet)

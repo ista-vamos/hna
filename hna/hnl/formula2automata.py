@@ -24,7 +24,6 @@ def formula_to_automaton(formula, alphabet=None):
             map(lambda x: x.with_rep_x(), alphabet),
         ):
             for next_state in state.derivative(a):
-                print("  d: ", next_state)
                 if A.get(next_state) is None:
                     s = State(next_state)
                     A.add_state(s)
@@ -88,9 +87,7 @@ def compose_automata(A1, A2, prune=True):
         ns1, ns2 = A1[ns1], A2[ns2]
         for a, a2 in gen_letter_pairs(alphabet):
             for t1 in A1.transitions(ns1, a, default=()):
-                print("T1", t1)
                 for t2 in A2.transitions(ns2, a2, default=()):
-                    print("T2", t2)
                     next_state = (t1.target.label(), t2.target.label())
                     # prune surely non-accepting states
                     if (
