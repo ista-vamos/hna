@@ -4,9 +4,9 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from . formula import TraceFormula, IsPrefix, Constant
+from hna.hnl.formula import TraceFormula, IsPrefix, Constant
 from . transformers import transform_ast
-from . formula2automata import formula_to_automaton, compose_automata
+from hna.hnl.formula2automata import formula_to_automaton, compose_automata
 
 
 class LarkParser:

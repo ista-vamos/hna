@@ -1,8 +1,6 @@
-from functools import reduce
-
 from lark import Transformer
 
-from .formula import *
+from hna.hnl.formula import *
 
 
 class ProcessAST(Transformer):
