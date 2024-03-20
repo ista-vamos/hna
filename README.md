@@ -38,6 +38,8 @@ And its done!
 
 ## Usage
 
+### Hypernode logic part
+
 Example of using the main script for HNL
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
@@ -46,3 +48,7 @@ By default, the output is generated to `/tmp/hnl`. See `./hnl.py --help`.
 To generate debugging files (e.g., the automata in GraphViz), use the `--debug`
 flag. The debugging files will be stored into `dbg/` sub-directory in the output
 directory.
+
+### Hypernode automata
+
+TBD
