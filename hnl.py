@@ -3,7 +3,9 @@
 import argparse
 import sys
 from copy import copy
-from os.path import abspath, isfile
+from os.path import abspath, isfile, basename
+from subprocess import run
+from multiprocessing import cpu_count
 
 from config import vamos_common_PYTHONPATH
 from hna.hnl.parser import Parser
@@ -15,16 +17,21 @@ from vamos_common.codegen.events import CodeGenCpp as EventsCodeGen
 from vamos_common.codegen.traces import CodeGenCpp as TracesCodeGen
 #from vamos_mpt.parser import Parser
 
+script_name = basename(sys.argv[0])
 
-def dbg(msg):
-    print(f"\033[0;34m[dbg]: {msg}\033[0m", file=sys.stderr)
+def msg(m):
+    print(f"\033[0;34m[{script_name}]: {m}\033[0m", file=sys.stderr)
+
+def compile_monitor(args):
+    run(["cmake", "."], cwd=args.out_dir)
+    run(["make", f"-j{int(cpu_count()/2)+1}"], cwd=args.out_dir)
 
 def main(args):
     ctx = None
 
     ### Parse the event source specification if given and generate the sources
    #if args.sources_def:
-   #    dbg("generating event sources")
+   #    msg("generating event sources")
    #    from config import vamos_sources_PYTHONPATH
    #    sys.path.append(vamos_sources_PYTHONPATH)
    #    from vamos_sources.spec.parser.parser import InlineSpecParser as SrcParser
@@ -35,12 +42,12 @@ def main(args):
    #    src_args = copy(args)
    #    src_codegen = SrcCodeGenCpp(src_args, ctx)
    #    src_codegen.generate(src_ast)
-   #    dbg("event sources generated")
-   #    dbg(f"ctx: {ctx}")
+   #    msg("event sources generated")
+   #    msg(f"ctx: {ctx}")
    #    ctx.dump()
 
     ### Parse formula
-    dbg("Generating monitor code")
+    msg("Generating monitor code")
     parser = Parser(ctx)
     formula = args.input_formula
     if isfile(formula):
@@ -78,20 +85,24 @@ def main(args):
     codegen = CodeGenCpp(args, ctx)
     codegen.generate(formula)
 
-   #dbg("generating events")
+   #msg("generating events")
    #assert args.out_dir_overwrite is False
    #events_codegen = EventsCodeGen(args, ctx)
    #events_codegen.generate(mpt.alphabet)
-   #dbg("DONE generating events")
+   #msg("DONE generating events")
 
-   #dbg("generating traces classes")
+   #msg("generating traces classes")
    #assert args.out_dir_overwrite is False
    #traces_codegen = TracesCodeGen(args, ctx)
    #traces_codegen.generate(ctx.tracetypes, mpt.alphabet)
-   #dbg("DONE generating traces")
+   #msg("DONE generating traces")
 
     #mpt.todot()
     # print(ast.pretty())
+    msg(f"Monitor generated into '{args.out_dir}'")
+    if not args.gen_only:
+        msg("-- Compiling the monitor --")
+        compile_monitor(args)
 
 
 def parse_arguments():
@@ -111,6 +122,8 @@ def parse_arguments():
     parser.add_argument('--overwrite-default', action='append', default=[],
                         help="Do not generate the default version of the given file, its replacement is assumed to be "
                              "provided as an additional source.")
+    parser.add_argument('--gen-only', action='store_true', default=False,
+                        help='Do not try to compile the project, just generate the sources')
     args = parser.parse_args()
 
     args.input_formula = None
