@@ -4,7 +4,7 @@ Library for the construction, manipulation and runtime verification of hypernode
 
 ## Setup
 
-#### Setup python virtual environment (required on newest systems).
+#### Setup python virtual environment (required on newer systems).
 ```
 python3 -mvenv /venv
 ```
