@@ -18,9 +18,12 @@ exists: "exists" tracevar ("," tracevar)*
 
 qf_formula: _qf_formula
 _qf_formula: _prio1 (_prio1)*
-_prio1: and | or
-?and: _prio2 "&&" _prio2 | _prio2
-?or: _prio2 "||" _prio2 | _prio2
+
+// logical AND and OR are called land and lor to avoid
+// conflicts with python keywords
+_prio1: land | lor
+?land: _prio2 "&&" _prio2 | _prio2
+?lor: _prio2 "||" _prio2 | _prio2
 
 _prio2: neg | _prio3
 neg: "!" _prio3

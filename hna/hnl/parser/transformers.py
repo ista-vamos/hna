@@ -53,6 +53,18 @@ class ProcessAST(Transformer):
 
         return PrenexFormula(quantifiers, items[-1].children[0])
 
+    def land(self, items):
+        assert len(items) == 2, items
+        return And(items[0], items[1])
+
+    def lor(self, items):
+        assert len(items) == 2, items
+        return Or(items[0], items[1])
+
+    def neg(self, items):
+        assert len(items) == 1, items
+        return Not(items[0])
+
 
 def rec_concat(elem, rest):
     if not rest:
