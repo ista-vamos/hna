@@ -1,7 +1,7 @@
 from hna.automata.automaton import Automaton, State, Transition
 from itertools import chain
 
-from . formula import EPSILON, Constant
+from .formula import EPSILON, Constant
 
 
 def formula_to_automaton(formula, alphabet=None):

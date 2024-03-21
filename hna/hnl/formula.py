@@ -574,13 +574,12 @@ class StutterReduce(TraceFormula):
         reachable_derivatives = DerivativesSet()
 
         if wrt.is_x():
-            for d in derivatives_fixpoint(stutter_free_subformula,
-                                          wrt.remove_marks()):
+            for d in derivatives_fixpoint(stutter_free_subformula, wrt.remove_marks()):
                 reachable_derivatives.update(derivatives_fixpoint(d, c_no_rep))
 
-        reachable_derivatives.update(derivatives_fixpoint(
-                    stutter_free_subformula, c_no_rep
-        ))
+        reachable_derivatives.update(
+            derivatives_fixpoint(stutter_free_subformula, c_no_rep)
+        )
 
         return DerivativesSet(
             *(

@@ -5,7 +5,7 @@ from os.path import isfile
 from lark import Lark, logger
 
 from hna.hnl.formula import TraceFormula, IsPrefix, Constant
-from . transformers import transform_ast
+from .transformers import transform_ast
 from hna.hnl.formula2automata import formula_to_automaton, compose_automata
 
 
@@ -91,6 +91,7 @@ def main():
     # formula.visit(der)
 
     from hna.codegen.hnl import CodeGenCpp
+
     cg = CodeGenCpp()
     cg.generate(formula)
 

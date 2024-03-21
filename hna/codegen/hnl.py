@@ -24,11 +24,7 @@ class CodeGenCpp(CodeGen):
         self._formula_to_automaton = {}
 
     def _copy_common_files(self):
-        files = [
-            "trace.h",
-            "inputs.h",
-            "main.cpp"
-        ]
+        files = ["trace.h", "main.cpp"]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
@@ -57,7 +53,6 @@ class CodeGenCpp(CodeGen):
                 "@CMAKE_BUILD_TYPE@": build_type,
             },
         )
-
 
     def _generate_add_cfgs(self, mpt, wr):
         wr("template <typename TracesT>\n")
@@ -201,7 +196,7 @@ class CodeGenCpp(CodeGen):
         with self.new_file("events.h") as f:
             wr = f.write
             wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
-            #wr("#include <cassert>\n\n")
+            # wr("#include <cassert>\n\n")
 
             wr("struct Event {\n")
             for letter in formula.constants():
@@ -213,7 +208,18 @@ class CodeGenCpp(CodeGen):
         with self.new_file("events.cpp") as f:
             wr = f.write
 
+    def _generate_csv_reader(self):
+        with self.new_file("inputs.h") as f:
+            wr = f.write
+            wr("#ifndef INPUTS_H_\n#define INPUTS_H_\n\n")
+            # wr("#include <cassert>\n\n")
 
+            wr("class Inputs {\n")
+            for letter in formula.constants():
+                wr(f"  /* FIELD {letter} */\n")
+            wr("};\n\n")
+
+            wr("#endif\n")
 
     def _generate_monitor_core(self, mpt, wr):
         wr("/* MONITOR CORE *?\n")
@@ -263,7 +269,6 @@ class CodeGenCpp(CodeGen):
             with self.new_dbg_file(f"aut-{num}.dot") as f:
                 A.to_dot(f)
 
-
     def generate(self, formula):
         """
         The top-level function to generate code
@@ -272,8 +277,7 @@ class CodeGenCpp(CodeGen):
         self._copy_common_files()
         self._generate_cmake()
         self._generate_events(formula)
-        #self._generate_monitor(mpt)
-
+        # self._generate_monitor(mpt)
 
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):
