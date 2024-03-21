@@ -1,7 +1,6 @@
 #include <cassert>
 #include <iostream>
 
-#include "monitor.h"
 #include "inputs.h"
 
 int monitor(Inputs &inputs);

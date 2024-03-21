@@ -9,6 +9,11 @@ from hna.hnl.formula2automata import formula_to_automaton, compose_automata
 
 
 class CodeGenCpp(CodeGen):
+    """
+    Class for generating monitors in C++.
+    The main function to be called is `generate`.
+    """
+
     def __init__(self, args, ctx):
         super().__init__(args, ctx)
 
@@ -158,69 +163,6 @@ class CodeGenCpp(CodeGen):
 
         return cfg_name
 
-    def _generate_AnyCfg(self, cfgs):
-        """
-        This is a union of all configurations. It has smaller overhead than std::variant, so we use this.
-        """
-        with self.new_file("anycfg.h") as cf:
-            wr = cf.write
-            wr("#ifndef OD_ANYCFG_H_\n#define OD_ANYCFG_H_\n\n")
-            wr('#include "cfgs.h"\n\n')
-
-            wr("struct AnyCfg {\n" f"  unsigned short _idx{{{len(cfgs)}}};\n\n")
-            wr("  auto index() const -> auto{ return _idx; }\n\n")
-
-            wr("  union CfgTy {\n")
-            wr("    ConfigurationBase none;\n")
-            for _, cfg, _ in cfgs:
-                wr(f"    {cfg} {cfg.lower()};\n")
-
-            wr("\n    CfgTy() : none() {}\n")
-            wr("\n    ~CfgTy() {}\n")
-            for _, cfg, _ in cfgs:
-                wr(f"    CfgTy({cfg} &&c) : {cfg.lower()}(std::move(c)) {{}}\n")
-            wr("  } cfg;\n\n")
-
-            # wr("  template <typename CfgTy> CfgTy &get() { abort(); /*return std::get<CfgTy>(cfg);*/ }\n")
-            # for cfg in cfgs:
-            #    wr(f"  template <> {cfg} &get() {{ return cfg.{cfg.lower()}; }}\n")
-
-            wr("\n  AnyCfg(){}\n")
-
-            wr("  ~AnyCfg(){\n" "    switch (_idx) {\n")
-            for n, cfg, _ in cfgs:
-                wr(f"    case {n}: cfg.{cfg.lower()}.~{cfg}(); break;\n")
-            wr("    }\n" "   }\n")
-            # wr( "  template <typename CfgTy> AnyCfg(CfgTy &&c) : cfg(std::move(c)) { abort(); }\n")
-            for n, cfg, _ in cfgs:
-                wr(f"  AnyCfg({cfg} &&c) : _idx({n}), cfg(std::move(c)) {{}}\n")
-
-            wr("\n  AnyCfg(AnyCfg &&rhs) : _idx(rhs._idx) {\n" "    switch(_idx) {\n")
-            for n, cfg, _ in cfgs:
-                wr(
-                    f"    case {n}: cfg.{cfg.lower()} = std::move(rhs.cfg.{cfg.lower()}); break;\n"
-                )
-            wr("    default: break; // do nothing\n" "    }\n  }\n ")
-
-            wr(
-                "\n  AnyCfg& operator=(AnyCfg &&rhs) {\n"
-                "    _idx = rhs._idx;\n"
-                "    switch(_idx) {\n"
-            )
-            for n, cfg, _ in cfgs:
-                wr(
-                    f"    case {n}: cfg.{cfg.lower()} = std::move(rhs.cfg.{cfg.lower()}); break;\n"
-                )
-            wr(
-                "    default: break; // do nothing\n"
-                "    }\n"
-                "    return *this;\n"
-                "  }\n "
-            )
-
-            wr("};\n\n")
-            wr("#endif\n")
-
     def _generate_cfgs(self, mpt):
         mf = self.new_file("mpes.h")
         cf = self.new_file("cfgs.h")
@@ -255,72 +197,26 @@ class CodeGenCpp(CodeGen):
         cf.close()
         cfcpp.close()
 
-    def _generate_monitor_core(self, mpt, wr):
-        wr("      for (auto &c : C) {\n" "        switch (c.index()) {\n")
-        for n, cfg, transition in self.cfgs:
-            wr(
-                f"        case {n}: /* {cfg} */ {{\n"
-                f"          auto &cfg = c.cfg.{cfg.lower()};\n"
-                "          if (cfg.failed()) {\n"
-                "              continue;\n"
-                "          }\n"
-                "          non_empty = true;\n"
-            )
+    def _generate_events(self, formula):
+        with self.new_file("events.h") as f:
+            wr = f.write
+            wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
+            #wr("#include <cassert>\n\n")
 
-            if self.args.debug:
-                wr(f'          std::cout << "-- " << cfg;\n')
-            wr(
-                f"          auto move_result = move_cfg<{cfg}, {len(transition.mpe.exprs)}>(new_workbag, cfg);\n"
-            )
-            if self.args.debug:
-                wr(
-                    f'          std::cout << "\\n~> " << cfg  << "\\n=> " << actionToStr(move_result) << "\\n";\n'
-                )
-            wr(
-                f"          switch (move_result) {{\n"
-                "          case CFGSET_MATCHED:\n"
-            )
-            out = transition.output
-            if out and mpt.has_single_boolean_output():
-                assert len(out) == 1, out
-                if out[0].value is False:
-                    if self.args.debug or self.args.verbose:
-                        wr(
-                            '            std::cout << "\033[1;31mPROPERTY VIOLATED!\033[0m\\n";\n'
-                        )
-                    if self.args.exit_on_error:
-                        wr("           goto violated;\n")
-                elif out[0].value is True:
-                    wr("           /* out: true */\n")
-                else:
-                    raise NotImplementedError(
-                        f"Non-boolean output not implemented: {transition.output}"
-                    )
-            wr("            // fall-through\n")
-            wr(
-                "          case CFGSET_DONE:\n"
-                "            C.setInvalid();\n"
-                "            ++wbg_invalid;\n"
-                "            goto outer_loop;\n"
-                "            break;\n"
-                "          case NONE:\n"
-                "          case CFG_FAILED: // remove c from C\n"
-                "            break;\n"
-                "           }\n"
-            )
-            wr("          break;\n" "          }\n")
-        wr(
-            "         default:\n"
-            '           assert(false && "Unknown configuration"); abort();\n'
-            "           }\n"
-            "         }\n\n"
-            "        if (!non_empty) {\n"
-            "           C.setInvalid();\n"
-            "        }\n\n"
-            "outer_loop:\n"
-            "         (void)1;\n\n"
-            "  }\n\n"
-        )
+            wr("struct Event {\n")
+            for letter in formula.constants():
+                wr(f"  /* FIELD {letter} */\n")
+            wr("};\n\n")
+
+            wr("#endif\n")
+
+        with self.new_file("events.cpp") as f:
+            wr = f.write
+
+
+
+    def _generate_monitor_core(self, mpt, wr):
+        wr("/* MONITOR CORE *?\n")
 
     def _generate_monitor(self, mpt):
         with self.new_file("monitor.cpp") as f:
@@ -369,9 +265,13 @@ class CodeGenCpp(CodeGen):
 
 
     def generate(self, formula):
+        """
+        The top-level function to generate code
+        """
 
         self._copy_common_files()
         self._generate_cmake()
+        self._generate_events(formula)
         #self._generate_monitor(mpt)
 
 
@@ -381,4 +281,3 @@ class CodeGenCpp(CodeGen):
             self.generate_atomic_comparison_automaton(F)
 
         formula.visit(gen_automaton)
-

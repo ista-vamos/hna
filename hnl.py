@@ -20,7 +20,10 @@ from vamos_common.codegen.traces import CodeGenCpp as TracesCodeGen
 script_name = basename(sys.argv[0])
 
 def msg(m):
-    print(f"\033[0;34m[{script_name}]: {m}\033[0m", file=sys.stderr)
+    print(f"\033[0;34m[{script_name}]: {m}\033[0m", file=sys.stdout)
+
+def dbg(m):
+    print(f"\033[0;35m[{script_name}] DBG: {m}\033[0m", file=sys.stderr)
 
 def compile_monitor(args):
     run(["cmake", "."], cwd=args.out_dir)
@@ -118,12 +121,17 @@ def parse_arguments():
     parser.add_argument('--stats', action='store_true', help='Gather statistics')
     parser.add_argument('-D', action='append', default=[], help='Additional CMake definitions')
     parser.add_argument('--reduction', action='append', default=[], choices=["symmetry", "reflexivity"],
-                        help='Do not process pairs reflexive and symmetric pairs of  traces')
+                        help='Do not process reflexive and symmetric pairs of  traces')
     parser.add_argument('--overwrite-default', action='append', default=[],
                         help="Do not generate the default version of the given file, its replacement is assumed to be "
                              "provided as an additional source.")
     parser.add_argument('--gen-only', action='store_true', default=False,
                         help='Do not try to compile the project, just generate the sources')
+    parser.add_argument('--gen-csv-reader', action='store_true', default=True,
+                        help='Generate code that can read CSV files as input. '
+                        'It is enabled by default even for monitors with other '
+                        'inputs (for testing). See --help of the monitor binary '
+                        'for instructions on how to use the CSV reader if the monitor has also other inputs.')
     args = parser.parse_args()
 
     args.input_formula = None

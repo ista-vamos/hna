@@ -32,18 +32,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 
-#add_library(monitor-lib STATIC monitor.cpp events.cpp)
-#target_include_directories(monitor-lib PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+set(MONITOR_FILES events.cpp)
+add_library(monitor-lib STATIC ${MONITOR_FILES})
+target_include_directories(monitor-lib PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 
-# add_library(monitor-dbg STATIC monitor.cpp events.cpp mstring.cpp cfgs.cpp)
-# target_include_directories(monitor-dbg PUBLIC ${vamos-buffers_INCLUDE_DIRS})
-# target_link_libraries(monitor-dbg PUBLIC vamos-hyper vamos-buffers-event)
-# target_compile_definitions(monitor-dbg
-# 			   PRIVATE EXIT_ON_ERROR=1
-# 			   PRIVATE OUTPUT=1)
+add_library(monitor-lib-dbg STATIC ${MONITOR_FILES})
+target_include_directories(monitor-lib-dbg PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_compile_definitions(monitor-lib-dbg
+			   PUBLIC EXIT_ON_ERROR=1
+			   PUBLIC OUTPUT=1)
+target_compile_options(monitor-lib-dbg PUBLIC ${CMAKE_CXX_FLAGS_DEBUG} -O0)
 
 add_executable(monitor main.cpp @additional_sources@)
 target_include_directories(monitor PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_link_libraries(monitor PRIVATE monitor-lib)
 target_compile_definitions(monitor PRIVATE @additional_cmake_definitions@)
+
+add_executable(monitor-dbg main.cpp @additional_sources@)
+target_include_directories(monitor-dbg PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_link_libraries(monitor-dbg PRIVATE monitor-lib-dbg)
+target_compile_definitions(monitor-dbg PRIVATE @additional_cmake_definitions@)
 
