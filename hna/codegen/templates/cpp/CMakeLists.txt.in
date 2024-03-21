@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 
-set(MONITOR_FILES events.cpp)
+set(MONITOR_FILES events.cpp cmd.cpp)
 add_library(monitor-lib STATIC ${MONITOR_FILES})
 target_include_directories(monitor-lib PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 

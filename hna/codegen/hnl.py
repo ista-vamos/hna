@@ -24,7 +24,7 @@ class CodeGenCpp(CodeGen):
         self._formula_to_automaton = {}
 
     def _copy_common_files(self):
-        files = ["trace.h", "main.cpp"]
+        files = ["trace.h", "main.cpp", "cmd.h", "cmd.cpp"]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)

@@ -4,40 +4,27 @@
 #include <thread>
 
 //#include "inputs.h"
+#include "cmd.h"
 
 
 class TraceSet {
 
 };
 
-class CmdArgs {
-  int argc;
-  char **argv;
 
-
-int monitor(TraceSet& traces);
-
-public:
-  CmdArgs(int argc, char *argv[])
-  : argc(argc), argv(argv) {}
-
-  bool csv_reader{false};
-  bool trace_are_events{false};
-  bool trace_are_aps{false};
-  bool trace_is_signal{false};
-
-  bool parse();
-};
 
 void read_events_csv(CmdArgs& args, TraceSet& traces) {
 
 }
 
+int monitor(TraceSet& traces);
+
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);
 
   if (!cmd.parse()) {
-    std::cerr << "Failed parsing command-line arguments.";
+    std::cerr << "\033[0;31mFailed parsing command-line arguments.\033[0m\n\n";
+    cmd.help();
     return -1;
   }
 
