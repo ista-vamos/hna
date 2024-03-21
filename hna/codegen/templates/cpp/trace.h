@@ -1,31 +1,24 @@
-#ifndef VAMOS_TRACE_H
-#define VAMOS_TRACE_H
+#ifndef TRACE_H
+#define TRACE_H
 
-#include <cstring>
 #include <vector>
 
 #include "events.h"
 
-class TraceBase {
+class Trace {
   const size_t _id;
-  bool _done{false};
+  bool _finished{false};
+  std::vector<Event> _events;
 
 public:
-  TraceBase(size_t id) : _id(id) {}
-  void setDone() { _done = true; }
+  Trace(size_t id) : _id(id) {}
 
-  bool done() const { return _done; }
+  void setFinished() { _finished = true; }
+  bool finished() const { return _finished; }
   size_t id() const { return _id; }
-};
 
-template <typename EventTy> class Trace : public TraceBase {
-  std::vector<EventTy> _events;
-
-public:
-  Trace(size_t id) : TraceBase(id) {}
-
-  void append(const EventTy *e) { _events.push_back(*e); }
-  void append(const EventTy &e) { _events.push_back(e); };
+  void append(const Event *e) { _events.push_back(*e); }
+  void append(const Event &e) { _events.push_back(e); };
 
   Event *get(size_t idx) { return &_events[idx]; }
   const Event *get(size_t idx) const { return &_events[idx]; }

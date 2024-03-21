@@ -160,6 +160,8 @@ def parse_arguments():
 
     print(args)
 
+    assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
+
     return args
 
 if __name__ == "__main__":

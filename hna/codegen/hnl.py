@@ -24,7 +24,11 @@ class CodeGenCpp(CodeGen):
         self._formula_to_automaton = {}
 
     def _copy_common_files(self):
-        files = ["trace.h", "main.cpp", "cmd.h", "cmd.cpp"]
+        files = ["trace.h", "trace.cpp",
+                 "traceset.h",
+                 "cmd.h", "cmd.cpp",
+                 "main.cpp",
+                 ]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
@@ -208,18 +212,11 @@ class CodeGenCpp(CodeGen):
         with self.new_file("events.cpp") as f:
             wr = f.write
 
-    def _generate_csv_reader(self):
-        with self.new_file("inputs.h") as f:
-            wr = f.write
-            wr("#ifndef INPUTS_H_\n#define INPUTS_H_\n\n")
-            # wr("#include <cassert>\n\n")
+    def _generate_csv_reader(self, formula):
+        self.copy_file("csvreader.h")
+        self.copy_file("csvreader.cpp")
+        self.args.add_gen_files.append("csvreader.cpp")
 
-            wr("class Inputs {\n")
-            for letter in formula.constants():
-                wr(f"  /* FIELD {letter} */\n")
-            wr("};\n\n")
-
-            wr("#endif\n")
 
     def _generate_monitor_core(self, mpt, wr):
         wr("/* MONITOR CORE *?\n")
@@ -274,9 +271,10 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
-        self._copy_common_files()
-        self._generate_cmake()
         self._generate_events(formula)
+
+        if self.args.gen_csv_reader:
+            self._generate_csv_reader(formula)
         # self._generate_monitor(mpt)
 
         def gen_automaton(F):
@@ -285,3 +283,8 @@ class CodeGenCpp(CodeGen):
             self.generate_atomic_comparison_automaton(F)
 
         formula.visit(gen_automaton)
+
+        self._copy_common_files()
+        # cmake generation should go at the end so that
+        # it knows all the generated files
+        self._generate_cmake()

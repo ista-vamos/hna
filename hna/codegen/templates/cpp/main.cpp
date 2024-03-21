@@ -5,19 +5,16 @@
 
 //#include "inputs.h"
 #include "cmd.h"
-
-
-class TraceSet {
-
-};
+#include "traceset.h"
+#include "csvreader.h"
 
 
 
-void read_events_csv(CmdArgs& args, TraceSet& traces) {
 
+int monitor(TraceSet& traces) {
+  std::cerr << "Entering monitor\n";
+  return 0;
 }
-
-int monitor(TraceSet& traces);
 
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);
@@ -33,15 +30,19 @@ int main(int argc, char *argv[]) {
 
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {
-      inputs_thrd = std::thread([&cmd, &traceSet]{read_events_csv(cmd, traceSet);});
-    }
-
-    assert(false && "Not implemented yet");
-    abort();
+      inputs_thrd = std::thread([&cmd, &traceSet] {
+                      read_csv<CSVEventsStream>(cmd, traceSet);
+                    });
+    } else {
+      assert(false && "Not implemented yet");
+      abort();
     /*
     if (cmd.trace_are_aps)
     if (cmd.trace_is_signal)
     */
+    }
+  } else {
+    assert(false && "Not implemeted yet");
   }
 
   auto ret = monitor(traceSet);
