@@ -73,6 +73,7 @@ get_filename_component(vamos-common_DIR ${vamos-common_DIR} ABSOLUTE)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 	       ${CMAKE_CURRENT_SOURCE_DIR}/config.py)
 
+add_subdirectory(tests)
 
 #add_custom_target(gen-readme
 #                  COMMAND pandoc -f markdown -t HTML -o README.html README.md
