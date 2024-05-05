@@ -23,12 +23,24 @@ class CodeGenCpp(CodeGen):
         self.templates_path = pathjoin(self_path, "templates/cpp")
         self._formula_to_automaton = {}
 
+        assert (
+            self.args.csv_header
+        ), "Give --csv-header, other methods not supported yet"
+        self._event = [
+            [s.strip() for s in event.split(":")]
+            for event in self.args.csv_header.split(",")
+        ]
+
     def _copy_common_files(self):
-        files = ["trace.h", "trace.cpp",
-                 "traceset.h",
-                 "cmd.h", "cmd.cpp",
-                 "main.cpp",
-                 ]
+        files = [
+            "trace.h",
+            "trace.cpp",
+            "traceset.h",
+            "cmd.h",
+            "cmd.cpp",
+            "main.cpp",
+            "csv.hpp",
+        ]
         for f in files:
             if f not in self.args.overwrite_default:
                 self.copy_file(f)
@@ -196,27 +208,47 @@ class CodeGenCpp(CodeGen):
         cf.close()
         cfcpp.close()
 
-    def _generate_events(self, formula):
+    def _generate_events(self):
         with self.new_file("events.h") as f:
             wr = f.write
             wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
+            wr("#include <iostream>\n\n")
             # wr("#include <cassert>\n\n")
 
             wr("struct Event {\n")
-            for letter in formula.constants():
-                wr(f"  /* FIELD {letter} */\n")
+            for name, ty in self._event:
+                wr(f"  {ty} {name};\n")
             wr("};\n\n")
+
+            wr("std::ostream& operator<<(std::ostream& os, const Event& ev);\n")
 
             wr("#endif\n")
 
         with self.new_file("events.cpp") as f:
             wr = f.write
+            wr("#include <iostream>\n\n")
+            wr('#include "events.h"\n\n')
+            wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
+            wr('  os << "("')
+            for n, field in enumerate(self._event):
+                name, ty = field
+                if n > 0:
+                    wr(f'  << ", "')
+                wr(f'  << "{name} = " << ev.{name}')
+            wr('   << ")";\n')
+            wr("return os;\n")
+            wr("}\n")
 
-    def _generate_csv_reader(self, formula):
+    def _generate_csv_reader(self):
         self.copy_file("csvreader.h")
         self.copy_file("csvreader.cpp")
         self.args.add_gen_files.append("csvreader.cpp")
 
+        with self.new_file("try_read_csv_event.cpp") as f:
+            wr = f.write
+            wr("auto it = row.begin();")
+            for name, ty in self._event:
+                wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
 
     def _generate_monitor_core(self, mpt, wr):
         wr("/* MONITOR CORE *?\n")
@@ -271,10 +303,10 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
-        self._generate_events(formula)
+        self._generate_events()
 
         if self.args.gen_csv_reader:
-            self._generate_csv_reader(formula)
+            self._generate_csv_reader()
         # self._generate_monitor(mpt)
 
         def gen_automaton(F):

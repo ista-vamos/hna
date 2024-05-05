@@ -8,11 +8,36 @@
 #include "traceset.h"
 #include "csvreader.h"
 
+struct Cfg {
+  Trace *trace;
+  size_t pos{0};
 
+  Cfg(Trace *t) : trace(t) {}
 
+  bool finished() const {
+    return trace->finished() && pos == trace->size();
+  }
+};
 
 int monitor(TraceSet& traces) {
   std::cerr << "Entering monitor\n";
+  std::vector<Cfg> cfgs;
+  while (true) {
+    if (auto *trace = traces.getNewTrace()) {
+        cfgs.emplace_back(trace);
+    }
+
+    for (auto &cfg : cfgs) {
+      auto *ev = cfg.trace->try_get(cfg.pos);
+      if (ev) {
+        std::cout << "MON: " << *ev << "\n";
+        ++cfg.pos;
+        if (cfg.finished()) {
+          std::cout << "REMOVE CFG\n";
+        }
+      }
+    }
+  }
   return 0;
 }
 
