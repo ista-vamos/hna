@@ -61,7 +61,8 @@ get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 set(MONITOR_FILES main.cpp
                   events.cpp
                   cmd.cpp
-                  trace.cpp)
+                  trace.cpp
+                  monitor.cpp)
 
 add_executable(monitor ${MONITOR_FILES} @additional_sources@)
 target_include_directories(monitor PUBLIC ${vamos-buffers_INCLUDE_DIRS})

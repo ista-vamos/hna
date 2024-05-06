@@ -39,7 +39,7 @@ public:
 
 
 template <typename StreamTy>
-void read_csv(CmdArgs& args, TraceSet& traces) {
+void read_csv(CmdArgs& args, TraceSet& traces, bool& running) {
   std::cerr << "Reading CSV events\n";
 
   std::vector<std::unique_ptr<StreamTy>> streams;
@@ -50,7 +50,7 @@ void read_csv(CmdArgs& args, TraceSet& traces) {
   const size_t inputs_num = args.inputs.size();
   const size_t read_limit = args.read_max_num_events_at_once;
 
-  while (true) {
+  while (running) {
     // check if we have new files to open
     if (next_input < inputs_num && num_open_files < args.open_traces_limit) {
         auto *trace = traces.newTrace();

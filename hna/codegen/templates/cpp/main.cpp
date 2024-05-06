@@ -7,39 +7,8 @@
 #include "cmd.h"
 #include "traceset.h"
 #include "csvreader.h"
+#include "monitor.h"
 
-struct Cfg {
-  Trace *trace;
-  size_t pos{0};
-
-  Cfg(Trace *t) : trace(t) {}
-
-  bool finished() const {
-    return trace->finished() && pos == trace->size();
-  }
-};
-
-int monitor(TraceSet& traces) {
-  std::cerr << "Entering monitor\n";
-  std::vector<Cfg> cfgs;
-  while (true) {
-    if (auto *trace = traces.getNewTrace()) {
-        cfgs.emplace_back(trace);
-    }
-
-    for (auto &cfg : cfgs) {
-      auto *ev = cfg.trace->try_get(cfg.pos);
-      if (ev) {
-        std::cout << "MON: " << *ev << "\n";
-        ++cfg.pos;
-        if (cfg.finished()) {
-          std::cout << "REMOVE CFG\n";
-        }
-      }
-    }
-  }
-  return 0;
-}
 
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);
@@ -52,11 +21,13 @@ int main(int argc, char *argv[]) {
 
   TraceSet traceSet{};
   std::thread inputs_thrd;
+  // set this to false to stop the inputs thread
+  bool running = true;
 
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {
-      inputs_thrd = std::thread([&cmd, &traceSet] {
-                      read_csv<CSVEventsStream>(cmd, traceSet);
+      inputs_thrd = std::thread([&cmd, &traceSet, &running] {
+                      read_csv<CSVEventsStream>(cmd, traceSet, running);
                     });
     } else {
       assert(false && "Not implemented yet");
@@ -70,8 +41,17 @@ int main(int argc, char *argv[]) {
     assert(false && "Not implemeted yet");
   }
 
-  auto ret = monitor(traceSet);
+  HNLMonitor monitor(traceSet);
+
+  Verdict verdict;
+  do {
+    verdict = monitor.step();
+  } while (verdict == Verdict::UNKNOWN);
+
+  // stop getting traces if there are events still coming
+  running = false;
+
   inputs_thrd.join();
 
-  return ret;
+  return static_cast<int>(verdict);
 }

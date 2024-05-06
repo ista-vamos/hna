@@ -38,6 +38,8 @@ class CodeGenCpp(CodeGen):
             "traceset.h",
             "cmd.h",
             "cmd.cpp",
+            "monitor.h",
+            "monitor.cpp",
             "main.cpp",
             "csv.hpp",
         ]
