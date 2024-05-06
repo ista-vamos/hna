@@ -1,6 +1,6 @@
-from hna.automata.automaton import Automaton, State, Transition
 from itertools import chain
 
+from hna.automata.automaton import Automaton, State, Transition
 from .formula import EPSILON, Constant
 
 
