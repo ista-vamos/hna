@@ -45,6 +45,10 @@ class Transition:
     def label(self):
         return self._label
 
+    @property
+    def priority(self):
+        return self._priority
+
     def __eq__(self, other):
         return (
             self._source == other._source
@@ -95,6 +99,13 @@ class Automaton:
         ), f"{state} is in [{', '.join(map(str, self._states.values()))}]"
         self._states[state.label()] = state
 
+    def get_or_create_state(self, label):
+        state = self._states.get(label)
+        if state is None:
+            state = State(label)
+            self._states[label] = state
+        return state
+
     def add_transition(self, t):
         assert isinstance(t, Transition), (t, type(t))
         assert (
@@ -141,8 +152,10 @@ class Automaton:
             print(f'  "{label}"[label="{label}" {attrs}]', file=output)
         print("", file=output)
         for transition in self._transitions:
+            prio = transition.priority
+            prio = f"|{prio}" if prio != 0 else ""
             print(
-                f'  "{transition.source.label()}" -> "{transition.target.label()}"[label="{transition.label}"]',
+                f'  "{transition.source.label()}" -> "{transition.target.label()}"[label="{transition.label}{prio}"]',
                 file=output,
             )
         print("}", file=output)

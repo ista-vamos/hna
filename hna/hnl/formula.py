@@ -442,6 +442,82 @@ class Constant(TraceFormula):
     def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
         return {self}
 
+    def is_epsilon(self) -> bool:
+        return False
+
+
+class EpsilonConstant(Constant):
+    """
+    Constant used to represent epsilon transitions.
+    """
+
+    def __init__(self):
+        super().__init__("")
+
+    def is_epsilon(self) -> bool:
+        return True
+
+    def __hash__(self) -> int:
+        return hash("__epsilon_constant__")
+
+    def derivative(self, wrt: "Constant") -> DerivativesSet:
+        raise RuntimeError("Cannot take derivative wrt epsilon")
+
+    def __str__(self) -> str:
+        return "ε"
+
+    def first(self):
+        raise RuntimeError(
+            "EpsilonConstant should be used only for edges and there `first` makes no sense"
+        )
+
+    def constants(self):
+        raise RuntimeError(
+            "EpsilonConstant should be used only for edges and there `constants` makes no sense"
+        )
+
+    def equiv(self, other):
+        """
+        Return True if constants are equivalent ignoring repetition/trace mark
+        """
+        return isinstance(other, EpsilonConstant)
+
+    def is_rep(self):
+        return False
+
+    def is_x(self):
+        return False
+
+    def remove_marks(self):
+        return self
+
+    def remove_mark(self, marks):
+        return self
+
+    def remove_rep(self):
+        return self
+
+    def remove_x(self):
+        return self
+
+    def with_marks(self, marks):
+        raise RuntimeError("Not valid for this constant")
+
+    def with_rep(self):
+        raise RuntimeError("Not valid for this constant")
+
+    def with_x(self):
+        raise RuntimeError("Not valid for this constant")
+
+    def with_rep_x(self):
+        raise RuntimeError("Not valid for this constant")
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, EpsilonConstant)
+
+
+EPSILON_CONSTANT = EpsilonConstant()
+
 
 class Concat(TraceFormula):
     def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:

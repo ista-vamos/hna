@@ -5,7 +5,8 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 from hna.hnl.formula import IsPrefix, Quantifier, And, Or, Not
 from hna.hnl.formula2automata import (
     formula_to_automaton,
-    compose_automata
+    compose_automata,
+    to_priority_automaton,
 )
 from vamos_common.codegen.codegen import CodeGen
 from subprocess import run
@@ -336,6 +337,7 @@ class CodeGenCpp(CodeGen):
         A1 = formula_to_automaton(formula.children[0], alphabet)
         A2 = formula_to_automaton(formula.children[1], alphabet)
         A = compose_automata(A1, A2, alphabet)
+        Ap = to_priority_automaton(A)
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:
@@ -344,9 +346,11 @@ class CodeGenCpp(CodeGen):
                 A2.to_dot(f)
             with self.new_dbg_file(f"aut-{num}.dot") as f:
                 A.to_dot(f)
+            with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
+                Ap.to_dot(f)
 
-        self._formula_to_automaton[formula] = (num, A)
-        self._automaton_to_formula[A] = (num, formula)
+        self._formula_to_automaton[formula] = (num, Ap)
+        self._automaton_to_formula[Ap] = (num, formula)
 
     def generate(self, formula):
         """
