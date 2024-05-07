@@ -2,7 +2,7 @@ import os
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
-from hna.hnl.formula import IsPrefix, Quantifier, And, Or, Not
+from hna.hnl.formula import IsPrefix, Quantifier, And, Or, Not, Constant
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -362,7 +362,11 @@ class CodeGenCpp(CodeGen):
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
 
-        alphabet = formula.constants()
+        if not self.args.alphabet:
+            print("No alphabet given, using constants from the formula: ", formula.constants())
+            alphabet = formula.constants()
+        else:
+            alphabet = [Constant(a) for a in self.args.alphabet]
 
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):

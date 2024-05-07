@@ -150,6 +150,11 @@ def parse_arguments():
         help="Do not process reflexive and symmetric pairs of  traces",
     )
     parser.add_argument(
+        "--alphabet",
+        action="store",
+        help="Comma-separated list of letter to use as the alphabet",
+    )
+    parser.add_argument(
         "--overwrite-default",
         action="append",
         default=[],
@@ -208,6 +213,9 @@ def parse_arguments():
             if args.sources_def:
                 raise RuntimeError("Multiple .vsrc files given")
             args.sources_def = fl
+
+    if args.alphabet:
+        args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
 
     print(args)
 
