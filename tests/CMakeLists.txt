@@ -1,4 +1,4 @@
-find_package(Catch2 3 REQUIRED)
+find_package(Catch2 3)
 
 function(_add_test name source)
 	add_executable(${name} ${source})
