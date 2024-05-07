@@ -1,31 +1,41 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <!-- GRAPH DATA END -->
 
-    <style>
-    #cy {
-      width: 1000px;
-      height: 600px;
-      display: block;
+  style: [ // the stylesheet for the graph
+    {
+      selector: 'node',
+      style: {
+        'background-color': '#fff',
+        'label': 'data(id)',
+        'text-halign': 'center',
+        'text-valign': 'center',
+        'width': 'label',
+        'height': 'label',
+        'padding': '10px',
+        'shape': 'rectangle'
+      }
+    },
+
+    {
+      selector: 'edge',
+      style: {
+        'width': 3,
+        'line-color': '#999',
+        'target-arrow-color': '#999',
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'label': 'data(id)'
+      }
     }
-    </style>
+  ],
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.29.2/cytoscape.min.js"></script>
-    <title>HNL debugging</title>
-  </head>
-  <body>
-    <main>
-        <h1>HNL Debugging</h1>  
-        <div id="cy">Here's the graph</div>
-    </main>
+  layout: {
+    name: 'cose',
+    nodeDimensionsIncludeLabels: true
 
-    <script>
-    var cy = cytoscape({
+  }
 
-  container: document.getElementById('cy'), // container to render in
+});
 
-  <!-- GRAPH DATA START -->
-
+    </script>
+  </body>
+</html>

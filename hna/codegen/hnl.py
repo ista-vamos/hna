@@ -331,6 +331,19 @@ class CodeGenCpp(CodeGen):
         )
         wrcpp("}\n")
 
+    def _aut_to_html(self, filename, A):
+        """
+        Dump automaton into HTML + JS page, an alternative to graphviz
+        that should handle the graphs more nicely.
+        """
+        assert filename.endswith(".html"), filename
+        with self.new_dbg_file(filename) as f:
+            self.input_file(f, "../partials/html/graph-view-start.html")
+            f.write("elements: ")
+            A.to_json(f)
+            f.write(",")
+            self.input_file(f, "../partials/html/graph-view-end.html")
+
     def generate_atomic_comparison_automaton(self, formula, alphabet):
         num = len(self._formula_to_automaton) + 1
 
@@ -348,6 +361,11 @@ class CodeGenCpp(CodeGen):
                 A.to_dot(f)
             with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
                 Ap.to_dot(f)
+
+            self._aut_to_html(f"aut-{num}-lhs.html", A1)
+            self._aut_to_html(f"aut-{num}-rhs.html", A2)
+            self._aut_to_html(f"aut-{num}.html", A)
+            self._aut_to_html(f"aut-{num}-prio.html", Ap)
 
         self._formula_to_automaton[formula] = (num, Ap)
         self._automaton_to_formula[Ap] = (num, formula)

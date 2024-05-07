@@ -159,3 +159,19 @@ class Automaton:
                 file=output,
             )
         print("}", file=output)
+
+    def to_json(self, output=stdout):
+        print("{", file=output)
+        print("  nodes: [", file=output)
+        for label, state in self._states.items():
+            print(f"  {{ data: {{ id: '{label}', init: '{self.is_initial(state)}', accepting: '{self.is_accepting(state)}'  }} }},", file=output)
+        print("  ],", file=output)
+        print("", file=output)
+        print("  edges: [", file=output)
+        for transition in self._transitions:
+            prio = transition.priority
+            prio = f"|{prio}" if prio != 0 else ""
+            print(f"  {{ data: {{ id:  '{transition.label}{prio}', source: '{transition.source.label()}', target: '{transition.target.label()}' }} }},", file=output)
+        print("  ]", file=output)
+        print("}", file=output)
+
