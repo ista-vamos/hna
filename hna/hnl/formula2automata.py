@@ -56,11 +56,12 @@ def gen_letter_pairs(alphabet):
                 yield a.with_marks(marks1), a.with_marks(marks2)
 
 
-def compose_automata(A1, A2, prune=True):
+def compose_automata(A1, A2, alphabet, prune=True):
     """
     Compose automata so that they recognize when inputs
     are in the prefixing relation.
     """
+
     A = Automaton()
     new_states = set()
     for i1 in A1.initial_states():
@@ -72,12 +73,6 @@ def compose_automata(A1, A2, prune=True):
             state = State(TupleLabel((i1.label(), i2.label())))
             A.add_state(state)
             A.add_init(state)
-
-    alphabet = set()
-    for i in A1.initial_states():
-        alphabet.update(i.label().constants())
-    for i in A2.initial_states():
-        alphabet.update(i.label().constants())
 
     while new_states:
         state = new_states.pop()

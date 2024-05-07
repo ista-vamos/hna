@@ -2,6 +2,10 @@ from sys import stdout
 
 
 class State:
+    """
+    State of an automaton
+    """
+
     def __init__(self, label):
         self._label = label
 
@@ -19,10 +23,15 @@ class State:
 
 
 class Transition:
-    def __init__(self, source, label, target):
+    """
+    Transition of an automaton
+    """
+
+    def __init__(self, source, label, target, priority=0):
         self._source = source
         self._target = target
         self._label = label
+        self._priority = priority
 
     @property
     def source(self):
@@ -41,13 +50,19 @@ class Transition:
             self._source == other._source
             and self._label == other._label
             and self._target == other._target
+            and self._priority == other._priority
         )
 
     def __str__(self):
-        return f"({self._source} -[{self._label}]-> {self._target})"
+        prio = f":{self._priority}" if self._priority != 0 else ""
+        return f"({self._source} -[{self._label}{prio}]-> {self._target})"
 
 
 class Automaton:
+    """
+    Class representing an automaton
+    """
+
     def __init__(
         self,
         states: list = None,

@@ -3,7 +3,10 @@ from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from hna.hnl.formula import IsPrefix, Quantifier, And, Or, Not
-from hna.hnl.formula2automata import formula_to_automaton, compose_automata
+from hna.hnl.formula2automata import (
+    formula_to_automaton,
+    compose_automata
+)
 from vamos_common.codegen.codegen import CodeGen
 from subprocess import run
 
@@ -193,7 +196,9 @@ class CodeGenCpp(CodeGen):
                 wbg.add(hi)
                 wbg.add(lo)
 
-                f.write(f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n")
+                f.write(
+                    f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n"
+                )
 
             f.write("};\n\n")
 
@@ -205,15 +210,15 @@ class CodeGenCpp(CodeGen):
             wr("#pragma once\n\n")
             wr('#include "actions.h"\n\n')
             wr('#include "trace.h"\n\n')
-            wr('class AtomMonitor;\n\n')
+            wr("class AtomMonitor;\n\n")
             wr("struct HNLCfg {\n")
             wr("  /* traces */\n")
             for q in formula.quantifier_prefix:
                 wr(f"  const Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
             wr(f"  Action state;\n\n")
-            wr( "  /* The monitor this configuration waits for */\n")
-            wr( "  AtomMonitor *monitor{nullptr};\n\n")
+            wr("  /* The monitor this configuration waits for */\n")
+            wr("  AtomMonitor *monitor{nullptr};\n\n")
             wr(f"  HNLCfg(")
             for q in formula.quantifier_prefix:
                 wr(f"const Trace *{q.var}, ")
@@ -227,29 +232,33 @@ class CodeGenCpp(CodeGen):
         N = len(formula.quantifier_prefix)
         with self.new_file("createcfgs.h") as f:
             wr = f.write
-            wr('/* the code that precedes this defines a variable `t1` */\n\n')
+            wr("/* the code that precedes this defines a variable `t1` */\n\n")
             for i in range(2, N + 1):
-                wr(f'for (const auto &t{i}_it : _traces) {{\n')
-                wr(f'  const auto *t{i} = t{i}_it.get();\n')
+                wr(f"for (const auto &t{i}_it : _traces) {{\n")
+                wr(f"  const auto *t{i} = t{i}_it.get();\n")
 
-            wr('\n  /* Create the configuration */\n')
-            wr('\n  _cfgs.emplace_back(')
+            wr("\n  /* Create the configuration */\n")
+            wr("\n  _cfgs.emplace_back(")
             for i in range(1, N + 1):
-                wr(f't{i}, ')
+                wr(f"t{i}, ")
             wr("INITIAL_ATOM);\n\n")
-            wr("_cfgs.back().monitor = createAtomMonitor(INITIAL_ATOM, _cfgs.back());\n")
+            wr(
+                "_cfgs.back().monitor = createAtomMonitor(INITIAL_ATOM, _cfgs.back());\n"
+            )
 
             for i in range(2, len(formula.quantifier_prefix) + 1):
-                wr('}\n')
+                wr("}\n")
 
     def _generate_atom_monitor(self):
         with self.new_file("createatommonitor.h") as f:
-            f.write('switch(monitor_type) {\n')
+            f.write("switch(monitor_type) {\n")
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
-                f.write(f'case AUTOMATON_{num}: monitor = new AtomMonitor{num}(hnlcfg); break;\n')
-            f.write('default: abort();\n')
-            f.write('}\n\n')
+                f.write(
+                    f"case AUTOMATON_{num}: monitor = new AtomMonitor{num}(hnlcfg); break;\n"
+                )
+            f.write("default: abort();\n")
+            f.write("}\n\n")
 
     def _generate_monitor(self, formula):
         self._generate_bdd_code(formula)
@@ -272,26 +281,31 @@ class CodeGenCpp(CodeGen):
                 num, A = tmp
                 f.write(f'#include "atom-{num}.h"\n')
 
-    def _generate_automaton_code(self, wrh, wrcpp, atom_formula : IsPrefix, num, automaton):
+    def _generate_automaton_code(
+        self, wrh, wrcpp, atom_formula: IsPrefix, num, automaton
+    ):
         wrh("#pragma once\n\n")
         wrh('#include "atommonitor.h"\n\n')
-        wrh(f'/* {atom_formula}*/\n')
-        wrh(f'class AtomMonitor{num} : public AtomMonitor {{\n')
-        wrh( 'public:\n')
+        wrh(f"/* {atom_formula}*/\n")
+        wrh(f"class AtomMonitor{num} : public AtomMonitor {{\n")
+        wrh("public:\n")
         t1 = atom_formula.children[0].trace_variables()
         t2 = atom_formula.children[1].trace_variables()
         assert len(t1) == 1, str(t1)
         assert len(t2) == 1, str(t2)
         t1 = t1[0].name
         t2 = t2[0].name
-        wrh(f'AtomMonitor{num}(HNLCfg& cfg);\n\n')
-        wrh(f'Verdict step(unsigned num = 0);\n\n')
-        wrh('};\n')
+        wrh(f"AtomMonitor{num}(HNLCfg& cfg);\n\n")
+        wrh(f"Verdict step(unsigned num = 0);\n\n")
+        wrh("};\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
-        wrcpp(f'AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) : AtomMonitor(cfg.{t1}, cfg.{t2}) {{}}\n\n')
-        wrcpp(f'Verdict AtomMonitor{num}::step(unsigned num) {{\n\n')
-        wrcpp('''
+        wrcpp(
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) : AtomMonitor(cfg.{t1}, cfg.{t2}) {{}}\n\n"
+        )
+        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n\n")
+        wrcpp(
+            """
               auto *ev1 = t1->try_get(p1);
               auto *ev2 = t2->try_get(p2);
               while (ev1 && ev2) {
@@ -312,17 +326,16 @@ class CodeGenCpp(CodeGen):
               }
               
               return Verdict::UNKNOWN;
-        ''')
-        wrcpp('}\n')
+        """
+        )
+        wrcpp("}\n")
 
-
-    def generate_atomic_comparison_automaton(self, formula):
+    def generate_atomic_comparison_automaton(self, formula, alphabet):
         num = len(self._formula_to_automaton) + 1
 
-        alphabet = formula.constants()
         A1 = formula_to_automaton(formula.children[0], alphabet)
         A2 = formula_to_automaton(formula.children[1], alphabet)
-        A = compose_automata(A1, A2)
+        A = compose_automata(A1, A2, alphabet)
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:
@@ -345,10 +358,12 @@ class CodeGenCpp(CodeGen):
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
 
+        alphabet = formula.constants()
+
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):
                 return
-            self.generate_atomic_comparison_automaton(F)
+            self.generate_atomic_comparison_automaton(F, alphabet)
 
         formula.visit(gen_automaton)
 
@@ -364,6 +379,6 @@ class CodeGenCpp(CodeGen):
         try:
             for path in os.listdir(self.out_dir):
                 if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i",  f"{self.out_dir}/{path}"])
+                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
         except FileNotFoundError:
             pass
