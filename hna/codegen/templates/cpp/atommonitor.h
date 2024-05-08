@@ -32,6 +32,10 @@ protected:
 
   std::vector<HNLCfg *> _used_by;
   std::vector<EvaluationState> _cfgs;
+  // this vector is for the "next states" configurations.
+  // we keep it here so that we reuse the allocated memory
+  // in between calls to the `step` method.
+  std::vector<EvaluationState> _new_cfgs;
 
   Verdict _result{Verdict::UNKNOWN};
 

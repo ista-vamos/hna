@@ -357,7 +357,7 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0, {priorities[0]});\n"
         )
-        wrcpp("}\n")
+        wrcpp("}\n\n")
 
         wrcpp(f"/* THE AUTOMATON */\n")
         for state in automaton.states():
@@ -377,10 +377,13 @@ class CodeGenCpp(CodeGen):
         wrcpp("}\n\n")
 
         dump_codegen_position(wrcpp)
+        wrcpp(
+            "// FIXME: only modify configuration if it has a single possible successor\n"
+        )
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
         wrcpp(
             f"""
-            decltype(_cfgs) new_cfgs;
+            _new_cfgs.clear();
             
             for (auto& cfg : _cfgs) {{
                 auto *ev1 = t1->get(cfg.p1);
@@ -418,6 +421,8 @@ class CodeGenCpp(CodeGen):
 
         wrcpp(f"  bool matched;\n")
         dump_codegen_position(wrcpp)
+        if len(automaton.states()) == 1:
+            wrcpp("/* FIXME: do not generate the switch for a single state */\n")
         wrcpp(f"  switch (cfg.state) {{\n")
         for state in automaton.states():
             transitions = [t for t in automaton.transitions() if t.source == state]
@@ -426,6 +431,9 @@ class CodeGenCpp(CodeGen):
             if not transitions:
                 wrcpp("abort(); /* FIXME: DROP CFG */\n\n")
                 continue
+
+            if len(priorities) == 1:
+                wrcpp("/* FIXME: do not generate the switch for a priority */\n")
             wrcpp(f"  switch (cfg.priority) {{")
             for prio in priorities:
                 ptransitions = [t for t in transitions if t.priority == prio]
@@ -444,10 +452,10 @@ class CodeGenCpp(CodeGen):
                     dump_codegen_position(wrcpp)
                     wrcpp(f"   matched = true;\n ")
                     wrcpp(
-                        f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                        f"   _new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
                     )
                     wrcpp(
-                        f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                        f'   std::cerr << "  --> new (" << _new_cfgs.back().state  << "/" <<  _new_cfgs.back().priority << ", " <<  _new_cfgs.back().p1 << ", " <<  _new_cfgs.back().p2 << ")\\n";'
                     )
 
                 ### Handle left-epsilon steps
@@ -464,10 +472,10 @@ class CodeGenCpp(CodeGen):
                         wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{")
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                            f"   _new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                            f'   std::cerr << "  --> new (" << _new_cfgs.back().state  << "/" <<  _new_cfgs.back().priority << ", " <<  _new_cfgs.back().p1 << ", " <<  _new_cfgs.back().p2 << ")\\n";'
                         )
 
                         wrcpp("}\n")
@@ -487,10 +495,10 @@ class CodeGenCpp(CodeGen):
                         wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{")
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                            f"  _new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                            f'   std::cerr << "  --> new (" <<_new_cfgs.back().state  << "/" << _new_cfgs.back().priority << ", " << _new_cfgs.back().p1 << ", " << _new_cfgs.back().p2 << ")\\n";'
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")
@@ -511,10 +519,10 @@ class CodeGenCpp(CodeGen):
                         )
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                            f"  _new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                            f'   std::cerr << "  --> new (" <<_new_cfgs.back().state  << "/" << _new_cfgs.back().priority << ", " << _new_cfgs.back().p1 << ", " << _new_cfgs.back().p2 << ")\\n";'
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")

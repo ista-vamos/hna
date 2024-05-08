@@ -41,6 +41,7 @@ Verdict HNLMonitor::step() {
             }
 
             if (action == RESULT_TRUE) {
+               abort();
                std::cerr << "REMOVE CONFIGURATION AND ATOM MONITOR\n";
                continue;
             }
