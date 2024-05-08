@@ -5,7 +5,7 @@ from .formula import EPSILON, Constant, EPSILON_CONSTANT
 
 
 def formula_to_automaton(formula, alphabet=None):
-    A = Automaton()
+    A = Automaton(origin=formula)
 
     alphabet = alphabet or formula.constants()
     new_states = {formula}
@@ -62,7 +62,7 @@ def compose_automata(A1, A2, alphabet, prune=True):
     are in the prefixing relation.
     """
 
-    A = Automaton()
+    A = Automaton(origin=(A1, A2))
     new_states = set()
     for i1 in A1.initial_states():
         for i2 in A2.initial_states():
@@ -112,7 +112,7 @@ def to_priority_automaton(A: Automaton) -> Automaton:
     the edges.
     """
     states = set()
-    O = Automaton()
+    O = Automaton(origin=A)
 
     for t in A.transitions():
         print(t)

@@ -12,7 +12,8 @@ class State:
     def label(self):
         return self._label
 
-    def __eq__(self, other):
+    def __eq__(self, other: "State") -> bool:
+        assert isinstance(other, State), other
         return self._label == other._label
 
     def __hash__(self):
@@ -61,6 +62,9 @@ class Transition:
         prio = f":{self._priority}" if self._priority != 0 else ""
         return f"({self._source} -[{self._label}{prio}]-> {self._target})"
 
+    def __hash__(self):
+        return hash((self._source, self._target, self._label, self._priority))
+
 
 class Automaton:
     """
@@ -73,18 +77,34 @@ class Automaton:
         transitions: list = None,
         init_states: list = None,
         acc_states: list = None,
+        origin=None,
     ):
-        self._states = states or {}
+        self._states = {}
+        # use `add_state` so that the states are assigned the ID
+        for s in states or ():
+            self.add_state(s)
         self._transitions = transitions or []
         self._initial_states = init_states or []
         self._accepting_states = acc_states or []
         self._transitions_mapping = {}
+        # we number the states from 0
+        self._state_to_id = {}
+        self._last_id = 0
+        # the object this automaton was created for
+        # a formula or another automata, etc.
+        self._origin = None
 
     def __getitem__(self, item):
         return self._states[item]
 
-    def get(self, item):
+    def get(self, item) -> State:
+        """
+        Get the state by its label
+        """
         return self._states.get(item)
+
+    def get_state_id(self, item: State) -> int:
+        return self._state_to_id[item]
 
     def initial_states(self):
         return self._initial_states
@@ -97,13 +117,16 @@ class Automaton:
         assert (
             state not in self._states.values()
         ), f"{state} is in [{', '.join(map(str, self._states.values()))}]"
+
         self._states[state.label()] = state
+        self._state_to_id[state] = self._last_id
+        self._last_id += 1
 
     def get_or_create_state(self, label):
         state = self._states.get(label)
         if state is None:
             state = State(label)
-            self._states[label] = state
+            self.add_state(state)
         return state
 
     def add_transition(self, t):
@@ -126,6 +149,9 @@ class Automaton:
             return default
         return M.get(a) or default
 
+    def states(self):
+        return list(self._states.values())
+
     def add_init(self, state):
         assert isinstance(state, State), (state, type(state))
         assert state in self._states.values()
@@ -143,6 +169,9 @@ class Automaton:
     def is_initial(self, state):
         assert isinstance(state, State), (state, type(state))
         return state in self._initial_states
+
+    def origin(self):
+        return self._origin
 
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
@@ -164,14 +193,19 @@ class Automaton:
         print("{", file=output)
         print("  nodes: [", file=output)
         for label, state in self._states.items():
-            print(f"  {{ data: {{ id: '{label}', init: '{self.is_initial(state)}', accepting: '{self.is_accepting(state)}'  }} }},", file=output)
+            print(
+                f"  {{ data: {{ id: '{label}', init: '{self.is_initial(state)}', accepting: '{self.is_accepting(state)}'  }} }},",
+                file=output,
+            )
         print("  ],", file=output)
         print("", file=output)
         print("  edges: [", file=output)
         for transition in self._transitions:
             prio = transition.priority
             prio = f"|{prio}" if prio != 0 else ""
-            print(f"  {{ data: {{ id:  '{transition.label}{prio}', source: '{transition.source.label()}', target: '{transition.target.label()}' }} }},", file=output)
+            print(
+                f"  {{ data: {{ id:  '{transition.label}{prio}', source: '{transition.source.label()}', target: '{transition.target.label()}' }} }},",
+                file=output,
+            )
         print("  ]", file=output)
         print("}", file=output)
-

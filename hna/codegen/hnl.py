@@ -1,17 +1,21 @@
 import os
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
+from subprocess import run
 
-from hna.hnl.formula import IsPrefix, Quantifier, And, Or, Not, Constant
+from pyeda.inter import bddvar
+
+from hna.hnl.formula import IsPrefix, And, Or, Not, Constant
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,
 )
 from vamos_common.codegen.codegen import CodeGen
-from subprocess import run
 
-from pyeda.inter import bddvar
+
+def get_max_out_priority(automaton, state):
+    return max(t.priority for t in automaton.transitions() if t.source == state)
 
 
 class CodeGenCpp(CodeGen):
@@ -203,7 +207,9 @@ class CodeGenCpp(CodeGen):
 
             f.write("};\n\n")
 
-            f.write(f"constexpr Action INITIAL_ATOM = {bdd_to_action(BDD.top)};\n")
+            f.write(
+                f"static constexpr Action INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
+            )
 
     def _generate_hnlcfg(self, formula):
         with self.new_file("hnlcfg.h") as f:
@@ -282,6 +288,16 @@ class CodeGenCpp(CodeGen):
                 num, A = tmp
                 f.write(f'#include "atom-{num}.h"\n')
 
+        with self.new_file("do_step.h") as f:
+            f.write("switch (M->type()) {")
+            for F, tmp in self._formula_to_automaton.items():
+                num, A = tmp
+                f.write(
+                    f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();"
+                )
+            f.write("  default: abort(); ")
+            f.write("}")
+
     def _generate_automaton_code(
         self, wrh, wrcpp, atom_formula: IsPrefix, num, automaton
     ):
@@ -302,33 +318,187 @@ class CodeGenCpp(CodeGen):
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) : AtomMonitor(cfg.{t1}, cfg.{t2}) {{}}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) \n  : AtomMonitor(AUTOMATON_{num}, cfg.{t1}, cfg.{t2}) {{\n\n"
         )
-        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n\n")
+        # create the initial configuration
+        priorities = list(set(t.priority for t in automaton.transitions()))
+        priorities.sort(reverse=True)
+
+        assert (
+            len(automaton.initial_states()) == 1
+        ), f"Automaton {num} has multiple initial states"
         wrcpp(
-            """
-              auto *ev1 = t1->try_get(p1);
-              auto *ev2 = t2->try_get(p2);
-              while (ev1 && ev2) {
-                std::cout << "MON: " << *ev1 << ", " << *ev2 << "\\n";
-                for (auto &cfg : cfgs) {
-                 // cfg is a state and position on the traces
-                }
+            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0, {priorities[0]});\n"
+        )
+        wrcpp("}\n")
+
+        wrcpp(f"/* THE AUTOMATON */\n")
+        for state in automaton.states():
+            wrcpp(f"/* {state} */\n")
+        wrcpp("/* --- */\n")
+        for t in automaton.transitions():
+            wrcpp(f"/* {t} */\n")
+        wrcpp("/* --- */\n\n")
+
+        wrcpp("static inline bool state_is_accepting(State s) {")
+        wrcpp(" switch (s) {")
+        for i in (automaton.get_state_id(s) for s in automaton.accepting_states()):
+            wrcpp(f" case {i}: return true;")
+        wrcpp(" default: return false;")
+        wrcpp(" };")
+        wrcpp("}")
+
+        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
+        wrcpp(
+            f"""
+            decltype(_cfgs) new_cfgs;
+            
+            for (auto& cfg : _cfgs) {{
+                auto *ev1 = t1->get(cfg.p1);
+                if (!ev1)
+                    continue;
+                auto *ev2 = t2->get(cfg.p2);
+                if (!ev2)
+                    continue;
+                    
+                if (ev1 == TRACE_END && ev2 == TRACE_END) {{
+                    if (state_is_accepting(cfg.state)) {{
+                        return Verdict::TRUE;
+                    }} else {{
+                      /* FIXME: DROP CONFIGURATION */
+                      abort();
+                    }}
+                }}
                 
-                transitions[state]
-                ++p1;
-                ++p2;
-                if (finished()) {
-                  std::cout << "REMOVE CFG\\n";
-                }
-                
-                ev1 = t1->try_get(p1);
-                ev2 = t2->try_get(p2);
-              }
-              
-              return Verdict::UNKNOWN;
+                std::cerr << "Atom {num}@ (" << cfg.state  << "/" << cfg.priority << ", " << cfg.p1 << ", " << cfg.p2 << "): "
+                                             << *ev1 << ", " << *ev2 << "\\n";
+                /* WE HAVE BOTH EVENTS */
         """
         )
+        lvar = atom_formula.children[0].program_variables()
+        rvar = atom_formula.children[1].program_variables()
+        assert len(lvar) == len(rvar) == 1, (lvar, rvar)
+        lvar, rvar = lvar[0].name, rvar[0].name
+
+        # we assume when we have a transition with a priority p,
+        # then we have transitions with all priorities 0 ... p.
+        # This is important because then in the code we just decrement
+        # the priority counter by one instead of looking up the next priority
+        # to test.
+        assert priorities == list(reversed(range(0, priorities[0] + 1))), priorities
+
+        wrcpp(f"  bool matched;\n")
+        wrcpp(f"  switch (cfg.state) {{\n")
+        for state in automaton.states():
+            transitions = [t for t in automaton.transitions() if t.source == state]
+            wrcpp(f" /* {state} */\n ")
+            wrcpp(f" case {automaton.get_state_id(state)}:\n ")
+            if not transitions:
+                wrcpp("abort(); /* FIXME: DROP CFG */\n\n")
+                continue
+            wrcpp(f"  switch (cfg.priority) {{")
+            for prio in priorities:
+                ptransitions = [t for t in transitions if t.priority == prio]
+                if not ptransitions:
+                    continue
+                wrcpp(f" case {prio}:\n ")
+                wrcpp(f"  matched = false;\n ")
+                # FIXME: we could still optimize that to have less branching
+                ### Handle epsilon steps
+                for t in (
+                    t
+                    for t in ptransitions
+                    if t.label[0].is_epsilon() and t.label[1].is_epsilon()
+                ):
+                    wrcpp(f" /* {t} */\n ")
+                    wrcpp(f"   matched = true;\n ")
+                    wrcpp(
+                        f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                    )
+                    wrcpp(
+                        f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                    )
+
+                ### Handle left-epsilon steps
+                tmp = [
+                    t
+                    for t in ptransitions
+                    if t.label[0].is_epsilon() and not t.label[1].is_epsilon()
+                ]
+                if tmp:
+                    wrcpp(f" if (ev2 != TRACE_END) {{\n ")
+                    for t in tmp:
+                        wrcpp(f" /* {t} */\n ")
+                        wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{")
+                        wrcpp(f"   matched = true;\n ")
+                        wrcpp(
+                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                        )
+                        wrcpp(
+                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                        )
+
+                        wrcpp("}\n")
+                    wrcpp("}\n")
+
+                ### Handle right-epsilon steps
+                tmp = [
+                    t
+                    for t in ptransitions
+                    if not t.label[0].is_epsilon() and t.label[1].is_epsilon()
+                ]
+                if tmp:
+                    wrcpp(f" if (ev1 != TRACE_END) {{\n ")
+                    for t in tmp:
+                        wrcpp(f" /* {t} */\n ")
+                        wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{")
+                        wrcpp(f"   matched = true;\n ")
+                        wrcpp(
+                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                        )
+                        wrcpp(
+                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                        )
+                        wrcpp("}\n")
+                    wrcpp("}\n")
+
+                ### Handle letters
+                tmp = [
+                    t
+                    for t in ptransitions
+                    if not t.label[0].is_epsilon() and not t.label[1].is_epsilon()
+                ]
+                if tmp:
+                    wrcpp(f" if (ev1 != TRACE_END && ev2 != TRACE_END) {{\n ")
+                    for t in tmp:
+                        wrcpp(f" /* {t} */\n ")
+                        wrcpp(
+                            f" if (ev1->{lvar} == {t.label[0]} && ev2->{rvar} == {t.label[1]}) {{"
+                        )
+                        wrcpp(f"   matched = true;\n ")
+                        wrcpp(
+                            f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                        )
+                        wrcpp(
+                            f'   std::cerr << "  --> new (" << new_cfgs.back().state  << "/" <<  new_cfgs.back().priority << ", " <<  new_cfgs.back().p1 << ", " <<  new_cfgs.back().p2 << ")\\n";'
+                        )
+                        wrcpp("}\n")
+                    wrcpp("}\n")
+
+                wrcpp("if (matched) { abort(); /* DROP CFG */ break; }")
+                if prio > 0:
+                    wrcpp(
+                        "else { --cfg.priority;\n [[fallthrough]]; /* fall through */ }"
+                    )
+                else:
+                    wrcpp("else { abort(); /* DROP CFG */; break; }")
+            wrcpp(f"  default : abort();\n ")
+            wrcpp("   };\n")
+            wrcpp(f" break;\n ")
+        wrcpp(f" default : abort();\n ")
+        wrcpp("  };\n")
+        wrcpp(" }\n")
+        wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n")
 
     def _aut_to_html(self, filename, A):
@@ -381,7 +551,10 @@ class CodeGenCpp(CodeGen):
             self._generate_csv_reader()
 
         if not self.args.alphabet:
-            print("No alphabet given, using constants from the formula: ", formula.constants())
+            print(
+                "No alphabet given, using constants from the formula: ",
+                formula.constants(),
+            )
             alphabet = formula.constants()
         else:
             alphabet = [Constant(a) for a in self.args.alphabet]

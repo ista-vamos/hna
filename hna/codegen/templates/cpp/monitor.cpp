@@ -5,35 +5,15 @@
 #include "atoms.h"
 
 
-/*
-Verdict AtomMonitor::step() {
-
-  for (auto &cfg : _cfgs) {
-    auto *ev1 = cfg.t1->try_get(cfg.p1);
-    auto *ev2 = cfg.t2->try_get(cfg.p2);
-    if (ev1 && ev2) {
-      assert(false && "Not implemented");
-      abort();
-
-      std::cout << "MON: " << *ev1 << ", " << *ev2 << "\n";
-      ++cfg.p1;
-      ++cfg.p2;
-      if (cfg.finished()) {
-        std::cout << "REMOVE CFG\n";
-      }
-    }
-  }
-  abort();
-
-  // _cfgs.clear(); // do not store configurations, we won't need them anymore
-  return Verdict::UNKNOWN;
-}
-  */
 
 /* generated part START */
 #include "actions.h"
 #include "bdd-structure.h"
 /* generated part END */
+
+static inline Verdict do_step(AtomMonitor *M) {
+  #include "do_step.h"
+}
 
 Verdict HNLMonitor::step() {
   Verdict verdict;
@@ -46,7 +26,7 @@ Verdict HNLMonitor::step() {
   constexpr unsigned STEP_NUM = 1;
 
   for (auto& atom_monitor : _atom_monitors) {
-    if ((verdict = atom_monitor->step(STEP_NUM)) != Verdict::UNKNOWN) {
+    if ((verdict = do_step(atom_monitor.get())) != Verdict::UNKNOWN) {
 
         std::cerr << "CACHE THE RESULT\n";
         // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
@@ -78,10 +58,13 @@ Verdict HNLMonitor::step() {
 AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLCfg& hnlcfg) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
-    /* GENERATED */
     AtomMonitor *monitor;
 
+    /* GENERATED */
     #include "createatommonitor.h"
 
-    monitor->usedBy(hnlcfg);
+    monitor->setUsedBy(hnlcfg);
+    _atom_monitors.emplace_back(monitor);
+
+    return monitor;
 }

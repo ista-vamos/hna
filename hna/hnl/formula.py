@@ -545,10 +545,12 @@ class Concat(TraceFormula):
         der = self.children[0].derivative(wrt)
         first_part = DerivativesSet(
             *(
-                Concat(x, self.children[1])
-                if not isinstance(x, FormulaWithLookahead)
-                else FormulaWithLookahead(
-                    Concat(x.formula, self.children[1]), x.lookahead
+                (
+                    Concat(x, self.children[1])
+                    if not isinstance(x, FormulaWithLookahead)
+                    else FormulaWithLookahead(
+                        Concat(x.formula, self.children[1]), x.lookahead
+                    )
                 )
                 for x in der
             )

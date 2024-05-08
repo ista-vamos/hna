@@ -1,7 +1,28 @@
 #include <mutex>
 
+#include "events.h"
 #include "trace.h"
 #include "traceset.h"
+
+
+const Event TraceEnd{};
+const Event* TRACE_END = &TraceEnd;
+
+Event *Trace::get(size_t idx) {
+    if (idx < _events.size())
+        return &_events[idx];
+    else if (finished())
+        return const_cast<Event *>(&TraceEnd);
+    return nullptr;
+}
+
+const Event *Trace::get(size_t idx) const {
+    if (idx < _events.size())
+        return &_events[idx];
+    else if (finished())
+        return &TraceEnd;
+    return nullptr;
+}
 
 Trace *TraceSet::newTrace() {
   Trace *t;
