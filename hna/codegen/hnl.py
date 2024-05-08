@@ -13,6 +13,18 @@ from hna.hnl.formula2automata import (
 )
 from vamos_common.codegen.codegen import CodeGen
 
+import inspect
+
+
+# This function dump the position from where it is called into the given file
+def dump_codegen_position(f, end="\n"):
+    parent_frame = inspect.getouterframes(inspect.currentframe())[1]
+    msg = f"/* [CODEGEN]: {basename(parent_frame.filename)}:{parent_frame.function}:{parent_frame.lineno} */{end}"
+    if callable(f):
+        f(msg)
+    else:
+        f.write(msg)
+
 
 def get_max_out_priority(automaton, state):
     return max(t.priority for t in automaton.transitions() if t.source == state)
@@ -92,6 +104,7 @@ class CodeGenCpp(CodeGen):
             wr("#include <iostream>\n\n")
             # wr("#include <cassert>\n\n")
 
+            dump_codegen_position(wr)
             wr("struct Event {\n")
             for name, ty in self._event:
                 wr(f"  {ty} {name};\n")
@@ -105,6 +118,7 @@ class CodeGenCpp(CodeGen):
             wr = f.write
             wr("#include <iostream>\n\n")
             wr('#include "events.h"\n\n')
+            dump_codegen_position(wr)
             wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
             wr('  os << "("')
             for n, field in enumerate(self._event):
@@ -123,6 +137,7 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("try_read_csv_event.cpp") as f:
             wr = f.write
+            dump_codegen_position(wr)
             wr("auto it = row.begin();")
             for name, ty in self._event:
                 wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
@@ -173,6 +188,7 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("actions.h") as f:
             f.write("#pragma once\n\n")
+            dump_codegen_position(f)
             f.write("enum Action {\n")
             f.write("  INVALID      = 0,\n")
             f.write("  RESULT_TRUE  = -1,\n")
@@ -185,6 +201,7 @@ class CodeGenCpp(CodeGen):
         # dictionary. So I'm just generating sub-BDDs from which I
         # can get the root variable.
         with self.new_file("bdd-structure.h") as f:
+            dump_codegen_position(f)
             f.write("/* AUTOMATON, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
             f.write("Action BDD[][3] = {\n")
             seen = set()
@@ -207,6 +224,7 @@ class CodeGenCpp(CodeGen):
 
             f.write("};\n\n")
 
+            dump_codegen_position(f)
             f.write(
                 f"static constexpr Action INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
             )
@@ -218,6 +236,7 @@ class CodeGenCpp(CodeGen):
             wr('#include "actions.h"\n\n')
             wr('#include "trace.h"\n\n')
             wr("class AtomMonitor;\n\n")
+            dump_codegen_position(wr)
             wr("struct HNLCfg {\n")
             wr("  /* traces */\n")
             for q in formula.quantifier_prefix:
@@ -239,11 +258,13 @@ class CodeGenCpp(CodeGen):
         N = len(formula.quantifier_prefix)
         with self.new_file("createcfgs.h") as f:
             wr = f.write
+            dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
             for i in range(2, N + 1):
                 wr(f"for (const auto &t{i}_it : _traces) {{\n")
                 wr(f"  const auto *t{i} = t{i}_it.get();\n")
 
+            dump_codegen_position(wr)
             wr("\n  /* Create the configuration */\n")
             wr("\n  _cfgs.emplace_back(")
             for i in range(1, N + 1):
@@ -258,6 +279,7 @@ class CodeGenCpp(CodeGen):
 
     def _generate_atom_monitor(self):
         with self.new_file("createatommonitor.h") as f:
+            dump_codegen_position(f)
             f.write("switch(monitor_type) {\n")
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
@@ -284,11 +306,13 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("atoms.h") as f:
             f.write("#pragma once\n\n")
+            dump_codegen_position(f)
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
                 f.write(f'#include "atom-{num}.h"\n')
 
         with self.new_file("do_step.h") as f:
+            dump_codegen_position(f)
             f.write("switch (M->type()) {")
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
@@ -302,7 +326,9 @@ class CodeGenCpp(CodeGen):
         self, wrh, wrcpp, atom_formula: IsPrefix, num, automaton
     ):
         wrh("#pragma once\n\n")
+        dump_codegen_position(wrh)
         wrh('#include "atommonitor.h"\n\n')
+        dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public AtomMonitor {{\n")
         wrh("public:\n")
@@ -317,6 +343,7 @@ class CodeGenCpp(CodeGen):
         wrh("};\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
+        dump_codegen_position(wrcpp)
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) \n  : AtomMonitor(AUTOMATON_{num}, cfg.{t1}, cfg.{t2}) {{\n\n"
         )
@@ -340,14 +367,16 @@ class CodeGenCpp(CodeGen):
             wrcpp(f"/* {t} */\n")
         wrcpp("/* --- */\n\n")
 
+        dump_codegen_position(wrcpp)
         wrcpp("static inline bool state_is_accepting(State s) {")
         wrcpp(" switch (s) {")
         for i in (automaton.get_state_id(s) for s in automaton.accepting_states()):
             wrcpp(f" case {i}: return true;")
         wrcpp(" default: return false;")
         wrcpp(" };")
-        wrcpp("}")
+        wrcpp("}\n\n")
 
+        dump_codegen_position(wrcpp)
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
         wrcpp(
             f"""
@@ -388,6 +417,7 @@ class CodeGenCpp(CodeGen):
         assert priorities == list(reversed(range(0, priorities[0] + 1))), priorities
 
         wrcpp(f"  bool matched;\n")
+        dump_codegen_position(wrcpp)
         wrcpp(f"  switch (cfg.state) {{\n")
         for state in automaton.states():
             transitions = [t for t in automaton.transitions() if t.source == state]
@@ -411,6 +441,7 @@ class CodeGenCpp(CodeGen):
                     if t.label[0].is_epsilon() and t.label[1].is_epsilon()
                 ):
                     wrcpp(f" /* {t} */\n ")
+                    dump_codegen_position(wrcpp)
                     wrcpp(f"   matched = true;\n ")
                     wrcpp(
                         f"   new_cfgs.emplace_back({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
@@ -426,6 +457,7 @@ class CodeGenCpp(CodeGen):
                     if t.label[0].is_epsilon() and not t.label[1].is_epsilon()
                 ]
                 if tmp:
+                    dump_codegen_position(wrcpp)
                     wrcpp(f" if (ev2 != TRACE_END) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
@@ -448,6 +480,7 @@ class CodeGenCpp(CodeGen):
                     if not t.label[0].is_epsilon() and t.label[1].is_epsilon()
                 ]
                 if tmp:
+                    dump_codegen_position(wrcpp)
                     wrcpp(f" if (ev1 != TRACE_END) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
@@ -469,6 +502,7 @@ class CodeGenCpp(CodeGen):
                     if not t.label[0].is_epsilon() and not t.label[1].is_epsilon()
                 ]
                 if tmp:
+                    dump_codegen_position(wrcpp)
                     wrcpp(f" if (ev1 != TRACE_END && ev2 != TRACE_END) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
@@ -485,6 +519,7 @@ class CodeGenCpp(CodeGen):
                         wrcpp("}\n")
                     wrcpp("}\n")
 
+                dump_codegen_position(wrcpp)
                 wrcpp("if (matched) { abort(); /* DROP CFG */ break; }")
                 if prio > 0:
                     wrcpp(
