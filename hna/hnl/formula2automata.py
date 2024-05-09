@@ -56,7 +56,7 @@ def gen_letter_pairs(alphabet):
                 yield a.with_marks(marks1), a.with_marks(marks2)
 
 
-def compose_automata(A1, A2, alphabet, prune=True):
+def compose_automata(A1: Automaton, A2: Automaton, alphabet, prune=True) -> Automaton:
     """
     Compose automata so that they recognize when inputs
     are in the prefixing relation.
@@ -73,6 +73,8 @@ def compose_automata(A1, A2, alphabet, prune=True):
             state = State(TupleLabel((i1.label(), i2.label())))
             A.add_state(state)
             A.add_init(state)
+            if A1.is_accepting(i1):
+                A.add_accepting(state)
 
     while new_states:
         state = new_states.pop()

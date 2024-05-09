@@ -368,6 +368,9 @@ class CodeGenCpp(CodeGen):
         wrcpp("/* --- */\n\n")
 
         dump_codegen_position(wrcpp)
+        assert (
+            len(automaton.accepting_states()) > 0
+        ), f"Automaton {num} has no accepting states"
         wrcpp("static inline bool state_is_accepting(State s) {")
         wrcpp(" switch (s) {")
         for i in (automaton.get_state_id(s) for s in automaton.accepting_states()):
@@ -582,6 +585,9 @@ class CodeGenCpp(CodeGen):
 
         self._formula_to_automaton[formula] = (num, Ap)
         self._automaton_to_formula[Ap] = (num, formula)
+
+        assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
+        assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
 
     def generate(self, formula):
         """
