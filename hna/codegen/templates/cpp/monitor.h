@@ -14,7 +14,7 @@
 
 class HNLMonitor {
   TraceSet& _traces;
-  std::vector<HNLCfg> _cfgs;
+  std::vector<std::unique_ptr<HNLCfg>> _cfgs;
   std::vector<std::unique_ptr<AtomMonitor>> _atom_monitors;
 
 public:

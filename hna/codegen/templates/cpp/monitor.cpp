@@ -41,7 +41,11 @@ Verdict HNLMonitor::step() {
             }
 
             if (action == RESULT_TRUE) {
-               abort();
+                // The HNL formula is satisfied for the traces in `hnlcfg`,
+                // remove the configuration and the atom monitor
+                // XXX: cache the result from the atom monitor
+                remove_cfg(hnlcfg);
+                remove_atom_monitor(atom_monitor);
                std::cerr << "REMOVE CONFIGURATION AND ATOM MONITOR\n";
                continue;
             }

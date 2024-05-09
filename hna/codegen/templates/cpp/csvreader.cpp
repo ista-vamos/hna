@@ -38,7 +38,7 @@ void CSVEventsStream::try_read(size_t limit) {
 
   // generated part follows
   #include "try_read_csv_event.cpp"
-  //std::cout << "IN: " << ev << "\n";
+  std::cout << "[" << trace->id() << "] IN: " << ev << "\n";
 
   trace->append(ev);
 }

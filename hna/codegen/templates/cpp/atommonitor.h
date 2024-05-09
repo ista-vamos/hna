@@ -11,18 +11,12 @@ using State = int;
 
 struct EvaluationState {
   State state;
-  unsigned short priority;
-  // this flag marks the evaluation state as done.
-  // We keep the evaluation states in a vector, so this flag
-  // allows us to mark them as done without the need to rotate
-  // the vector immediately
-  bool done{false};
 
   // position in the traces
   unsigned p1{0};
   unsigned p2{0};
 
-  EvaluationState(State s, unsigned p1, unsigned p2, unsigned short priority): state(s), priority(priority), p1(p1), p2(p2) {}
+  EvaluationState(State s, unsigned p1, unsigned p2): state(s), p1(p1), p2(p2) {}
 };
 
 /**
@@ -34,8 +28,8 @@ class EvaluationStateSet : public std::vector<EvaluationState> {
   std::vector<EvaluationState> _new_cfgs;
 
 public:
-  void emplace_new(State s, unsigned p1, unsigned p2, unsigned short priority) {
-    _new_cfgs.emplace_back(s, p1, p2, priority);
+  void emplace_new(State s, unsigned p1, unsigned p2) {
+    _new_cfgs.emplace_back(s, p1, p2);
   }
 
   auto back_new() -> auto { return _new_cfgs.back(); }
@@ -65,8 +59,8 @@ protected:
   // which AtomMonitor this is
   const int _type = INVALID;
 
-  const Trace *t1;
-  const Trace *t2;
+  Trace *t1;
+  Trace *t2;
 
   std::vector<HNLCfg *> _used_by;
   EvaluationStateSet _cfgs;
@@ -74,7 +68,7 @@ protected:
   Verdict _result{Verdict::UNKNOWN};
 
 public:
-  AtomMonitor(int ty, const Trace *t1, const Trace *t2) : _type(ty), t1(t1), t2(t2) {}
+  AtomMonitor(int ty, Trace *t1, Trace *t2) : _type(ty), t1(t1), t2(t2) {}
 
   int type() const { return _type; }
 

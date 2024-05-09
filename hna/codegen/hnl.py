@@ -5,6 +5,7 @@ from subprocess import run
 
 from pyeda.inter import bddvar
 
+from hna.automata.automaton import Automaton
 from hna.hnl.formula import IsPrefix, And, Or, Not, Constant
 from hna.hnl.formula2automata import (
     formula_to_automaton,
@@ -14,6 +15,24 @@ from hna.hnl.formula2automata import (
 from vamos_common.codegen.codegen import CodeGen
 
 import inspect
+
+
+def paths(A: Automaton):
+    """
+    Generate (prefixes of) paths from the automaton.
+    Not very efficient, but we don't care that much.
+    """
+    P = [[t] for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
+    print(P)
+    while True:
+        new_P = []
+        for path in P:
+            for l, ts in A.transitions(path[-1].target).items():
+                for t in ts:
+                    tmp = path + [t]
+                    yield tmp
+                    new_P.append(tmp)
+        P = new_P
 
 
 # This function dump the position from where it is called into the given file
@@ -240,14 +259,14 @@ class CodeGenCpp(CodeGen):
             wr("struct HNLCfg {\n")
             wr("  /* traces */\n")
             for q in formula.quantifier_prefix:
-                wr(f"  const Trace *{q.var};\n")
+                wr(f"  Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
             wr(f"  Action state;\n\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  AtomMonitor *monitor{nullptr};\n\n")
             wr(f"  HNLCfg(")
             for q in formula.quantifier_prefix:
-                wr(f"const Trace *{q.var}, ")
+                wr(f"Trace *{q.var}, ")
             wr("Action init_state)\n  : ")
             for q in formula.quantifier_prefix:
                 wr(f"{q.var}({q.var}), ")
@@ -261,17 +280,17 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
             for i in range(2, N + 1):
-                wr(f"for (const auto &t{i}_it : _traces) {{\n")
-                wr(f"  const auto *t{i} = t{i}_it.get();\n")
+                wr(f"for (auto &t{i}_it : _traces) {{\n")
+                wr(f"  auto *t{i} = t{i}_it.get();\n")
 
             dump_codegen_position(wr)
             wr("\n  /* Create the configuration */\n")
-            wr("\n  _cfgs.emplace_back(")
+            wr("\n  _cfgs.emplace_back(new HNLCfg{")
             for i in range(1, N + 1):
                 wr(f"t{i}, ")
-            wr("INITIAL_ATOM);\n\n")
+            wr("INITIAL_ATOM});\n\n")
             wr(
-                "_cfgs.back().monitor = createAtomMonitor(INITIAL_ATOM, _cfgs.back());\n"
+                "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
             )
 
             for i in range(2, len(formula.quantifier_prefix) + 1):
@@ -362,7 +381,7 @@ class CodeGenCpp(CodeGen):
             len(automaton.initial_states()) == 1
         ), f"Automaton {num} has multiple initial states"
         wrcpp(
-            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0, {priorities[0]});\n"
+            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
         )
         wrcpp("}\n\n")
 
@@ -402,19 +421,24 @@ class CodeGenCpp(CodeGen):
             }}
             
             for (auto& cfg : _cfgs) {{
+                // XXX: because we already copy the event (instead of using a pointer
+                // -- which we cannot use because of the concurrency), we can store the
+                // known event in the configuration and always wait only for the unknown one.
+                // Would that be more efficient? (It also means bigger configurations...)
                 
-                auto *ev1 = t1->get(cfg.p1);
-                if (!ev1) {{
+                Event ev1, ev2;
+                auto ev1ty = t1->get(cfg.p1, ev1);
+                if (ev1ty == NONE) {{
                     _cfgs.push_new(cfg);
                     continue;
                 }}
-                auto *ev2 = t2->get(cfg.p2);
-                if (!ev2) {{
+                auto ev2ty = t2->get(cfg.p2, ev2);
+                if (ev2ty == NONE) {{
                     _cfgs.push_new(cfg);
                     continue;
                 }}
                     
-                if (ev1 == TRACE_END && ev2 == TRACE_END) {{
+                if (ev1ty == END && ev2ty == END) {{
                     if (state_is_accepting(cfg.state)) {{
                         return Verdict::TRUE;
                     }} else {{
@@ -423,8 +447,8 @@ class CodeGenCpp(CodeGen):
                     }}
                 }}
                 
-                std::cerr << "Atom {num}@ (" << cfg.state  << "/" << cfg.priority << ", " << cfg.p1 << ", " << cfg.p2 << "): "
-                                             << *ev1 << ", " << *ev2 << "\\n";
+                std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): "
+                                             << ev1 << ", " << ev2 << "\\n";
         """
         )
         # we assume when we have a transition with a priority p,
@@ -446,7 +470,9 @@ class CodeGenCpp(CodeGen):
                 wrcpp("/* DROP CFG */\n\n")
                 continue
             else:
-                wrcpp(f"stepState_{automaton.get_state_id(state)}(cfg, ev1, ev2);\n")
+                wrcpp(
+                    f"stepState_{automaton.get_state_id(state)}(cfg, ev1ty == END ? nullptr : &ev1, ev2ty == END ? nullptr : &ev2);\n"
+                )
                 wrcpp(f"break;\n")
 
         wrcpp(f" default : abort();\n ")
@@ -470,19 +496,12 @@ class CodeGenCpp(CodeGen):
                 f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
             )
 
-            if len(priorities) == 1:
-                wrcpp(
-                    "\n/* FIXME: do not generate the switch for a single priority */\n"
-                )
-            wrcpp("  bool matched;")
-            wrcpp(f"  switch (cfg.priority) {{")
+            wrcpp(" bool matched = false;\n")
             for prio in priorities:
+                wrcpp(f"/* --------------- priority {prio} --------------- */\n")
                 ptransitions = [t for t in transitions if t.priority == prio]
                 if not ptransitions:
                     continue
-                wrcpp(f" case {prio}:\n ")
-                wrcpp(f"  matched = false;\n ")
-                # FIXME: we could still optimize that to have less branching
                 ### Handle epsilon steps
                 for t in (
                     t
@@ -490,14 +509,16 @@ class CodeGenCpp(CodeGen):
                     if t.label[0].is_epsilon() and t.label[1].is_epsilon()
                 ):
                     wrcpp(f" /* {t} */\n ")
-                    wrcpp(f' std::cerr << "  -- {t.label} -->\\n";')
+                    wrcpp(
+                        f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                    )
                     dump_codegen_position(wrcpp)
                     wrcpp(f"   matched = true;\n ")
                     wrcpp(
-                        f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                        f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2);\n "
                     )
                     wrcpp(
-                        f'   std::cerr << "    => new (" << _cfgs.back_new().state  << "/" <<  _cfgs.back_new().priority << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
+                        f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
                     )
 
                 ### Handle left-epsilon steps
@@ -508,17 +529,19 @@ class CodeGenCpp(CodeGen):
                 ]
                 if tmp:
                     dump_codegen_position(wrcpp)
-                    wrcpp(f" if (ev2 != TRACE_END) {{\n ")
+                    wrcpp(f" if (ev2 != nullptr) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
-                        wrcpp(f' std::cerr << "  -- {t.label} -->\\n";')
+                        wrcpp(
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                        )
                         wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{")
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << "/" <<  _cfgs.back_new().priority << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
+                            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
                         )
 
                         wrcpp("}\n")
@@ -532,17 +555,19 @@ class CodeGenCpp(CodeGen):
                 ]
                 if tmp:
                     dump_codegen_position(wrcpp)
-                    wrcpp(f" if (ev1 != TRACE_END) {{\n ")
+                    wrcpp(f" if (ev1 != nullptr) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
-                        wrcpp(f' std::cerr << "  -- {t.label} -->\\n";')
+                        wrcpp(
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                        )
                         wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{")
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2, {get_max_out_priority(automaton, t.target)});\n "
+                            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << "/" << _cfgs.back_new().priority << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
+                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")
@@ -555,41 +580,41 @@ class CodeGenCpp(CodeGen):
                 ]
                 if tmp:
                     dump_codegen_position(wrcpp)
-                    wrcpp(f" if (ev1 != TRACE_END && ev2 != TRACE_END) {{\n ")
+                    wrcpp(f" if (ev1 && ev2) {{\n ")
                     for t in tmp:
                         wrcpp(f" /* {t} */\n ")
-                        wrcpp(f' std::cerr << "  -- {t.label} -->\\n";')
+                        wrcpp(
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                        )
                         wrcpp(
                             f" if (ev1->{lvar} == {t.label[0]} && ev2->{rvar} == {t.label[1]}) {{"
                         )
                         wrcpp(f"   matched = true;\n ")
                         wrcpp(
-                            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1, {get_max_out_priority(automaton, t.target)});\n "
+                            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << "/" << _cfgs.back_new().priority << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
+                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")
 
                 dump_codegen_position(wrcpp)
-                wrcpp("if (matched) { /* DROP CFG */ break; }")
+                wrcpp("if (matched) { return; }")
                 if prio > 0:
                     wrcpp(
                         "else { "
                         f'std::cerr << "    => no transition in priority {prio} matched\\n"; '
-                        "--cfg.priority;\n [[fallthrough]]; /* fall through */"
                         "}"
                     )
                 else:
                     wrcpp(
                         "else {  "
                         f'std::cerr << "    => no transition matched\\n"; '
-                        "/* this was the least priority, drop the cfg */; break;"
-                        "}"
+                        "/* this was the least priority, drop the cfg */\n"
+                        "return;"
+                        "}\n\n"
                     )
-            wrcpp(f"  default : abort();\n ")
-            wrcpp("   };\n")
             wrcpp("}\n\n ")
 
     def _aut_to_html(self, filename, A):
@@ -634,6 +659,26 @@ class CodeGenCpp(CodeGen):
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
 
+    def _generate_tests(self):
+        print("-- Generating tests --")
+        for F, tmp in self._formula_to_automaton.items():
+            num, A = tmp
+            for n, path in enumerate(paths(A)):
+                print(
+                    " -> ".join(
+                        map(
+                            lambda t: f"{A.get_state_id(t.source)} {A.get_state_id(t.target)}",
+                            path,
+                        )
+                    )
+                )
+                ltrace = [str(t.label[0]) for t in path]
+                rtrace = [str(t.label[1]) for t in path]
+                print(ltrace)
+                print(rtrace)
+                if n == 100:
+                    break
+
     def generate(self, formula):
         """
         The top-level function to generate code
@@ -653,6 +698,8 @@ class CodeGenCpp(CodeGen):
         else:
             alphabet = [Constant(a) for a in self.args.alphabet]
 
+        assert alphabet, "The alphabet is empty"
+
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):
                 return
@@ -661,6 +708,8 @@ class CodeGenCpp(CodeGen):
         formula.visit(gen_automaton)
 
         self._generate_monitor(formula)
+
+        #self._generate_tests()
 
         self._copy_common_files()
         # cmake generation should go at the end so that

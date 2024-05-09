@@ -146,7 +146,7 @@ class Automaton:
         if M is None:
             return default
         if a is None:
-            return default
+            return M
         return M.get(a) or default
 
     def states(self):

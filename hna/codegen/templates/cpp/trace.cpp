@@ -1,3 +1,5 @@
+#include <chrono>
+#include <thread>
 #include <mutex>
 
 #include "events.h"
@@ -5,24 +7,53 @@
 #include "traceset.h"
 
 
-const Event TraceEnd{};
-const Event* TRACE_END = &TraceEnd;
 
-Event *Trace::get(size_t idx) {
-    if (idx < _events.size())
-        return &_events[idx];
-    else if (finished())
-        return const_cast<Event *>(&TraceEnd);
-    return nullptr;
+// We expect short waiting times, so use this kind of lock
+// instead of a mutex
+void Trace::lock() {
+    bool unlocked = false;
+    if (_lock.compare_exchange_weak(unlocked, true))
+        return;
+
+    do {
+        unlocked = false;
+        std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+    // TODO: we could use a weaker memory order
+    } while (_lock.compare_exchange_weak(unlocked, true));
 }
 
-const Event *Trace::get(size_t idx) const {
-    if (idx < _events.size())
-        return &_events[idx];
-    else if (finished())
-        return &TraceEnd;
-    return nullptr;
+void Trace::unlock() {
+  _lock = false;
 }
+
+void Trace::append(const Event *e) {
+    lock();
+    _events.push_back(*e);
+    unlock();
+}
+void Trace::append(const Event &e)  {
+    lock();
+    _events.push_back(e);
+    unlock();
+}
+
+EventType Trace::get(size_t idx, Event& e) {
+    lock();
+    if (idx < _events.size()) {
+        e = _events[idx];
+        unlock();
+        return EVENT;
+    }
+
+    if (finished()) {
+        unlock();
+        return END;
+    }
+
+    unlock();
+    return NONE;
+}
+
 
 Trace *TraceSet::newTrace() {
   Trace *t;
