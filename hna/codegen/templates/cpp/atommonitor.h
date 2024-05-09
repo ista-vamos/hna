@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <vector>
 #include <cassert>
 
 #include "verdict.h"
@@ -11,12 +12,49 @@ using State = int;
 struct EvaluationState {
   State state;
   unsigned short priority;
+  // this flag marks the evaluation state as done.
+  // We keep the evaluation states in a vector, so this flag
+  // allows us to mark them as done without the need to rotate
+  // the vector immediately
+  bool done{false};
 
   // position in the traces
   unsigned p1{0};
   unsigned p2{0};
 
   EvaluationState(State s, unsigned p1, unsigned p2, unsigned short priority): state(s), priority(priority), p1(p1), p2(p2) {}
+};
+
+/**
+ * This is a vector where new elements are pushed into a separate
+ * storage and are moved to the main storage only on an explicit call.
+ * This is because we iterate over the vector when adding.
+ */
+class EvaluationStateSet : public std::vector<EvaluationState> {
+  std::vector<EvaluationState> _new_cfgs;
+
+public:
+  void emplace_new(State s, unsigned p1, unsigned p2, unsigned short priority) {
+    _new_cfgs.emplace_back(s, p1, p2, priority);
+  }
+
+  auto back_new() -> auto { return _new_cfgs.back(); }
+
+  template <typename Arg>
+  void push_new(Arg a) {
+    _new_cfgs.push_back(a);
+  }
+
+  void new_to_this() {
+    insert(begin(), _new_cfgs.begin(), _new_cfgs.end());
+    _new_cfgs.clear();
+  }
+
+  void rotate() {
+    clear();
+    new_to_this();
+  }
+
 };
 
 /**
@@ -31,11 +69,7 @@ protected:
   const Trace *t2;
 
   std::vector<HNLCfg *> _used_by;
-  std::vector<EvaluationState> _cfgs;
-  // this vector is for the "next states" configurations.
-  // we keep it here so that we reuse the allocated memory
-  // in between calls to the `step` method.
-  std::vector<EvaluationState> _new_cfgs;
+  EvaluationStateSet _cfgs;
 
   Verdict _result{Verdict::UNKNOWN};
 
