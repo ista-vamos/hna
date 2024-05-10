@@ -246,7 +246,8 @@ class CodeGenCpp(CodeGen):
         with self.new_file("bdd-structure.h") as f:
             dump_codegen_position(f)
             f.write("/* AUTOMATON, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
-            f.write("Action BDD[][3] = {\n")
+            f.write("constexpr Action BDD[][3] = {\n")
+            f.write("  {INVALID, INVALID, INVALID},\n")
             seen = set()
             wbg = set()
             wbg.add(BDD)
@@ -276,7 +277,8 @@ class CodeGenCpp(CodeGen):
         with self.new_file("hnlcfg.h") as f:
             wr = f.write
             wr("#pragma once\n\n")
-            wr('#include "actions.h"\n\n')
+            wr("#include <cassert>\n\n")
+            wr('#include "actions.h"\n')
             wr('#include "trace.h"\n\n')
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
@@ -294,7 +296,7 @@ class CodeGenCpp(CodeGen):
             wr("Action init_state)\n  : ")
             for q in formula.quantifier_prefix:
                 wr(f"{q.var}({q.var}), ")
-            wr("state(init_state) {}\n")
+            wr("state(init_state) { assert(state != INVALID); }\n")
             wr("};\n")
 
     def _generate_create_cfgs(self, formula):
@@ -308,14 +310,27 @@ class CodeGenCpp(CodeGen):
                 wr(f"  auto *t{i} = t{i}_it.get();\n")
 
             dump_codegen_position(wr)
-            wr("\n  /* Create the configuration */\n")
-            wr("\n  _cfgs.emplace_back(new HNLCfg{")
-            for i in range(1, N + 1):
-                wr(f"t{i}, ")
-            wr("INITIAL_ATOM});\n\n")
-            wr(
-                "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
-            )
+            wr("\n  /* Create the configurations */\n")
+            for t1_pos in range(1, N + 1):
+                cond = "||".join(f"t1 != t{x}" for x in range(2, t1_pos + 1))
+                wr(f'if ({cond or "true"}) {{')
+                wr("\n  _cfgs.emplace_back(new HNLCfg{")
+                for n, i in enumerate(range(2, N + 1)):
+                    if n + 1 == t1_pos:
+                        wr(f"t1, ")
+                    wr(f"t{i}, ")
+                if t1_pos == N:
+                    wr(f"t1, ")
+                wr("INITIAL_ATOM});\n\n")
+                wr(
+                    "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
+                )
+                dump_codegen_position(wr)
+                wr(f'std::cerr << "HNLCfg[init"')
+                for i in range(1, N + 1):
+                    wr(f' << ", " << t{i}->id()')
+                wr('<< "]\\n";\n')
+                wr("}\n")
 
             for i in range(2, len(formula.quantifier_prefix) + 1):
                 wr("}\n")

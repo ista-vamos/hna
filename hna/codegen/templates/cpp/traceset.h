@@ -12,6 +12,9 @@ class TraceSet {
 
   std::mutex _traces_mtx;
 
+  // true if no new traces will come
+  bool _finished;
+
 public:
   // Create a new trace in this TraceSet.
   Trace *newTrace();
@@ -28,6 +31,9 @@ public:
 
   auto begin() const -> auto { return _traces.begin(); }
   auto end() const -> auto { return _traces.end(); }
+
+  void setFinished() { _finished = true; };
+  bool finished() const { return _finished; }
 };
 
 #endif

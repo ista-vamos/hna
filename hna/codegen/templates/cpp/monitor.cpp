@@ -23,38 +23,61 @@ Verdict HNLMonitor::step() {
       #include "createcfgs.h"
   }
 
-  constexpr unsigned STEP_NUM = 1;
+  for (auto atom_monitor_it = _atom_monitors.begin(),
+            atom_monitor_et = _atom_monitors.end();
+            atom_monitor_it != atom_monitor_et;) {
+      auto& atom_monitor = *atom_monitor_it->get();
 
-  for (auto& atom_monitor : _atom_monitors) {
-    if ((verdict = do_step(atom_monitor.get())) != Verdict::UNKNOWN) {
+      if ((verdict = do_step(&atom_monitor)) != Verdict::UNKNOWN) {
 
-        std::cerr << "CACHE THE RESULT\n";
-        // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
+          // std::cerr << "CACHE THE RESULT\n";
+          // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
 
-        for (auto it = atom_monitor->used_by_begin(),
-                  et = atom_monitor->used_by_end(); it != et; ++it) {
-            auto *hnlcfg = *it;
+          for (auto it = atom_monitor.used_by_begin(),
+                    et = atom_monitor.used_by_end(); it != et; ++it) {
+              auto *hnlcfg = *it;
 
-            auto action = BDD[hnlcfg->state][verdict == Verdict::TRUE ? 1 : 2 ];
-            if (action == RESULT_FALSE) {
-                return Verdict::FALSE;
-            }
+                // FIXME: generate the code that branches on hnlcfg->state and verdict
+                // instead of having statically compiled BDD in the data segment.
+                // (less reads from memory)
+              auto action = BDD[hnlcfg->state][verdict == Verdict::TRUE ? 1 : 2 ];
+              if (action == RESULT_FALSE) {
+                  std::cerr << "Atom evaluated to FALSE\n";
+                  std::cerr << "HNL formula is FALSE\n";
+                  // The whole HNL formula evaluated to FALSE for the traces in `hnlcfg`.
+                  return Verdict::FALSE;
+              }
 
-            if (action == RESULT_TRUE) {
-                // The HNL formula is satisfied for the traces in `hnlcfg`,
-                // remove the configuration and the atom monitor
-                // XXX: cache the result from the atom monitor
-                remove_cfg(hnlcfg);
-                remove_atom_monitor(atom_monitor);
-               std::cerr << "REMOVE CONFIGURATION AND ATOM MONITOR\n";
-               continue;
-            }
+              if (action == RESULT_TRUE) {
+                  std::cerr << "Atom evaluated to TRUE\n";
+                  // The whole HNL formula is satisfied for the traces in `hnlcfg`,
+                  removeCfg(hnlcfg);
 
-            // switch to new atom monitor
-            hnlcfg->state = action;
-            hnlcfg->monitor = createAtomMonitor(action, *hnlcfg);
-        }
-    }
+                  auto tmp = atom_monitor_it++;
+                  _atom_monitors.erase(tmp);
+                  continue;
+              }
+
+              // switch to new atom monitor
+              assert(action > 0 && "Invalid next atom");
+              hnlcfg->state = action;
+              hnlcfg->monitor = createAtomMonitor(action, *hnlcfg);
+
+          }
+      }
+
+      ++atom_monitor_it;
+  }
+
+  if (auto *t1 = _traces.getNewTrace()) {
+      /* GENERATED */
+      #include "createcfgs.h"
+  }
+
+  if (_cfgs.empty() && _traces.finished()) {
+      std::cerr << "HNL formula is TRUE\n";
+      assert(_atom_monitors.empty());
+      return Verdict::TRUE;
   }
 
   return Verdict::UNKNOWN;
@@ -72,4 +95,19 @@ AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLCfg& hnlcfg) 
     _atom_monitors.emplace_back(monitor);
 
     return monitor;
+}
+
+void HNLMonitor::removeCfg(HNLCfg *cfg) {
+    // FIXME: make this efficient
+    auto it = std::find_if(_cfgs.begin(), _cfgs.end(), [&cfg](auto& ptr) { return ptr.get() == cfg; });
+    assert (it != _cfgs.end());
+    // Each HNLCfg waits exactly for one monitor, so it is safe to just remove
+    // it as this monitor has finished and no other monitor can have a
+    // reference to the configuration.
+    *it = std::move(_cfgs[_cfgs.size() - 1]);
+    _cfgs.pop_back();
+}
+
+void HNLMonitor::removeAtomMonitor(AtomMonitor *M) {
+    abort();
 }

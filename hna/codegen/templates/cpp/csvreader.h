@@ -80,6 +80,7 @@ void read_csv(CmdArgs& args, TraceSet& traces, bool& running) {
     }
 
     if (streams.empty()) {
+      traces.setFinished();
       break;
     }
   }
