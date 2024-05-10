@@ -1,7 +1,7 @@
-import os
-from os import readlink
+from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
+import random
 
 from pyeda.inter import bddvar
 
@@ -11,28 +11,50 @@ from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,
+    TupleLabel,
 )
 from vamos_common.codegen.codegen import CodeGen
 
 import inspect
 
 
-def paths(A: Automaton):
+# def paths(A: Automaton):
+#     """
+#     Generate (prefixes of) paths from the automaton.
+#     Not very efficient, but we don't care that much.
+#     """
+#     P = [[t] for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
+#     print(P)
+#     while True:
+#         new_P = []
+#         for path in P:
+#             for l, ts in A.transitions(path[-1].target).items():
+#                 for t in ts:
+#                     tmp = path + [t]
+#                     yield tmp
+#                     new_P.append(tmp)
+#         P = new_P
+#
+
+
+def random_path(A: Automaton, length):
     """
     Generate (prefixes of) paths from the automaton.
     Not very efficient, but we don't care that much.
     """
-    P = [[t] for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
-    print(P)
-    while True:
-        new_P = []
-        for path in P:
-            for l, ts in A.transitions(path[-1].target).items():
-                for t in ts:
-                    tmp = path + [t]
-                    yield tmp
-                    new_P.append(tmp)
-        P = new_P
+    T = [t for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
+    path = [T[random.randrange(0, len(T))]]
+    l = 1
+
+    while l < length:
+        T = A.transitions(path[-1].target)
+        if T is None:  # we reached a state without transitions
+            return path
+
+        T = [t for ts in T.values() for t in ts]
+        path.append(T[random.randrange(0, len(T))])
+        l += 1
+    return path
 
 
 # This function dump the position from where it is called into the given file
@@ -72,6 +94,8 @@ class CodeGenCpp(CodeGen):
             [s.strip() for s in event.split(":")]
             for event in self.args.csv_header.split(",")
         ]
+
+        makedirs(f"{self.out_dir}/tests", exist_ok=True)
 
     def _copy_common_files(self):
         files = [
@@ -659,25 +683,69 @@ class CodeGenCpp(CodeGen):
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
 
-    def _generate_tests(self):
+    def _generate_tests(self, alphabet):
         print("-- Generating tests --")
+        self.gen_config(
+            "CMakeLists-tests.txt.in",
+            "tests/CMakeLists.txt",
+            {},
+        )
+
+        # our alphabet are pairs of letters
+        alphabet = [TupleLabel((a, b)) for a in alphabet for b in alphabet]
+
         for F, tmp in self._formula_to_automaton.items():
             num, A = tmp
-            for n, path in enumerate(paths(A)):
-                print(
-                    " -> ".join(
-                        map(
-                            lambda t: f"{A.get_state_id(t.source)} {A.get_state_id(t.target)}",
-                            path,
-                        )
-                    )
-                )
-                ltrace = [str(t.label[0]) for t in path]
-                rtrace = [str(t.label[1]) for t in path]
-                print(ltrace)
-                print(rtrace)
-                if n == 100:
-                    break
+            for test_num in range(0, 20):
+                if test_num < 10:
+                    # make sure to generate some short tests
+                    path_len = random.randrange(0, 5)
+                else:
+                    path_len = random.randrange(5, 100)
+
+                total_A = A.total(alphabet)
+                if self.args.debug:
+                    with self.new_dbg_file(f"aut-{num}-total.dot") as f:
+                        total_A.to_dot(f)
+
+                path = random_path(total_A, path_len)
+                self.gen_test(A, F, num, path, test_num)
+
+    def gen_test(self, A, F, num, path, test_num):
+        assert A.is_initial(path[0].source), "Path starts with non-initial state"
+        is_accepting = A.is_accepting(path[-1].target)
+        lvar = F.children[0].program_variables()
+        rvar = F.children[1].program_variables()
+        assert len(lvar) == len(rvar) == 1, (lvar, rvar)
+        vars = (lvar[0].name, rvar[0].name)
+        with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
+            wr = f.write
+            dump_codegen_position(f)
+            wr("Trace *trace1 = new Trace{1};\n")
+            wr("Trace *trace2 = new Trace{2};\n\n")
+            for i in range(0, 2):
+                n = 0
+                for t in path:
+                    if t.label[i].is_epsilon():
+                        continue
+                    wr(f"trace{i+1}->append(Event{{ .{vars[i]} = {t.label[i]}}});\n")
+                    n += 1
+                wr(f"trace{i+1}->setFinished();")
+                wr(f"/* Trace {i + 1} length: {n} */\n\n")
+
+        self.gen_config(
+            "test-atom.cpp.in",
+            f"tests/test-atom-{num}-{test_num}.cpp",
+            {
+                "@TRACE@": f'#include "test-trace-{num}-{test_num}.cpp"',
+                "@ATOM_NUM@": str(num),
+                "@FORMULA@": str(F),
+                "@MAX_TRACE_LEN@": str(len(path)),
+                "@EXPECTED_VERDICT@": (
+                    "Verdict::TRUE" if is_accepting else "Verdict::FALSE"
+                ),
+            },
+        )
 
     def generate(self, formula):
         """
@@ -709,7 +777,7 @@ class CodeGenCpp(CodeGen):
 
         self._generate_monitor(formula)
 
-        #self._generate_tests()
+        self._generate_tests(alphabet)
 
         self._copy_common_files()
         # cmake generation should go at the end so that
@@ -719,7 +787,7 @@ class CodeGenCpp(CodeGen):
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception
         try:
-            for path in os.listdir(self.out_dir):
+            for path in listdir(self.out_dir):
                 if path.endswith(".h") or path.endswith(".cpp"):
                     run(["clang-format", "-i", f"{self.out_dir}/{path}"])
         except FileNotFoundError:

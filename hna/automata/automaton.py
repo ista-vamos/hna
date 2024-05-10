@@ -92,7 +92,8 @@ class Automaton:
         self._last_id = 0
         # the object this automaton was created for
         # a formula or another automata, etc.
-        self._origin = None
+        # NOTE: optional field, may not be set
+        self._origin = origin
 
     def __getitem__(self, item):
         return self._states[item]
@@ -172,6 +173,30 @@ class Automaton:
 
     def origin(self):
         return self._origin
+
+    def total(self, alphabet):
+        A = Automaton()
+        hell = State("hell")
+        A.add_state(hell)
+
+        for state in self._states.values():
+            # this can give use different states IDs,
+            # but we don't care I suppose
+            A.add_state(state)
+            if self.is_accepting(state):
+                A.add_accepting(state)
+            if self.is_initial(state):
+                A.add_init(state)
+
+            tmap = self.transitions(state)
+            for a in alphabet:
+                if tmap is None or tmap.get(a) is None:
+                    A.add_transition(Transition(state, a, hell))
+                else:
+                    for t in tmap.get(a):
+                        A.add_transition(t)
+
+        return A
 
     def to_dot(self, output=stdout):
         print("digraph {", file=output)

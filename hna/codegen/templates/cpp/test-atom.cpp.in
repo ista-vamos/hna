@@ -1,0 +1,39 @@
+#include <iostream>
+#include <string>
+
+#include "trace.h"
+#include "verdict.h"
+#include "atommonitor.h"
+#include "hnlcfg.h"
+#include "atom-@ATOM_NUM@.h"
+
+static void err(const std::string& msg) {
+  std::cerr << msg << "\n";
+  abort();
+}
+
+int main() {
+  // Generated variable `Trace *trace1, *trace2`
+  @TRACE@
+
+  HNLCfg hnlcfg{trace1, trace2, /* NOT USED */ AUTOMATON_@ATOM_NUM@};
+  AtomMonitor@ATOM_NUM@ M(hnlcfg);
+
+  size_t steps = 0;
+  Verdict verdict;
+  while ((verdict = M.step()) == Verdict::UNKNOWN) {
+    if (steps++ > @MAX_TRACE_LEN@*@MAX_TRACE_LEN@ + 10) {
+      err("Should have terminated by now, max trace length is @MAX_TRACE_LEN@.");
+    }
+  }
+
+  const char *verdict_str = verdict == Verdict::TRUE ? "TRUE" : "FALSE";
+  std::cout << "\n";
+  std::cout << "Formula: @FORMULA@\n";
+  std::cout << "Verdict: " << verdict_str << "\n";
+
+  if (verdict != @EXPECTED_VERDICT@) {
+      err("Verdict mismatch, expected '@EXPECTED_VERDICT@'");
+  }
+
+}
