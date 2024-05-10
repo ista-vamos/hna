@@ -71,6 +71,19 @@ def get_max_out_priority(automaton, state):
     return max(t.priority for t in automaton.transitions() if t.source == state)
 
 
+def traces_positions(t1_pos, N):
+    """
+    Generate sequence of numbers 2, 3, 4, ... N
+    and 1 with 1 on the `t1_pos`.
+    """
+    for n, i in enumerate(range(2, N + 1)):
+        if n + 1 == t1_pos:
+            yield 1
+        yield i
+    if t1_pos == N:
+        yield 1
+
+
 class CodeGenCpp(CodeGen):
     """
     Class for generating monitors in C++.
@@ -315,19 +328,15 @@ class CodeGenCpp(CodeGen):
                 cond = "||".join(f"t1 != t{x}" for x in range(2, t1_pos + 1))
                 wr(f'if ({cond or "true"}) {{')
                 wr("\n  _cfgs.emplace_back(new HNLCfg{")
-                for n, i in enumerate(range(2, N + 1)):
-                    if n + 1 == t1_pos:
-                        wr(f"t1, ")
+                for i in traces_positions(t1_pos, N):
                     wr(f"t{i}, ")
-                if t1_pos == N:
-                    wr(f"t1, ")
                 wr("INITIAL_ATOM});\n\n")
                 wr(
                     "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
                 )
                 dump_codegen_position(wr)
                 wr(f'std::cerr << "HNLCfg[init"')
-                for i in range(1, N + 1):
+                for i in traces_positions(t1_pos, N):
                     wr(f' << ", " << t{i}->id()')
                 wr('<< "]\\n";\n')
                 wr("}\n")

@@ -26,15 +26,15 @@ Verdict HNLMonitor::step() {
   for (auto atom_monitor_it = _atom_monitors.begin(),
             atom_monitor_et = _atom_monitors.end();
             atom_monitor_it != atom_monitor_et;) {
-      auto& atom_monitor = *atom_monitor_it->get();
+      auto *atom_monitor = atom_monitor_it->get();
+      auto atom_monitor_erase_it = atom_monitor_it++;
 
-      if ((verdict = do_step(&atom_monitor)) != Verdict::UNKNOWN) {
-
+      if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
           // std::cerr << "CACHE THE RESULT\n";
           // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
 
-          for (auto it = atom_monitor.used_by_begin(),
-                    et = atom_monitor.used_by_end(); it != et; ++it) {
+          for (auto it = atom_monitor->used_by_begin(),
+                    et = atom_monitor->used_by_end(); it != et; ++it) {
               auto *hnlcfg = *it;
 
                 // FIXME: generate the code that branches on hnlcfg->state and verdict
@@ -52,9 +52,6 @@ Verdict HNLMonitor::step() {
                   std::cerr << "Atom evaluated to TRUE\n";
                   // The whole HNL formula is satisfied for the traces in `hnlcfg`,
                   removeCfg(hnlcfg);
-
-                  auto tmp = atom_monitor_it++;
-                  _atom_monitors.erase(tmp);
                   continue;
               }
 
@@ -62,11 +59,10 @@ Verdict HNLMonitor::step() {
               assert(action > 0 && "Invalid next atom");
               hnlcfg->state = action;
               hnlcfg->monitor = createAtomMonitor(action, *hnlcfg);
-
           }
-      }
 
-      ++atom_monitor_it;
+          _atom_monitors.erase(atom_monitor_erase_it);
+      }
   }
 
   if (auto *t1 = _traces.getNewTrace()) {
