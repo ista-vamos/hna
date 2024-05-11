@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   TraceSet traceSet{};
   std::thread inputs_thrd;
   // set this to false to stop the inputs thread
-  bool running = true;
+  std::atomic<bool> running = true;
 
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {

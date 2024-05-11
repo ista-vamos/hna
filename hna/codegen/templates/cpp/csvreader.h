@@ -39,7 +39,7 @@ public:
 
 
 template <typename StreamTy>
-void read_csv(CmdArgs& args, TraceSet& traces, bool& running) {
+void read_csv(CmdArgs& args, TraceSet& traces, std::atomic<bool>& running) {
   std::cerr << "Reading CSV events\n";
 
   std::vector<std::unique_ptr<StreamTy>> streams;

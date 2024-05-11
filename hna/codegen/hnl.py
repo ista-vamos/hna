@@ -146,9 +146,7 @@ class CodeGenCpp(CodeGen):
                 "@additional_sources@": " ".join(
                     (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
                 ),
-                "@additional_cflags@": " ".join(
-                    (d for d in self.args.cflags)
-                ),
+                "@additional_cflags@": " ".join((d for d in self.args.cflags)),
                 "@CMAKE_BUILD_TYPE@": build_type,
             },
         )
@@ -519,8 +517,19 @@ class CodeGenCpp(CodeGen):
                     }}
                 }}
                 
-                std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): "
-                                             << ev1 << ", " << ev2 << "\\n";
+                std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
+                if (ev1ty == END) {{
+                    std::cerr << "END";
+                }} else {{
+                    std::cerr << ev1;
+                }}
+                std::cerr << ", ";
+                if (ev2ty == END) {{
+                    std::cerr << "END";
+                }} else {{
+                    std::cerr << ev2;
+                }}
+                std::cerr << "\\n";
         """
         )
         # we assume when we have a transition with a priority p,

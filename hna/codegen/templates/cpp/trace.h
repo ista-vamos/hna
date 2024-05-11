@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <atomic>
+#include <mutex>
 
 #include "events.h"
 
@@ -23,7 +24,8 @@ class Trace {
   // so we must lock it
   // (at least until it is finished -- in the future we might
   //  improve the implementation)
-  std::atomic<bool> _lock{false};
+  //std::atomic<bool> _lock{false};
+  std::mutex _lock;
 
   void lock();
   void unlock();
@@ -38,10 +40,9 @@ public:
 
   EventType get(size_t idx, Event&);
 
-  // NOTE: these are unlocked
-  size_t size() const { return _events.size(); }
-  void setFinished() { _finished = true; }
-  bool finished() const { return _finished; }
+  size_t size();
+  void setFinished();
+  bool finished();
 };
 
 #endif
