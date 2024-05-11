@@ -38,12 +38,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 option(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
 option(NO_RTTI "Compile with -fno-rtti (ON by default)" ON)
+option(SANITIZE "Compile with -fsanitize (OFF by default)" OFF)
 
 if(NO_EXCEPTIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 endif()
 if(NO_RTTI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
+if(SANITIZE)
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 endif()
 
 
@@ -66,7 +71,7 @@ set(MONITOR_FILES main.cpp
 
 add_executable(monitor ${MONITOR_FILES} @additional_sources@)
 target_include_directories(monitor PUBLIC ${vamos-buffers_INCLUDE_DIRS})
-target_compile_definitions(monitor PRIVATE @additional_cmake_definitions@)
+target_compile_definitions(monitor PRIVATE @additional_cflags@)
 
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 

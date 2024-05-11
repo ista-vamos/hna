@@ -6,10 +6,14 @@ SRCDIR="$(dirname $0)/../.."
 DIR="$(readlink -f $(dirname $0))"
 WORKDIR=$(mktemp -d -t hnl-test-XXX)
 
+
+export ASAN_OPTIONS=detect_leaks=0
+
 function gen {
 	FORMULA="$1"
 	cd $DIR
-	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug
+	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=ON
+
 
 	cd $WORKDIR
 	make check -j4

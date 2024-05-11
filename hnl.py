@@ -27,7 +27,7 @@ def dbg(m):
 
 
 def compile_monitor(args):
-    run(["cmake", "."], cwd=args.out_dir)
+    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs] , cwd=args.out_dir)
     run(["make", f"-j{int(cpu_count()/2)+1}"], cwd=args.out_dir)
 
 
@@ -131,6 +131,9 @@ def parse_arguments():
     parser.add_argument(
         "--build-type", action="store", help="Force build _type for the CMake project"
     )
+    parser.add_argument(
+        "--sanitize", action="store", help="Compile the monitor with sanitizers"
+    )
     parser.add_argument("--debug", action="store_true", help="Debugging mode")
     parser.add_argument(
         "--exit-on-error", action="store_true", help="Stop when a violation is found"
@@ -141,6 +144,9 @@ def parse_arguments():
     parser.add_argument("--stats", action="store_true", help="Gather statistics")
     parser.add_argument(
         "-D", action="append", default=[], help="Additional CMake definitions"
+    )
+    parser.add_argument(
+        "--cflags", action="append", default=[], help="Additional C flags for the compiler"
     )
     parser.add_argument(
         "--reduction",

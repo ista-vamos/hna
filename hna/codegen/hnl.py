@@ -146,8 +146,8 @@ class CodeGenCpp(CodeGen):
                 "@additional_sources@": " ".join(
                     (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
                 ),
-                "@additional_cmake_definitions@": " ".join(
-                    (d for d in self.args.cmake_defs)
+                "@additional_cflags@": " ".join(
+                    (d for d in self.args.cflags)
                 ),
                 "@CMAKE_BUILD_TYPE@": build_type,
             },
