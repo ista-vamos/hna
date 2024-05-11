@@ -15,14 +15,14 @@
 
 class HNLMonitor {
   TraceSet& _traces;
-  std::vector<std::unique_ptr<HNLCfg>> _cfgs;
+  std::vector<std::unique_ptr<HNLInstance>> _cfgs;
   std::list<std::unique_ptr<AtomMonitor>> _atom_monitors;
 
 public:
   HNLMonitor(TraceSet& traces) : _traces(traces) {}
 
-  AtomMonitor *createAtomMonitor(Action monitor_type, HNLCfg&);
-  void removeCfg(HNLCfg *cfg);
+  AtomMonitor *createAtomMonitor(Action monitor_type, HNLInstance&);
+  void removeCfg(HNLInstance *cfg);
 
   Verdict step();
 

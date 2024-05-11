@@ -77,7 +77,7 @@ Verdict HNLMonitor::step() {
   return Verdict::UNKNOWN;
 }
 
-AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLCfg& hnlcfg) {
+AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLInstance& hnlcfg) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
     AtomMonitor *monitor;
@@ -93,11 +93,11 @@ AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLCfg& hnlcfg) 
     return monitor;
 }
 
-void HNLMonitor::removeCfg(HNLCfg *cfg) {
+void HNLMonitor::removeCfg(HNLInstance *cfg) {
     // FIXME: make this efficient
     auto it = std::find_if(_cfgs.begin(), _cfgs.end(), [&cfg](auto& ptr) { return ptr.get() == cfg; });
     assert (it != _cfgs.end());
-    // Each HNLCfg waits exactly for one monitor, so it is safe to just remove
+    // Each HNLInstance waits exactly for one monitor, so it is safe to just remove
     // it as this monitor has finished and no other monitor can have a
     // reference to the configuration.
     *it = std::move(_cfgs[_cfgs.size() - 1]);

@@ -295,7 +295,7 @@ class CodeGenCpp(CodeGen):
             wr('#include "trace.h"\n\n')
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
-            wr("struct HNLCfg {\n")
+            wr("struct HNLInstance {\n")
             wr("  /* traces */\n")
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
@@ -303,7 +303,7 @@ class CodeGenCpp(CodeGen):
             wr(f"  Action state;\n\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  AtomMonitor *monitor{nullptr};\n\n")
-            wr(f"  HNLCfg(")
+            wr(f"  HNLInstance(")
             for q in formula.quantifier_prefix:
                 wr(f"Trace *{q.var}, ")
             wr("Action init_state)\n  : ")
@@ -350,7 +350,7 @@ class CodeGenCpp(CodeGen):
                 cond = "&&".join(conds) if conds else "true"
                 wr(f"if ({cond}) {{")
                 dump_codegen_position(wr)
-                wr("\n  _cfgs.emplace_back(new HNLCfg{")
+                wr("\n  _cfgs.emplace_back(new HNLInstance{")
                 for i in traces_positions(t1_pos, N):
                     wr(f"t{i}, ")
                 wr("INITIAL_ATOM});\n")
@@ -359,7 +359,7 @@ class CodeGenCpp(CodeGen):
                     "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
                 )
                 dump_codegen_position(wr)
-                wr(f'std::cerr << "HNLCfg[init"')
+                wr(f'std::cerr << "HNLInstance[init"')
                 for i in traces_positions(t1_pos, N):
                     wr(f' << ", " << t{i}->id()')
                 wr('<< "]\\n";\n')
@@ -436,14 +436,14 @@ class CodeGenCpp(CodeGen):
         assert len(t2) == 1, str(t2)
         t1 = t1[0].name
         t2 = t2[0].name
-        wrh(f"AtomMonitor{num}(HNLCfg& cfg);\n\n")
+        wrh(f"AtomMonitor{num}(HNLInstance& cfg);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLCfg& cfg) \n  : AtomMonitor(AUTOMATON_{num}, cfg.{t1}, cfg.{t2}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& cfg) \n  : AtomMonitor(AUTOMATON_{num}, cfg.{t1}, cfg.{t2}) {{\n\n"
         )
         # create the initial configuration
         priorities = list(set(t.priority for t in automaton.transitions()))

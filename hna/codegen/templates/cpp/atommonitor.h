@@ -62,7 +62,7 @@ protected:
   Trace *t1;
   Trace *t2;
 
-  std::vector<HNLCfg *> _used_by;
+  std::vector<HNLInstance *> _used_by;
   EvaluationStateSet _cfgs;
 
   Verdict _result{Verdict::UNKNOWN};
@@ -72,11 +72,11 @@ public:
 
   int type() const { return _type; }
 
-  void setUsedBy(HNLCfg &cfg) {
+  void setUsedBy(HNLInstance &cfg) {
     _used_by.push_back(&cfg);
   }
 
-  void removeUsedBy(HNLCfg &cfg) {
+  void removeUsedBy(HNLInstance &cfg) {
     auto it = std::find(_used_by.begin(), _used_by.end(), &cfg);
     assert(it != _used_by.end() && "AtomMonitor is not used by the CFG");
     _used_by.erase(it);
