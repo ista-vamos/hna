@@ -753,7 +753,7 @@ class IsPrefix(Formula):
         super().__init__([formula1, formula2])
 
     def is_simple(self) -> bool:
-        return all((len(c.program_variable_occurrences()) == 1 for c in self.children))
+        return all((len(c.program_variable_occurrences()) <= 1 for c in self.children))
 
     def __str__(self) -> str:
         return f"({self.children[0]} ≤ {self.children[1]})"

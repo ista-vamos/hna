@@ -37,3 +37,4 @@ run FALSE /tmp/1.csv /tmp/2.csv /tmp/3.csv
 
 rm /tmp/{1,2,3}.csv
 
+echo "Test SUCCESSFUL"

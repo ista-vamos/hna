@@ -430,10 +430,10 @@ class CodeGenCpp(CodeGen):
         wrh("public:\n")
         t1 = atom_formula.children[0].trace_variables()
         t2 = atom_formula.children[1].trace_variables()
-        assert len(t1) == 1, str(t1)
-        assert len(t2) == 1, str(t2)
-        t1 = t1[0].name
-        t2 = t2[0].name
+        assert len(t1) <= 1, str(t1)
+        assert len(t2) <= 1, str(t2)
+        t1 = t1[0].name if t1 else "__no_trace"
+        t2 = t2[0].name if t2 else "__no_trace"
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n")
