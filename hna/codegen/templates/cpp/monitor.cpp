@@ -43,7 +43,6 @@ Verdict HNLMonitor::step() {
               auto action = BDD[hnlcfg->state][verdict == Verdict::TRUE ? 1 : 2 ];
               if (action == RESULT_FALSE) {
                   std::cerr << "Atom evaluated to FALSE\n";
-                  std::cerr << "HNL formula is FALSE\n";
                   // The whole HNL formula evaluated to FALSE for the traces in `hnlcfg`.
                   return Verdict::FALSE;
               }
@@ -71,7 +70,6 @@ Verdict HNLMonitor::step() {
   }
 
   if (_cfgs.empty() && _traces.finished()) {
-      std::cerr << "HNL formula is TRUE\n";
       assert(_atom_monitors.empty());
       return Verdict::TRUE;
   }
@@ -90,6 +88,8 @@ AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLCfg& hnlcfg) 
     monitor->setUsedBy(hnlcfg);
     _atom_monitors.emplace_back(monitor);
 
+    ++stats.gen_atoms;
+
     return monitor;
 }
 
@@ -104,6 +104,3 @@ void HNLMonitor::removeCfg(HNLCfg *cfg) {
     _cfgs.pop_back();
 }
 
-void HNLMonitor::removeAtomMonitor(AtomMonitor *M) {
-    abort();
-}

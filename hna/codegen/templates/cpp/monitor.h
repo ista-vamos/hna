@@ -23,9 +23,16 @@ public:
 
   AtomMonitor *createAtomMonitor(Action monitor_type, HNLCfg&);
   void removeCfg(HNLCfg *cfg);
-  void removeAtomMonitor(AtomMonitor *M);
 
   Verdict step();
+
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t gen_cfgs{0};
+    // number of atom monitors
+    size_t gen_atoms{0};
+  } stats;
 };
 
 

@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
+#include <cassert>
 
 //#include "inputs.h"
 #include "cmd.h"
@@ -52,6 +53,16 @@ int main(int argc, char *argv[]) {
   running = false;
 
   inputs_thrd.join();
+
+  assert(verdict != Verdict::UNKNOWN);
+  std::cout << " -- verdict --\n";
+  if (verdict == Verdict::TRUE)
+      std::cout << "Formula is TRUE\n";
+  else if (verdict == Verdict::FALSE)
+      std::cout << "Formula is FALSE\n";
+  std::cout << " -- stats --\n";
+  std::cout << "  Total formula instances: " << monitor.stats.gen_cfgs << "\n";
+  std::cout << "  Total atom monitors: " << monitor.stats.gen_atoms << "\n";
 
   return static_cast<int>(verdict);
 }

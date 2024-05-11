@@ -353,7 +353,8 @@ class CodeGenCpp(CodeGen):
                 wr("\n  _cfgs.emplace_back(new HNLCfg{")
                 for i in traces_positions(t1_pos, N):
                     wr(f"t{i}, ")
-                wr("INITIAL_ATOM});\n\n")
+                wr("INITIAL_ATOM});\n")
+                wr("++stats.gen_cfgs;\n\n")
                 wr(
                     "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
                 )
