@@ -10,28 +10,28 @@
 #include "atommonitor.h"
 
 /* generated */
-#include "hnlcfg.h"
+#include "hnlinstance.h"
 
 
 class HNLMonitor {
   TraceSet& _traces;
-  std::vector<std::unique_ptr<HNLInstance>> _cfgs;
+  std::vector<std::unique_ptr<HNLInstance>> _instances;
   std::list<std::unique_ptr<AtomMonitor>> _atom_monitors;
 
 public:
   HNLMonitor(TraceSet& traces) : _traces(traces) {}
 
   AtomMonitor *createAtomMonitor(Action monitor_type, HNLInstance&);
-  void removeCfg(HNLInstance *cfg);
+  void removeInstance(HNLInstance *instance);
 
   Verdict step();
 
   // statistics
   struct {
     // number of HNL configurations
-    size_t gen_cfgs{0};
+    size_t num_instances{0};
     // number of atom monitors
-    size_t gen_atoms{0};
+    size_t num_atoms{0};
   } stats;
 };
 

@@ -286,8 +286,8 @@ class CodeGenCpp(CodeGen):
                 f"static constexpr Action INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
             )
 
-    def _generate_hnlcfg(self, formula):
-        with self.new_file("hnlcfg.h") as f:
+    def _generate_hnlinstances(self, formula):
+        with self.new_file("hnlinstance.h") as f:
             wr = f.write
             wr("#pragma once\n\n")
             wr("#include <cassert>\n\n")
@@ -312,9 +312,9 @@ class CodeGenCpp(CodeGen):
             wr("state(init_state) { assert(state != INVALID); }\n")
             wr("};\n")
 
-    def _generate_create_cfgs(self, formula):
+    def _generate_createinstances(self, formula):
         N = len(formula.quantifier_prefix)
-        with self.new_file("createcfgs.h") as f:
+        with self.new_file("createinstances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
@@ -323,7 +323,7 @@ class CodeGenCpp(CodeGen):
                 wr(f"  auto *t{i} = t{i}_it.get();\n")
 
             dump_codegen_position(wr)
-            wr("\n  /* Create the configurations */\n")
+            wr("\n  /* Create the instances */\n")
             wr(
                 "    /* XXX: Maybe it could be more efficient to just have a hash map */\n"
             )
@@ -350,13 +350,13 @@ class CodeGenCpp(CodeGen):
                 cond = "&&".join(conds) if conds else "true"
                 wr(f"if ({cond}) {{")
                 dump_codegen_position(wr)
-                wr("\n  _cfgs.emplace_back(new HNLInstance{")
+                wr("\n  _instances.emplace_back(new HNLInstance{")
                 for i in traces_positions(t1_pos, N):
                     wr(f"t{i}, ")
                 wr("INITIAL_ATOM});\n")
-                wr("++stats.gen_cfgs;\n\n")
+                wr("++stats.num_instances;\n\n")
                 wr(
-                    "_cfgs.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_cfgs.back().get());\n"
+                    "_instances.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_instances.back().get());\n"
                 )
                 dump_codegen_position(wr)
                 wr(f'std::cerr << "HNLInstance[init"')
@@ -375,15 +375,15 @@ class CodeGenCpp(CodeGen):
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
                 f.write(
-                    f"case AUTOMATON_{num}: monitor = new AtomMonitor{num}(hnlcfg); break;\n"
+                    f"case AUTOMATON_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
                 )
             f.write("default: abort();\n")
             f.write("}\n\n")
 
     def _generate_monitor(self, formula):
         self._generate_bdd_code(formula)
-        self._generate_hnlcfg(formula)
-        self._generate_create_cfgs(formula)
+        self._generate_hnlinstances(formula)
+        self._generate_createinstances(formula)
         self._generate_automata_code()
         self._generate_atom_monitor()
 
@@ -436,14 +436,14 @@ class CodeGenCpp(CodeGen):
         assert len(t2) == 1, str(t2)
         t1 = t1[0].name
         t2 = t2[0].name
-        wrh(f"AtomMonitor{num}(HNLInstance& cfg);\n\n")
+        wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& cfg) \n  : AtomMonitor(AUTOMATON_{num}, cfg.{t1}, cfg.{t2}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : AtomMonitor(AUTOMATON_{num}, instance.{t1}, instance.{t2}) {{\n\n"
         )
         # create the initial configuration
         priorities = list(set(t.priority for t in automaton.transitions()))

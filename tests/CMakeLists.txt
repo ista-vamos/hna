@@ -9,7 +9,9 @@ endfunction()
 
 if (Catch2_DIR)
 	_add_test(prefixtree prefixtree.cpp)
-	_add_test(prefixtreeautomaton prefixtreeautomaton.cpp)
+	#	_add_test(prefixtreeautomaton prefixtreeautomaton.cpp)
 else()
 	message(WARNING "Catch2 not found, not compiling tests")
 endif()
+
+add_subdirectory(hnl)

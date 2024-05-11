@@ -4,7 +4,7 @@
 #include "trace.h"
 #include "verdict.h"
 #include "atommonitor.h"
-#include "hnlcfg.h"
+#include "hnlinstance.h"
 #include "atom-@ATOM_NUM@.h"
 
 static void err(const std::string& msg) {
@@ -16,8 +16,8 @@ int main() {
   // Generated variable `Trace *trace1, *trace2`
   @TRACE@
 
-  HNLCfg hnlcfg{trace1, trace2, /* NOT USED */ AUTOMATON_@ATOM_NUM@};
-  AtomMonitor@ATOM_NUM@ M(hnlcfg);
+  HNLInstance instance{trace1, trace2, /* NOT USED */ AUTOMATON_@ATOM_NUM@};
+  AtomMonitor@ATOM_NUM@ M(instance);
 
   size_t steps = 0;
   Verdict verdict;

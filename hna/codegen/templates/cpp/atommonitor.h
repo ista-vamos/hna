@@ -5,7 +5,7 @@
 #include <cassert>
 
 #include "verdict.h"
-#include "hnlcfg.h"
+#include "hnlinstance.h"
 
 using State = int;
 

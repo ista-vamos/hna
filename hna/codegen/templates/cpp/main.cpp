@@ -61,8 +61,8 @@ int main(int argc, char *argv[]) {
   else if (verdict == Verdict::FALSE)
       std::cout << "Formula is FALSE\n";
   std::cout << " -- stats --\n";
-  std::cout << "  Total formula instances: " << monitor.stats.gen_cfgs << "\n";
-  std::cout << "  Total atom monitors: " << monitor.stats.gen_atoms << "\n";
+  std::cout << "  Total formula instances: " << monitor.stats.num_instances << "\n";
+  std::cout << "  Total atom monitors: " << monitor.stats.num_atoms << "\n";
 
   return static_cast<int>(verdict);
 }
