@@ -324,9 +324,32 @@ class CodeGenCpp(CodeGen):
 
             dump_codegen_position(wr)
             wr("\n  /* Create the configurations */\n")
+            wr(
+                "    /* XXX: Maybe it could be more efficient to just have a hash map */\n"
+            )
+            wr(
+                "    /* XXX: and check if we have generated the combination (instead of checking */\n"
+            )
+            wr("    /* XXX: those conditions) */\n")
             for t1_pos in range(1, N + 1):
-                cond = "||".join(f"t1 != t{x}" for x in range(2, t1_pos + 1))
-                wr(f'if ({cond or "true"}) {{')
+                # compute the condition to avoid repeating the combinations
+                # of traces
+                conds = []
+                # FIXME: generate the matrix instead of generating the rows again and again
+                posrow = list(traces_positions(t1_pos, N))
+                for r in range(1, t1_pos):
+                    # these traces cannot be the same
+                    diffs = set()
+                    for i1, i2 in zip(
+                        posrow[r - 1 : t1_pos],
+                        list(traces_positions(r, N))[r - 1 : t1_pos],
+                    ):
+                        diffs.add((i1, i2) if i1 < i2 else (i2, i1))
+                    c = "||".join((f"t{i1} != t{i2}" for i1, i2 in diffs))
+                    conds.append(f"({c})" if len(diffs) > 1 else c)
+                cond = "&&".join(conds) if conds else "true"
+                wr(f"if ({cond}) {{")
+                dump_codegen_position(wr)
                 wr("\n  _cfgs.emplace_back(new HNLCfg{")
                 for i in traces_positions(t1_pos, N):
                     wr(f"t{i}, ")
