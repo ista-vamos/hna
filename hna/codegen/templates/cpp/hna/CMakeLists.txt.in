@@ -1,0 +1,78 @@
+cmake_minimum_required(VERSION 3.9)
+project(hna-monitor LANGUAGES C CXX VERSION 0.1)
+
+set(vamos-buffers_DIR @vamos-buffers_DIR@)
+
+find_package(vamos-buffers REQUIRED)
+
+set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@ CACHE STRING "" FORCE)
+if(NOT CMAKE_BUILD_TYPE)
+	message(STATUS "Build type not set. Setting vamos-buffer's build type.")
+	set(CMAKE_BUILD_TYPE ${vamos-buffers_BUILD_TYPE} CACHE STRING "" FORCE)
+endif()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+#if (vamos-buffers_OPTION_ENABLE_IPO)
+#        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+#endif()
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+set(CMAKE_VERBOSE_MAKEFILE 1)
+
+if (vamos_buffers_CXX_STANDARD)
+  message(STATUS "vamos-buffers CXX standard: ${vamos_buffers_CXX_STANDARD} (using it)")
+  set(CMAKE_CXX_STANDARD ${vamos_buffers_CXX_STANDARD})
+else()
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+
+option(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
+option(NO_RTTI "Compile with -fno-rtti (ON by default)" ON)
+option(SANITIZE "Compile with -fsanitize (OFF by default)" OFF)
+
+if(NO_EXCEPTIONS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+endif()
+if(NO_RTTI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
+if(SANITIZE)
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+endif()
+
+
+get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-ringbuf vamos-buffers-ringbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-shmbuf vamos-buffers-shmbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-streams vamos-buffers-streams LOCATION)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_lib ${vamos-buffers_vamos-buffers-lib} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_core ${vamos-buffers_vamos-buffers-ringbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_shmbuf ${vamos-buffers_vamos-buffers-shmbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamos-buffers-streams} DIRECTORY)
+
+get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
+
+set(MONITOR_FILES main.cpp
+                  events.cpp
+                  cmd.cpp
+                  trace.cpp
+                  monitor.cpp)
+
+add_executable(monitor ${MONITOR_FILES} @additional_sources@)
+target_include_directories(monitor PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_compile_definitions(monitor PRIVATE @additional_cflags@)
+
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+
+#enable_testing()
+#add_subdirectory(tests EXCLUDE_FROM_ALL)

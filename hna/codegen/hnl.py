@@ -6,7 +6,8 @@ import random
 from pyeda.inter import bddvar
 
 from hna.automata.automaton import Automaton
-from hna.hnl.formula import IsPrefix, And, Or, Not, Constant, EpsilonConstant
+from hna.codegen.common import dump_codegen_position
+from hna.hnl.formula import IsPrefix, And, Or, Not, Constant
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -14,8 +15,6 @@ from hna.hnl.formula2automata import (
     TupleLabel,
 )
 from vamos_common.codegen.codegen import CodeGen
-
-import inspect
 
 
 # def paths(A: Automaton):
@@ -90,16 +89,6 @@ def path_is_accepting(A: Automaton, path):
     return False
 
 
-# This function dump the position from where it is called into the given file
-def dump_codegen_position(f, end="\n"):
-    parent_frame = inspect.getouterframes(inspect.currentframe())[1]
-    msg = f"/* [CODEGEN]: {basename(parent_frame.filename)}:{parent_frame.function}:{parent_frame.lineno} */{end}"
-    if callable(f):
-        f(msg)
-    else:
-        f.write(msg)
-
-
 def get_max_out_priority(automaton, state):
     return max(t.priority for t in automaton.transitions() if t.source == state)
 
@@ -129,7 +118,7 @@ class CodeGenCpp(CodeGen):
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        self.templates_path = pathjoin(self_path, "templates/cpp")
+        self.templates_path = pathjoin(self_path, "templates/cpp/hnl")
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
 
@@ -145,17 +134,17 @@ class CodeGenCpp(CodeGen):
 
     def _copy_common_files(self):
         files = [
-            "trace.h",
-            "trace.cpp",
-            "traceset.h",
             "cmd.h",
             "cmd.cpp",
             "monitor.h",
             "monitor.cpp",
             "main.cpp",
-            "verdict.h",
             "atommonitor.h",
-            "csv.hpp",
+            "../trace.h",
+            "../trace.cpp",
+            "../traceset.h",
+            "../verdict.h",
+            "../csv.hpp",
         ]
         for f in files:
             if f not in self.args.overwrite_default:
@@ -745,11 +734,11 @@ class CodeGenCpp(CodeGen):
         """
         assert filename.endswith(".html"), filename
         with self.new_dbg_file(filename) as f:
-            self.input_file(f, "../partials/html/graph-view-start.html")
+            self.input_file(f, "../../partials/html/graph-view-start.html")
             f.write("elements: ")
             A.to_json(f)
             f.write(",")
-            self.input_file(f, "../partials/html/graph-view-end.html")
+            self.input_file(f, "../../partials/html/graph-view-end.html")
 
     def generate_atomic_comparison_automaton(self, formula, alphabet):
         num = len(self._formula_to_automaton) + 1

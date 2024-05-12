@@ -22,6 +22,9 @@ class State:
     def __str__(self):
         return f"State({self._label})"
 
+    def dot_label(self):
+        return str(self._label)
+
 
 class Transition:
     """
@@ -64,6 +67,9 @@ class Transition:
 
     def __hash__(self):
         return hash((self._source, self._target, self._label, self._priority))
+
+    def dot_label(self):
+        return str(self._label)
 
 
 class Automaton:
@@ -176,11 +182,11 @@ class Automaton:
 
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
-        for label, state in self._states.items():
+        for _, state in self._states.items():
             attrs = ", color=darkgreen" if self.is_accepting(state) else ""
             attrs += ", shape=box" if self.is_initial(state) else ""
             print(
-                f'  "{label}"[label="<{self.get_state_id(state)}> {label}" {attrs}]',
+                f'  "N{self.get_state_id(state)}"[label="<{self.get_state_id(state)}> {state.dot_label()}" {attrs}]',
                 file=output,
             )
         print("", file=output)
@@ -188,7 +194,7 @@ class Automaton:
             prio = transition.priority
             prio = f"|{prio}" if prio != 0 else ""
             print(
-                f'  "{transition.source.label()}" -> "{transition.target.label()}"[label="{transition.label}{prio}"]',
+                f'  "N{self.get_state_id(transition.source)}" -> "N{self.get_state_id(transition.target)}"[label="{transition.dot_label()}{prio}"]',
                 file=output,
             )
         print("}", file=output)
