@@ -65,8 +65,6 @@ protected:
   std::vector<HNLInstance *> _used_by;
   EvaluationStateSet _cfgs;
 
-  Verdict _result{Verdict::UNKNOWN};
-
 public:
   AtomMonitor(int ty, Trace *t1, Trace *t2) : _type(ty), t1(t1), t2(t2) {}
 
@@ -87,13 +85,4 @@ public:
   auto used_by_end() const -> auto { return _used_by.end(); }
 
   Verdict step(const unsigned step_num);
-  Verdict getVerdict() { return _result; }
-
-  /*
-  bool finished() const {
-    return t1->finished() && t2->finished() &&
-            p1 == t1->size() &&
-            p2 == t2->size();
-  }
-  */
 };

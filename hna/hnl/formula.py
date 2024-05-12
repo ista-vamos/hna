@@ -517,6 +517,7 @@ class EpsilonConstant(Constant):
 
 
 EPSILON_CONSTANT = EpsilonConstant()
+assert EpsilonConstant() == EpsilonConstant() == EPSILON_CONSTANT
 
 
 class Concat(TraceFormula):

@@ -6,7 +6,7 @@ import random
 from pyeda.inter import bddvar
 
 from hna.automata.automaton import Automaton
-from hna.hnl.formula import IsPrefix, And, Or, Not, Constant
+from hna.hnl.formula import IsPrefix, And, Or, Not, Constant, EpsilonConstant
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -38,10 +38,6 @@ import inspect
 
 
 def random_path(A: Automaton, length):
-    """
-    Generate (prefixes of) paths from the automaton.
-    Not very efficient, but we don't care that much.
-    """
     T = [t for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
     path = [T[random.randrange(0, len(T))]]
     l = 1
@@ -55,6 +51,43 @@ def random_path(A: Automaton, length):
         path.append(T[random.randrange(0, len(T))])
         l += 1
     return path
+
+
+def path_is_accepting(A: Automaton, path):
+    """
+    Return if the path is accepting -- the last state
+    must be accepting or from that state an accepting state
+    must be reachable via epsilon steps.
+    """
+    state = path[-1].target
+    states, wbg = set(), set()
+    states.add(state)
+    wbg.add(state)
+
+    while wbg:
+        state = wbg.pop()
+        if A.is_accepting(state):
+            return True
+        # get all transitions from this state
+        epsilonT = [
+            t
+            for _, tt in A.transitions(state, default=dict()).items()
+            for t in tt
+            if t.label[0].is_epsilon() and t.label[1].is_epsilon()
+        ]
+        priorities = list(set(t.priority for t in epsilonT))
+        priorities.sort(reverse=True)
+
+        # process epsilon transitions in the order of their priority
+        for prio in priorities:
+            T = [t for t in epsilonT if prio == t.priority]
+            if T:
+                for t in T:
+                    if t.target not in states:
+                        states.add(t.target)
+                        wbg.add(t.target)
+                break
+    return False
 
 
 # This function dump the position from where it is called into the given file
@@ -424,8 +457,10 @@ class CodeGenCpp(CodeGen):
         for state in automaton.states():
             dump_codegen_position(wrcpp)
             wrh(
-                f"void stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2); \n"
+                f"void stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2);\n"
             )
+
+        wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
 
         wrh("public:\n")
         t1 = atom_formula.children[0].trace_variables()
@@ -481,6 +516,36 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             "// FIXME: only modify configuration if it has a single possible successor\n"
         )
+
+        wrcpp(
+            f"void AtomMonitor{num}::_step(EvaluationState &cfg, const Event *ev1, const Event *ev2) {{\n"
+        )
+        # we assume when we have a transition with a priority p,
+        # then we have transitions with all priorities 0 ... p.
+        # This is important because then in the code we just decrement
+        # the priority counter by one instead of looking up the next priority
+        # to test.
+        assert priorities == list(reversed(range(0, priorities[0] + 1))), priorities
+
+        dump_codegen_position(wrcpp)
+        if len(automaton.states()) == 1:
+            wrcpp("/* FIXME: do not generate the switch for a single state */\n")
+        wrcpp(f"  switch (cfg.state) {{\n")
+        for state in automaton.states():
+            transitions = [t for t in automaton.transitions() if t.source == state]
+            wrcpp(f" /* {state} */\n ")
+            wrcpp(f" case {automaton.get_state_id(state)}:\n ")
+            if not transitions:
+                wrcpp("/* DROP CFG */\n\n")
+                continue
+            else:
+                wrcpp(f"stepState_{automaton.get_state_id(state)}(cfg, ev1, ev2);\n")
+                wrcpp(f"break;\n")
+
+        wrcpp(f" default : abort();\n ")
+        wrcpp("  };\n")
+        wrcpp("}\n\n")
+
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
         wrcpp(
             f"""
@@ -507,16 +572,8 @@ class CodeGenCpp(CodeGen):
                     _cfgs.push_new(cfg);
                     continue;
                 }}
-                    
-                if (ev1ty == END && ev2ty == END) {{
-                    if (state_is_accepting(cfg.state)) {{
-                        return Verdict::TRUE;
-                    }} else {{
-                        // the configuration does not accept, drop it and continue
-                        continue;
-                    }}
-                }}
-                
+
+                /* Debugging code */
                 std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
                 if (ev1ty == END) {{
                     std::cerr << "END";
@@ -530,35 +587,18 @@ class CodeGenCpp(CodeGen):
                     std::cerr << ev2;
                 }}
                 std::cerr << "\\n";
+                                    
+                if (ev1ty == END) {{
+                    if (state_is_accepting(cfg.state)) {{
+                        return Verdict::TRUE;
+                    }}
+                }}
+                
+                _step(cfg, ev1ty == END ? nullptr : &ev1, ev2ty == END ? nullptr : &ev2);
+            }}
         """
         )
-        # we assume when we have a transition with a priority p,
-        # then we have transitions with all priorities 0 ... p.
-        # This is important because then in the code we just decrement
-        # the priority counter by one instead of looking up the next priority
-        # to test.
-        assert priorities == list(reversed(range(0, priorities[0] + 1))), priorities
 
-        dump_codegen_position(wrcpp)
-        if len(automaton.states()) == 1:
-            wrcpp("/* FIXME: do not generate the switch for a single state */\n")
-        wrcpp(f"  switch (cfg.state) {{\n")
-        for state in automaton.states():
-            transitions = [t for t in automaton.transitions() if t.source == state]
-            wrcpp(f" /* {state} */\n ")
-            wrcpp(f" case {automaton.get_state_id(state)}:\n ")
-            if not transitions:
-                wrcpp("/* DROP CFG */\n\n")
-                continue
-            else:
-                wrcpp(
-                    f"stepState_{automaton.get_state_id(state)}(cfg, ev1ty == END ? nullptr : &ev1, ev2ty == END ? nullptr : &ev2);\n"
-                )
-                wrcpp(f"break;\n")
-
-        wrcpp(f" default : abort();\n ")
-        wrcpp("  };\n")
-        wrcpp(" }\n")
         wrcpp(f"_cfgs.rotate();")
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n")
@@ -760,23 +800,23 @@ class CodeGenCpp(CodeGen):
                 else:
                     path_len = random.randrange(5, 100)
 
-                total_A = A.total(alphabet)
-                if self.args.debug:
-                    with self.new_dbg_file(f"aut-{num}-total.dot") as f:
-                        total_A.to_dot(f)
-
-                path = random_path(total_A, path_len)
+                path = random_path(A, path_len)
                 self.gen_test(A, F, num, path, test_num)
 
     def gen_test(self, A, F, num, path, test_num):
         assert A.is_initial(path[0].source), "Path starts with non-initial state"
-        is_accepting = A.is_accepting(path[-1].target)
+        is_accepting = path_is_accepting(A, path)
         lvar = F.children[0].program_variables()
         rvar = F.children[1].program_variables()
         assert len(lvar) == len(rvar) == 1, (lvar, rvar)
         vars = (lvar[0].name, rvar[0].name)
         with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
             wr = f.write
+            dump_codegen_position(f)
+            wr(f"// The path used to generate this test:\n\n")
+            for t in path:
+                wr(f"// {t}\n")
+            wr(f"// Accepting: {is_accepting}\n\n")
             dump_codegen_position(f)
             wr("Trace *trace1 = new Trace{1};\n")
             wr("Trace *trace2 = new Trace{2};\n\n")

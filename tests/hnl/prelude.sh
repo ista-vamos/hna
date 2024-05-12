@@ -34,7 +34,6 @@ function run {
 		esac
 	done
 
-	cd $WORKDIR
-	./monitor $FILES | grep "Formula is $RESULT"
+	$WORKDIR/monitor $FILES | grep "Formula is $RESULT"
 }
 

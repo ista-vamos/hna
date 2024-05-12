@@ -174,36 +174,15 @@ class Automaton:
     def origin(self):
         return self._origin
 
-    def total(self, alphabet):
-        A = Automaton()
-        hell = State("hell")
-        A.add_state(hell)
-
-        for state in self._states.values():
-            # this can give use different states IDs,
-            # but we don't care I suppose
-            A.add_state(state)
-            if self.is_accepting(state):
-                A.add_accepting(state)
-            if self.is_initial(state):
-                A.add_init(state)
-
-            tmap = self.transitions(state)
-            for a in alphabet:
-                if tmap is None or tmap.get(a) is None:
-                    A.add_transition(Transition(state, a, hell))
-                else:
-                    for t in tmap.get(a):
-                        A.add_transition(t)
-
-        return A
-
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
         for label, state in self._states.items():
             attrs = ", color=darkgreen" if self.is_accepting(state) else ""
             attrs += ", shape=box" if self.is_initial(state) else ""
-            print(f'  "{label}"[label="{label}" {attrs}]', file=output)
+            print(
+                f'  "{label}"[label="<{self.get_state_id(state)}> {label}" {attrs}]',
+                file=output,
+            )
         print("", file=output)
         for transition in self._transitions:
             prio = transition.priority
