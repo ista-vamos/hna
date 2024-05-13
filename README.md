@@ -33,21 +33,34 @@ to do `cd vamos && make reset` before running `./build-vamos.sh`.
 cmake . && make
 ```
 
-And its done!
+And its done! If you want to run the tests, use `make test`.
 
 
 ## Usage
 
-### Hypernode logic part
+### Hypernode logic
 
 Example of using the main script for HNL
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
 ```
-By default, the output is generated to `/tmp/hnl`. See `./hnl.py --help`.
+The `./hnl.py` script generates a C++ monitor for the given formula
+and automatically compiles it. If you want to browse the generated files,
+the output is generated to `/tmp/hnl`.
+The generated code comes with CMake configuration and you can manually
+change the configuration and recompile the monitor with
+
+```
+cd /tmp/hnl
+cmake .
+make
+```
+
+The script also generates some tests that can be run with `make check`.
+
 To generate debugging files (e.g., the automata in GraphViz), use the `--debug`
 flag. The debugging files will be stored into `dbg/` sub-directory in the output
-directory.
+directory. For other options, see `./hnl.py --help`.
 
 If the traces are read from CSV (the default and now the only option),
 we assume one trace per file. Also, you need to specify the type of events
@@ -82,5 +95,7 @@ Run the script `./hna.py` to generate the monitor.
 ./hna.py automaton.yml
 ```
 
+The output of the script is similar to the output of `hnl.py`: a C++ code with cmake configuration
+that is stored into `/tmp/hna` (if not specified otherwise with `--out-dir`).
 Similarly to `hnl.py`, you migh (need to) use the parameters `--csv-header`, `--alphabet`,
 and `--debug`.
