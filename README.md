@@ -49,6 +49,38 @@ To generate debugging files (e.g., the automata in GraphViz), use the `--debug`
 flag. The debugging files will be stored into `dbg/` sub-directory in the output
 directory.
 
+If the traces are read from CSV (the default and now the only option),
+we assume one trace per file. Also, you need to specify the type of events
+through `--csv-header` and possibly the alphabet (values that can appear in the
+events):
+```
+./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --csv-header='x: char, y: char'
+```
+
 ### Hypernode automata
 
-TBD
+The automata are given in the YAML format, an example automaton could be:
+```yaml
+automaton:
+  nodes:
+    q0: 'forall t1, t2: [x(t1)] <= [y(t2)]'
+    q1: 'forall t1, t2: [x(t1)] <= y(t2)'
+  edges:
+    - edge: q0 -> q1
+      action: act1
+    - edge: q1 -> q1
+      action: null
+      # you can write the edge in different ways
+    - edge: q0 q0
+      action: null
+    - edge: q1, q0
+      action: act2
+```
+
+Run the script `./hna.py` to generate the monitor.
+```
+./hna.py automaton.yml
+```
+
+Similarly to `hnl.py`, you migh (need to) use the parameters `--csv-header`, `--alphabet`,
+and `--debug`.
