@@ -4,45 +4,31 @@
 #include "trace.h"
 #include "csv.hpp"
 
-CSVEventsStream::CSVEventsStream(const std::string& file, Trace *t)
-    : Stream(t), _reader(file) {
-/*
-    _stream.open(file, std::fstream::in);
-    if (!_stream.is_open()) {
-        std::cerr << "Failed opening `" << file << "`\n";
-        abort();
-    } else {
-        std::cerr << "Opened file: " << file  << "\n";
-    }
-*/
+CSVEventsStream::CSVEventsStream(const std::string& file, unsigned trace_id)
+    : Stream(trace_id), _reader(file) {
 }
 
-CSVEventsStream::~CSVEventsStream() {
- //if (_stream.is_open())
- //  _stream.close();
-}
 
-void CSVEventsStream::try_read(size_t limit) {
+bool CSVEventsStream::try_read(Event &ev) {
   assert(!finished() && "Reading finished file");
 
   csv::CSVRow row;
   if (!_reader.read_row(row)) {
     _finished = true;
-    trace->setFinished();
-    return;
+    return false;
   }
 
   ++_events_num_read;
 
-  Event ev;
-
   // generated part follows
   #include "try_read_csv_event.cpp"
-  std::cout << "[" << trace->id() << "] IN: " << ev << "\n";
 
-  trace->append(ev);
+  std::cout << "[" << id() << "] IN: " << ev << "\n";
+  return true;
 }
+
 
 bool CSVEventsStream::finished() const {
   return _finished;
 }
+

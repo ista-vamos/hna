@@ -67,6 +67,7 @@ set(MONITOR_FILES main.cpp
                   events.cpp
                   cmd.cpp
                   trace.cpp
+                  traceset.cpp
                   monitor.cpp)
 
 add_executable(monitor ${MONITOR_FILES} @additional_sources@)

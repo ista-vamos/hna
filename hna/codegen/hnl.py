@@ -134,15 +134,17 @@ class CodeGenCpp(CodeGen):
 
     def _copy_common_files(self):
         files = [
-            "cmd.h",
-            "cmd.cpp",
             "monitor.h",
             "monitor.cpp",
             "main.cpp",
             "atommonitor.h",
+            # -- files shared with HNAs
+            "../cmd.h",
+            "../cmd.cpp",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
+            "../traceset.cpp",
             "../verdict.h",
             "../csv.hpp",
         ]
@@ -339,8 +341,8 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
             for i in range(2, N + 1):
-                wr(f"for (auto &t{i}_it : _traces) {{\n")
-                wr(f"  auto *t{i} = t{i}_it.get();\n")
+                wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
+                wr(f"  auto *t{i} = t{i}_ptr.get();\n")
 
             dump_codegen_position(wr)
             wr("\n  /* Create the instances */\n")

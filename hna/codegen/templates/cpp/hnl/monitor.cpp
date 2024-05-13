@@ -67,7 +67,7 @@ Verdict HNLMonitor::step() {
       #include "createinstances.h"
   }
 
-  if (_instances.empty() && _traces.finished()) {
+  if (_instances.empty() && _traces_finished) {
       assert(_atom_monitors.empty());
       return Verdict::TRUE;
   }
@@ -100,5 +100,26 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     // reference to the configuration.
     *it = std::move(_instances[_instances.size() - 1]);
     _instances.pop_back();
+}
+
+void HNLMonitor::newTrace(unsigned trace_id) {
+    _traces.newTrace(trace_id);
+}
+
+void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
+    Trace *trace = _traces.get(trace_id);
+    assert(trace && "Do not have such a trace");
+
+    trace->append(e);
+}
+
+void HNLMonitor::traceFinished(unsigned trace_id) {
+  Trace *trace = _traces.get(trace_id);
+  assert(trace && "Do not have such a trace");
+  trace->setFinished();
+}
+
+void HNLMonitor::tracesFinished() {
+  _traces_finished = true;
 }
 

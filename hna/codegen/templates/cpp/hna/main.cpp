@@ -4,7 +4,6 @@
 #include <thread>
 #include <cassert>
 
-//#include "inputs.h"
 #include "cmd.h"
 #include "traceset.h"
 #include "csvreader.h"
@@ -57,12 +56,9 @@ int main(int argc, char *argv[]) {
   assert(verdict != Verdict::UNKNOWN);
   std::cout << " -- verdict --\n";
   if (verdict == Verdict::TRUE)
-      std::cout << "Formula is TRUE\n";
+      std::cout << "HNA accepts\n";
   else if (verdict == Verdict::FALSE)
-      std::cout << "Formula is FALSE\n";
-  std::cout << " -- stats --\n";
-  std::cout << "  Total formula instances: " << monitor.stats.num_instances << "\n";
-  std::cout << "  Total atom monitors: " << monitor.stats.num_atoms << "\n";
+      std::cout << "HNA rejects\n";
 
   return static_cast<int>(verdict);
 }

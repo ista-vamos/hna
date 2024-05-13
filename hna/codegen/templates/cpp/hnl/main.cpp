@@ -20,15 +20,16 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  TraceSet traceSet{};
   std::thread inputs_thrd;
   // set this to false to stop the inputs thread
   std::atomic<bool> running = true;
 
+  HNLMonitor monitor{};
+
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {
-      inputs_thrd = std::thread([&cmd, &traceSet, &running] {
-                      read_csv<CSVEventsStream>(cmd, traceSet, running);
+      inputs_thrd = std::thread([&cmd, &monitor, &running] {
+                      read_csv<CSVEventsStream>(cmd, monitor, running);
                     });
     } else {
       assert(false && "Not implemented yet");
@@ -42,15 +43,13 @@ int main(int argc, char *argv[]) {
     assert(false && "Not implemeted yet");
   }
 
-  HNLMonitor monitor(traceSet);
-
   Verdict verdict;
   do {
     verdict = monitor.step();
   } while (verdict == Verdict::UNKNOWN);
 
   // stop getting traces if there are events still coming
-  running = false;
+  running.store(false, std::memory_order_release);
 
   inputs_thrd.join();
 
