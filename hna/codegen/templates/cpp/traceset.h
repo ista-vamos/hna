@@ -11,18 +11,22 @@
 class TraceSet {
   // mapping from IDs to traces
   std::map<unsigned, std::unique_ptr<Trace>> _traces;
-  std::vector<std::unique_ptr<Trace>> _new_traces;
+  std::map<unsigned, std::unique_ptr<Trace>> _new_traces;
 
   std::mutex _traces_mtx;
+
+  // get the trace with the given ID
+  // NOTE: lock is not held as this method should not be called
+  // concurrently with iterating over _traces
+  Trace *get(unsigned trace_id);
+
 
 public:
   // Create a new trace in this TraceSet.
   Trace *newTrace(unsigned trace_id);
 
-  // get the trace with the given ID
-  // NOTE: lock is not held as this method should not be called
-  // concurrently with iterating over _traces
-  Trace *get(unsigned trace_id) const;
+  void extendTrace(unsigned trace_id, const Event &e);
+  void traceFinished(unsigned trace_id);
 
   // Get a trace created by `newTrace` if there is one.
   // This trace is then 'marked' as not new, and therefore

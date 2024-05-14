@@ -18,7 +18,7 @@
 
 class HNLMonitor : public Monitor {
   TraceSet _traces;
-  bool _traces_finished{false};
+  std::atomic<bool> _traces_finished{false};
 
   std::vector<std::unique_ptr<HNLInstance>> _instances;
   std::list<std::unique_ptr<AtomMonitor>> _atom_monitors;

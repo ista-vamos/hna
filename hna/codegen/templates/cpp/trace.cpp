@@ -66,5 +66,7 @@ size_t Trace::size() {
     unlock();
     return s;
 }
+
+// FIXME: make _finished atomic and avoid locking
 void Trace::setFinished() { lock(); _finished = true; unlock(); }
 bool Trace::finished() { lock(); auto f = _finished; unlock(); return f;}

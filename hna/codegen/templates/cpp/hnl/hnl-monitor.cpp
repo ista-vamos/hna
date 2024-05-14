@@ -22,10 +22,12 @@ static inline Verdict do_step(AtomMonitor *M) {
 Verdict HNLMonitor::step() {
   Verdict verdict;
 
+//#if 0
   if (auto *t1 = _traces.getNewTrace()) {
       /* GENERATED */
       #include "createinstances.h"
   }
+//#endif
 
   for (auto atom_monitor_it = _atom_monitors.begin(),
             atom_monitor_et = _atom_monitors.end();
@@ -71,7 +73,7 @@ Verdict HNLMonitor::step() {
       #include "createinstances.h"
   }
 
-  if (_instances.empty() && _traces_finished) {
+  if (_instances.empty() && _traces_finished.load(std::memory_order_acquire)) {
       assert(_atom_monitors.empty());
       return Verdict::TRUE;
   }
@@ -111,20 +113,15 @@ void HNLMonitor::newTrace(unsigned trace_id) {
 }
 
 void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
-    Trace *trace = _traces.get(trace_id);
-    assert(trace && "Do not have such a trace");
-
-    trace->append(e);
+    _traces.extendTrace(trace_id, e);
 }
 
 void HNLMonitor::traceFinished(unsigned trace_id) {
-  Trace *trace = _traces.get(trace_id);
-  assert(trace && "Do not have such a trace");
-  trace->setFinished();
+  _traces.traceFinished(trace_id);
 }
 
 void HNLMonitor::tracesFinished() {
-  _traces_finished = true;
+  _traces_finished.store(true, std::memory_order_release);
 }
 
 #include "namespace-end.h"

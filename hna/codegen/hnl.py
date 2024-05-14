@@ -224,12 +224,73 @@ class CodeGenCpp(CodeGen):
         self.copy_file("../csvreader.cpp")
         self._add_gen_files.append("csvreader.cpp")
 
-        with self.new_file("try_read_csv_event.cpp") as f:
+        # with self.new_file("read_csv_event.cpp") as f:
+        #    wr = f.write
+        #    dump_codegen_position(wr)
+        #    wr("auto it = row.begin();")
+        #    for name, ty in self._event:
+        #        wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
+
+        with self.new_file("read_csv_event.cpp") as f:
             wr = f.write
-            dump_codegen_position(wr)
-            wr("auto it = row.begin();")
-            for name, ty in self._event:
-                wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
+            wr(f"int ch;\n\n")
+            for n, tmp in enumerate(self._event):
+                name, ty = tmp
+                # wr(f"char action[{max_len_action_name}];\n\n")
+                wr(f"_stream >> ev.{name};\n")
+                wr("if (_stream.fail()) {")
+                if n == 0:  # assume this is the header
+                    wr("  _stream.clear(); // assume this is the header\n")
+                    wr("  // FIXME: check that the header matches the events \n")
+                    wr("  // ignore the rest of the line and try with the next one\n")
+                    wr(
+                        "  _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
+                    )
+                    wr(f"_stream >> ev.{name};\n")
+                    wr("if (_stream.fail()) {")
+                    wr(
+                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                    )
+                    wr("  abort();")
+                    wr("}")
+                else:
+                    wr(
+                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                    )
+                    wr("  abort();")
+                wr("}")
+                if n == len(self._event) - 1:
+                    wr(
+                        f"""
+                    while ((ch = _stream.get()) != EOF) {{
+                      if (ch == '\\n') {{
+                        break;
+                      }}
+                      
+                      if (!std::isspace(ch)) {{
+                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
+                        std::cerr << "Expected the end of line, got '" << static_cast<char>(ch) << "'\\n";
+                        abort();
+                      }}
+                    }}
+                    """
+                    )
+                else:
+                    wr(
+                        f"""
+                    while ((ch = _stream.get()) != EOF) {{
+                      if (ch == ',') {{
+                        break;
+                      }}
+                      
+                      if (!std::isspace(ch) || ch == '\\n') {{
+                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
+                        std::cerr << "Expected next column (',' character), got '" << static_cast<char>(ch) << "'\\n";
+                        abort();
+                      }}
+                    }}
+                    """
+                    )
 
     def _gen_bdd_from_formula(self, formula):
         """

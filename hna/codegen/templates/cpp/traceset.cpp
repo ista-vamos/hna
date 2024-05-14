@@ -1,11 +1,12 @@
+#include <cassert>
+
 #include "traceset.h"
 
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t;
 
   _traces_mtx.lock();
-  _new_traces.emplace_back(new Trace(trace_id));
-  t = _new_traces.back().get();
+  t = _new_traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
   _traces_mtx.unlock();
 
   return t;
@@ -16,24 +17,50 @@ Trace *TraceSet::getNewTrace() {
   Trace *t = nullptr;
 
   _traces_mtx.lock();
-  if (_new_traces.size() > 0) {
-    auto& trace_ptr = _new_traces.back();
-    t = trace_ptr.get();
+  auto trace_it = _new_traces.begin();
+  if (trace_it != _new_traces.end()) {
+    t = trace_it->second.get();
 
-    _traces.emplace(trace_ptr->id(), std::move(trace_ptr));
-    _new_traces.pop_back();
+    _traces.emplace(t->id(), std::move(trace_it->second));
+    _new_traces.erase(trace_it);
   }
   _traces_mtx.unlock();
 
   return t;
 }
 
-Trace *TraceSet::get(unsigned trace_id) const {
-    // FIXME: use a small local cache of last say 4 lookups?
+void TraceSet::extendTrace(unsigned trace_id, const Event &e) {
+    _traces_mtx.lock();
+    Trace *trace = get(trace_id);
+    assert(trace && "Do not have such a trace");
+    _traces_mtx.unlock();
+
+    trace->append(e);
+}
+
+void TraceSet::traceFinished(unsigned trace_id) {
+  _traces_mtx.lock();
+  Trace *trace = get(trace_id);
+  assert(trace && "Do not have such a trace");
+  trace->setFinished();
+  _traces_mtx.unlock();
+}
+
+
+Trace *TraceSet::get(unsigned trace_id) {
     auto it = _traces.find(trace_id);
-    if (it == _traces.end()) {
-        return nullptr;
+    if (it != _traces.end()) {
+        auto *ret = it->second.get();
+        _traces_mtx.unlock();
+        return ret;
     }
 
-    return it->second.get();
+    it = _new_traces.find(trace_id);
+    if (it != _new_traces.end()) {
+        auto *ret = it->second.get();
+        _traces_mtx.unlock();
+        return ret;
+    }
+
+    return nullptr;
 }

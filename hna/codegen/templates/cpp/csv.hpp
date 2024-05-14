@@ -7579,7 +7579,7 @@ namespace csv {
                 this->_format.variable_column_policy != VariableColumnPolicy::KEEP) {
                 auto errored_row = this->records->pop_front();
 
-                if (this->_format.variable_column_policy == VariableColumnPolicy::THROW) {
+                if (true || this->_format.variable_column_policy == VariableColumnPolicy::THROW) {
                     if (errored_row.size() < this->n_cols) {
                         std::cerr << "Line too short " + internals::format_row(errored_row) << "\n";
                         abort();

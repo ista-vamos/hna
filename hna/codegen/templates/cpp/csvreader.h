@@ -32,12 +32,16 @@ public:
 
 
 class CSVEventsStream : public Stream {
+#ifdef USE_CSV_PARSER
   csv::CSVReader _reader;
+#endif
+  std::ifstream _stream;
   bool _finished{false};
   size_t _events_num_read{0};
 
 public:
   CSVEventsStream(const std::string& file, unsigned trace_id);
+  ~CSVEventsStream();
 
   // Try reading an event. Return `true` if the event was read
   // in which case the event was stored into `ev`.
