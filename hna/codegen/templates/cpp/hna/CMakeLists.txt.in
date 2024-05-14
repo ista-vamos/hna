@@ -68,6 +68,7 @@ add_library(trace STATIC trace.cpp)
 add_library(traceset STATIC traceset.cpp)
 
 add_library(hnamonitor STATIC hna-monitor.cpp)
+target_include_directories(hnamonitor PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_executable(monitor main.cpp cmd.cpp @additional_sources@)
 target_link_libraries(monitor hnamonitor trace traceset events)

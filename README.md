@@ -75,6 +75,7 @@ events):
 The automata are given in the YAML format, an example automaton could be:
 ```yaml
 automaton:
+  init: q0
   nodes:
     q0: 'forall t1, t2: [x(t1)] <= [y(t2)]'
     q1: 'forall t1, t2: [x(t1)] <= y(t2)'

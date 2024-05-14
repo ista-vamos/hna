@@ -80,12 +80,20 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-    def _generate_events(self):
+    def _generate_events(self, hna: HyperNodeAutomaton):
+
         with self.new_file("events.h") as f:
             wr = f.write
             wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
             wr("#include <iostream>\n\n")
             # wr("#include <cassert>\n\n")
+
+            wr("enum ActionEventType {\n")
+            wr("  INVALID = 0,")
+            wr("  EVENT,")
+            for action in hna.actions():
+                wr(f"  ACTION_{action},")
+            wr("};\n")
 
             dump_codegen_position(wr)
             wr("struct Event {\n")
@@ -94,6 +102,19 @@ class CodeGenCpp(CodeGen):
             wr("};\n\n")
 
             wr("std::ostream& operator<<(std::ostream& os, const Event& ev);\n")
+
+            wr(
+                """
+            struct ActionEvent {
+                ActionEventType type;
+                Event event;
+                
+                bool isAction() const { return type > EVENT; }
+            };\n
+            """
+            )
+
+            wr("std::ostream& operator<<(std::ostream& os, const ActionEvent& ev);\n")
 
             wr("#endif\n")
 
@@ -113,6 +134,18 @@ class CodeGenCpp(CodeGen):
             wr("return os;\n")
             wr("}\n")
 
+            wr("std::ostream& operator<<(std::ostream& os, const ActionEvent& ev) {\n")
+            wr(' os << "ActionEvent(";\n\n')
+            wr("switch(ev.type) {\n")
+            for action in hna.actions():
+                wr(f'case ACTION_{action}: os << "{action}"; break;\n')
+            wr(f"case EVENT: os << ev; break;\n")
+            wr(f"default: abort();\n")
+            wr("}\n")
+            wr('os << ")";\n\n')
+            wr("return os;\n")
+            wr("}\n")
+
     def _generate_csv_reader(self):
         self.copy_file("../csvreader.h")
         self.copy_file("../csvreader.cpp")
@@ -125,15 +158,62 @@ class CodeGenCpp(CodeGen):
             for name, ty in self._event:
                 wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
 
-    def _generate_monitor(self, formula):
-        pass
+    def _gen_dispatch(self, hna, wr, call):
+        wr("switch (type) {")
+        for state in hna.states():
+            state_id = hna.get_state_id(state)
+            wr(
+                f"case HNANodeType::NODE_{state_id}: static_cast<hnl_{state_id}::HNLMonitor*>(monitor.get())->{call}; break;"
+            )
+        wr(" default: abort();\n")
+        wr("};\n")
+
+    def _generate_monitor(self, hna):
+        with self.new_file("hna_node_types.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+
+            wr("enum class HNANodeType {\n")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(f"NODE_{state_id} = {state_id},\n")
+            wr("};\n")
+
+        with self.new_file("hnl-monitors.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+
+            wr("#pragma once\n\n")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(f'#include "hnl-{state_id}/hnl-monitor.h"\n')
+
+        with self.new_file("slices-tree-ctor.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            assert len(hna.initial_states()) == 1, hna.initial_states()
+
+            init_id = hna.get_state_id(hna.initial_states()[0])
+            wr(
+                f"SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{}}\n\n"
+            )
+
+        with self.new_file("dispatch-new-trace.h") as f:
+            dump_codegen_position(f)
+            self._gen_dispatch(hna, f.write, "newTrace(trace_id)")
+        with self.new_file("dispatch-trace-finished.h") as f:
+            dump_codegen_position(f)
+            self._gen_dispatch(hna, f.write, "traceFinished(trace_id)")
+        with self.new_file("dispatch-extend-trace.h") as f:
+            dump_codegen_position(f)
+            self._gen_dispatch(hna, f.write, "extendTrace(trace_id, ev)")
 
     def generate(self, hna: HyperNodeAutomaton):
         """
         The top-level function to generate code
         """
 
-        self._generate_events()
+        self._generate_events(hna)
 
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
@@ -161,11 +241,12 @@ class CodeGenCpp(CodeGen):
             cmake_subdirs.append(subdir)
 
             embedding_data = {
-                "monitor_name": f"monitor-{hnl_id}",
-                "namespace": f"hnl_{hnl_id}",
+                "monitor_name": f"monitor_{hnl_id}",
                 "tests": True,
             }
-            hnl_codegen = HNLCodeGenCpp(self.args, ctx, f"{self.out_dir}/{subdir}")
+            hnl_codegen = HNLCodeGenCpp(
+                self.args, ctx, f"{self.out_dir}/{subdir}", namespace=f"hnl_{hnl_id}"
+            )
             hnl_codegen.generate_embedded(state.formula, alphabet, embedding_data)
 
         self._generate_monitor(hna)

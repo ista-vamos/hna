@@ -7,11 +7,11 @@
 
 #include "events.h"
 
-enum EventType {
+enum class TraceQuery {
     // no available event
-    NONE,
+    WAITING,
     // available event
-    EVENT,
+    AVAILABLE,
     // trace ended (end event)
     END
 };
@@ -38,7 +38,7 @@ public:
   void append(const Event *e);
   void append(const Event &e);
 
-  EventType get(size_t idx, Event&);
+  TraceQuery get(size_t idx, Event&);
 
   size_t size();
   void setFinished();

@@ -10,7 +10,7 @@
 #include "hnl-state.h"
 /* generated part END */
 
-#include "namespace-start.h"
+@namespace_start@
 
 // must be inside the namespace
 #include "bdd-structure.h"
@@ -124,4 +124,4 @@ void HNLMonitor::tracesFinished() {
   _traces_finished.store(true, std::memory_order_release);
 }
 
-#include "namespace-end.h"
+@namespace_end@

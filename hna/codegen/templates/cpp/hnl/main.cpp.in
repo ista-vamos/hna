@@ -10,7 +10,7 @@
 #include "csvreader.h"
 #include "hnl-monitor.h"
 
-#include "namespace-using.h"
+@namespace_using@
 
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);

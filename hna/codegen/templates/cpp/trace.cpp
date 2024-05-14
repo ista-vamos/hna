@@ -41,21 +41,21 @@ void Trace::append(const Event &e)  {
     unlock();
 }
 
-EventType Trace::get(size_t idx, Event& e) {
+TraceQuery Trace::get(size_t idx, Event& e) {
     lock();
     if (idx < _events.size()) {
         e = _events[idx];
         unlock();
-        return EVENT;
+        return TraceQuery::AVAILABLE;
     }
 
     if (_finished) {
         unlock();
-        return END;
+        return TraceQuery::END;
     }
 
     unlock();
-    return NONE;
+    return TraceQuery::WAITING;
 }
 
 

@@ -112,13 +112,14 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, args, ctx, out_dir=None):
+    def __init__(self, args, ctx, out_dir=None, namespace=None):
         super().__init__(args, ctx, out_dir)
 
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_path, "templates/cpp/hnl")
+        self._namespace = namespace
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
         self._add_gen_files = []
@@ -338,7 +339,8 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("hnl-state.h") as f:
             f.write("#pragma once\n\n")
-            f.write('#include  "namespace-start.h"\n\n')
+            if self._namespace:
+                f.write(f"namespace {self._namespace} {{\n\n")
             dump_codegen_position(f)
             f.write("enum HNLEvaluationState {\n")
             f.write("  INVALID      = 0,\n")
@@ -347,7 +349,8 @@ class CodeGenCpp(CodeGen):
             for num, A in self._formula_to_automaton.values():
                 f.write(f"  AUTOMATON_{num} = {num},\n")
             f.write("};\n")
-            f.write('#include  "namespace-end.h"\n\n')
+            if self._namespace:
+                f.write(f"}} // namespace {self._namespace}\n\n")
 
         # this is so stupid, but I just cannot get the variable
         # for the node, because PyEDA does not have getters for `_VARS`
@@ -390,7 +393,8 @@ class CodeGenCpp(CodeGen):
             wr("#include <cassert>\n\n")
             wr('#include "hnl-state.h"\n')
             wr('#include "trace.h"\n\n')
-            wr('#include "namespace-start.h"\n\n')
+            if self._namespace:
+                wr(f"namespace {self._namespace} {{\n\n")
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
             wr("struct HNLInstance {\n")
@@ -409,7 +413,8 @@ class CodeGenCpp(CodeGen):
                 wr(f"{q.var}({q.var}), ")
             wr("state(init_state) { assert(state != INVALID); }\n")
             wr("};\n\n")
-            wr('#include "namespace-end.h"\n\n')
+            if self._namespace:
+                wr(f" }} // namespace {self._namespace}\n")
 
     def _generate_createinstances(self, formula):
         N = len(formula.quantifier_prefix)
@@ -518,7 +523,8 @@ class CodeGenCpp(CodeGen):
         wrh("#pragma once\n\n")
         dump_codegen_position(wrh)
         wrh('#include "atom-monitor.h"\n\n')
-        wrh('#include "namespace-start.h"\n\n')
+        if self._namespace:
+            wrh(f"namespace {self._namespace} {{\n\n")
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public AtomMonitor {{\n\n")
@@ -541,10 +547,13 @@ class CodeGenCpp(CodeGen):
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
-        wrh('#include "namespace-end.h"\n\n')
+
+        if self._namespace:
+            wrh(f"}} // namespace {self._namespace}\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
-        wrcpp('#include "namespace-using.h"\n\n')
+        if self._namespace:
+            wrh(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : AtomMonitor(AUTOMATON_{num}, instance.{t1}, instance.{t2}) {{\n\n"
@@ -634,38 +643,38 @@ class CodeGenCpp(CodeGen):
                 
                 Event ev1, ev2;
                 auto ev1ty = t1->get(cfg.p1, ev1);
-                if (ev1ty == NONE) {{
+                if (ev1ty == TraceQuery::WAITING) {{
                     _cfgs.push_new(cfg);
                     continue;
                 }}
                 auto ev2ty = t2->get(cfg.p2, ev2);
-                if (ev2ty == NONE) {{
+                if (ev2ty == TraceQuery::WAITING) {{
                     _cfgs.push_new(cfg);
                     continue;
                 }}
 
                 /* Debugging code */
                 std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
-                if (ev1ty == END) {{
+                if (ev1ty == TraceQuery::END) {{
                     std::cerr << "END";
                 }} else {{
                     std::cerr << ev1;
                 }}
                 std::cerr << ", ";
-                if (ev2ty == END) {{
+                if (ev2ty == TraceQuery::END) {{
                     std::cerr << "END";
                 }} else {{
                     std::cerr << ev2;
                 }}
                 std::cerr << "\\n";
                                     
-                if (ev1ty == END) {{
+                if (ev1ty == TraceQuery::END) {{
                     if (state_is_accepting(cfg.state)) {{
                         return Verdict::TRUE;
                     }}
                 }}
                 
-                _step(cfg, ev1ty == END ? nullptr : &ev1, ev2ty == END ? nullptr : &ev2);
+                _step(cfg, ev1ty == TraceQuery::END ? nullptr : &ev1, ev2ty == TraceQuery::END ? nullptr : &ev2);
             }}
         """
         )
@@ -903,7 +912,7 @@ class CodeGenCpp(CodeGen):
                 wr(f"trace{i+1}->setFinished();")
                 wr(f"/* Trace {i + 1} length: {n} */\n\n")
 
-        self.gen_config(
+        self.gen_file(
             "test-atom.cpp.in",
             f"tests/test-atom-{num}-{test_num}.cpp",
             {
@@ -914,28 +923,18 @@ class CodeGenCpp(CodeGen):
                 "@EXPECTED_VERDICT@": (
                     "Verdict::TRUE" if is_accepting else "Verdict::FALSE"
                 ),
+                "@namespace_using@": (
+                    f"using namespace {self._namespace};" if self._namespace else ""
+                ),
             },
         )
 
-    def generate_namespace(self, namespace):
-        with self.new_file(f"namespace-start.h") as f:
-            if namespace:
-                f.write(f"namespace {namespace} {{\n\n")
-        with self.new_file(f"namespace-end.h") as f:
-            if namespace:
-                f.write(f"\n}} // end namespace {namespace}\n")
-        with self.new_file(f"namespace-using.h") as f:
-            if namespace:
-                f.write(f"using namespace {namespace};\n")
-
-    def generate(self, formula, namespace=None):
+    def generate(self, formula):
         """
         The top-level function to generate code
         """
 
         self._generate_events()
-
-        self.generate_namespace(namespace)
 
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
@@ -955,7 +954,15 @@ class CodeGenCpp(CodeGen):
 
         self.generate_tests(alphabet)
 
-        self.copy_files(["main.cpp"])
+        self.gen_file(
+            "main.cpp.in",
+            "main.cpp",
+            {
+                "@namespace_using@": (
+                    f"using namespace {self._namespace};" if self._namespace else ""
+                )
+            },
+        )
 
         self._copy_common_files()
         # cmake generation should go at the end so that
@@ -969,11 +976,18 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
-        self.generate_namespace(embedding_data.get("namespace"))
-        self.generate_monitor(formula, alphabet)
+        self.generate_monitor(formula, alphabet, embedding_data)
         if embedding_data.get("tests"):
             self.generate_tests(alphabet)
-        self.copy_files(["main.cpp"])
+        self.gen_file(
+            "main.cpp.in",
+            "main.cpp",
+            {
+                "@namespace_using@": (
+                    f"using namespace {self._namespace};" if self._namespace else ""
+                )
+            },
+        )
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
@@ -992,8 +1006,29 @@ class CodeGenCpp(CodeGen):
         except FileNotFoundError:
             pass
 
-    def generate_monitor(self, formula, alphabet):
-        self.copy_files(["hnl-monitor.h", "hnl-monitor.cpp", "atom-monitor.h"])
+    def generate_monitor(self, formula, alphabet, embedding_data=None):
+        if embedding_data:
+            values = {
+                "@MONITOR_NAME@": embedding_data["monitor_name"],
+                "@namespace@": self._namespace or "",
+                "@namespace_start@": (
+                    f"namespace {self._namespace} {{" if self._namespace else ""
+                ),
+                "@namespace_end@": (
+                    f"}} // namespace {self._namespace}" if self._namespace else ""
+                ),
+            }
+        else:
+            values = {
+                "@MONITOR_NAME@": "",
+                "@namespace@": self._namespace or "",
+                "@namespace_start@": "",
+                "@namespace_end@": "",
+            }
+
+        self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
+        self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
 
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):

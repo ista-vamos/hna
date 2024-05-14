@@ -57,12 +57,14 @@ class YamlParser:
         A = HyperNodeAutomaton()
         aut = yaml_load(stream)
         for node, formula in aut["automaton"]["nodes"].items():
-            print(node, formula)
             A.add_state(HypernodeState(node, formula))
         for edge in aut["automaton"]["edges"]:
             e = parse_edge(edge["edge"])
             A.add_transition(Transition(A.get(e[0]), edge["action"], A.get(e[1])))
-        A.to_dot()
+
+        init = aut["automaton"]["init"]
+        A.add_init(A.get(init))
+
         return A
 
     def parse_path(self, f):

@@ -11,4 +11,13 @@ class HypernodeState(State):
 
 
 class HyperNodeAutomaton(Automaton):
-    pass
+    def __init__(self):
+        super().__init__()
+        self._actions = set()
+
+    def actions(self):
+        return self._actions
+
+    def add_transition(self, t):
+        self._actions.add(t.label)
+        super().add_transition(t)

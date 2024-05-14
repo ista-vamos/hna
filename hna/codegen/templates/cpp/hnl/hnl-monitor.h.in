@@ -1,5 +1,10 @@
-#ifndef MONITOR_H_
-#define MONITOR_H_
+// #pragma once is buggy if we generate multiple HNL monitors
+// and try to include them in the HNA monitor. We have to use
+// normal include guards. However, they must be different for each HNL
+// monitor
+
+#ifndef HNL_MONITOR_H__@MONITOR_NAME@
+#define HNL_MONITOR_H__@MONITOR_NAME@
 
 #include <vector>
 #include <list>
@@ -14,17 +19,18 @@
 /* generated */
 #include "hnl-instance.h"
 
-#include "namespace-start.h"
+@namespace_start@
 
 class HNLMonitor : public Monitor {
+
   TraceSet _traces;
   std::atomic<bool> _traces_finished{false};
 
-  std::vector<std::unique_ptr<HNLInstance>> _instances;
-  std::list<std::unique_ptr<AtomMonitor>> _atom_monitors;
+  std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
+  std::list<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
 public:
-  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance&);
+  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
   void removeInstance(HNLInstance *instance);
 
   // adding and extending traces
@@ -44,6 +50,6 @@ public:
   } stats;
 };
 
-#include "namespace-end.h"
+#endif // !HNL_MONITOR_H__@MONITOR_NAME@
 
-#endif
+@namespace_end@

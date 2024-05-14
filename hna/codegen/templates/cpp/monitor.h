@@ -1,5 +1,7 @@
 #pragma once
 
+#include "events.h"
+
 ///
 // This is the interface for monitors. The methods are not virtual
 // intentionally, the monitors will not be used through this class.

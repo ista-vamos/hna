@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ATOM_MONITOR__@MONITOR_NAME@
+#define ATOM_MONITOR__@MONITOR_NAME@
 
 #include <algorithm>
 #include <vector>
@@ -7,7 +8,7 @@
 #include "verdict.h"
 #include "hnl-instance.h"
 
-#include "namespace-start.h"
+@namespace_start@
 
 using State = int;
 
@@ -89,4 +90,6 @@ public:
   Verdict step(const unsigned step_num);
 };
 
-#include "namespace-end.h"
+@namespace_end@
+
+#endif // ATOM_MONITOR__@MONITOR_NAME@

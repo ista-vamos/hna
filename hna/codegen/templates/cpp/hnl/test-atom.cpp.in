@@ -7,7 +7,7 @@
 #include "hnl-instance.h"
 #include "atom-@ATOM_NUM@.h"
 
-#include "namespace-using.h"
+@namespace_using@
 
 static void err(const std::string& msg) {
   std::cerr << msg << "\n";
