@@ -1,15 +1,19 @@
 #include <cassert>
 
-#include "monitor.h"
-#include "atommonitor.h"
+#include "hnl-monitor.h"
+#include "atom-monitor.h"
 #include "atoms.h"
 
 
 
 /* generated part START */
-#include "actions.h"
-#include "bdd-structure.h"
+#include "hnl-state.h"
 /* generated part END */
+
+#include "namespace-start.h"
+
+// must be inside the namespace
+#include "bdd-structure.h"
 
 static inline Verdict do_step(AtomMonitor *M) {
   #include "do_step.h"
@@ -75,7 +79,7 @@ Verdict HNLMonitor::step() {
   return Verdict::UNKNOWN;
 }
 
-AtomMonitor *HNLMonitor::createAtomMonitor(Action monitor_type, HNLInstance& instance) {
+AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance& instance) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
     AtomMonitor *monitor;
@@ -123,3 +127,4 @@ void HNLMonitor::tracesFinished() {
   _traces_finished = true;
 }
 
+#include "namespace-end.h"

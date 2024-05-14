@@ -5,7 +5,9 @@
 #include <cassert>
 
 #include "verdict.h"
-#include "hnlinstance.h"
+#include "hnl-instance.h"
+
+#include "namespace-start.h"
 
 using State = int;
 
@@ -86,3 +88,5 @@ public:
 
   Verdict step(const unsigned step_num);
 };
+
+#include "namespace-end.h"

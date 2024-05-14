@@ -8,8 +8,9 @@
 #include "cmd.h"
 #include "traceset.h"
 #include "csvreader.h"
-#include "monitor.h"
+#include "hnl-monitor.h"
 
+#include "namespace-using.h"
 
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);

@@ -3,9 +3,11 @@
 
 #include "trace.h"
 #include "verdict.h"
-#include "atommonitor.h"
-#include "hnlinstance.h"
+#include "atom-monitor.h"
+#include "hnl-instance.h"
 #include "atom-@ATOM_NUM@.h"
+
+#include "namespace-using.h"
 
 static void err(const std::string& msg) {
   std::cerr << msg << "\n";

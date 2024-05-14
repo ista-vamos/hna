@@ -1,20 +1,18 @@
 file(GLOB inputs "test-atom-*.cpp")
 
-add_library(events STATIC ../events.cpp)
-add_library(trace STATIC ../trace.cpp)
-
 foreach(file ${inputs})
         string(REGEX MATCH "test-atom-([0-9]+)-([0-9]+)\.cpp" _ ${file})
         message(STATUS "${file} ${CMAKE_MATCH_1} ${CMAKE_MATCH_2}")
 
-        add_executable(test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2}
-                       test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2}.cpp
+        set(NAME "test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2}")
+        set(TARGET_NAME "${MONITOR_NAME}-${NAME}")
+        add_executable(${TARGET_NAME} ${NAME}.cpp
                        ../atom-${CMAKE_MATCH_1})
-        target_include_directories(test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-        target_link_libraries(test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2} events trace)
-        target_compile_options(test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2} PRIVATE -Wno-missing-field-initializers)
+        target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
+        target_link_libraries(${TARGET_NAME} events trace)
+        target_compile_options(${TARGET_NAME} PRIVATE -Wno-missing-field-initializers)
 
-        add_test(NAME test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2}
-                 COMMAND test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2})
-        add_dependencies(check test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2})
+        add_test(NAME ${TARGET_NAME}
+                 COMMAND ${TARGET_NAME})
+        add_dependencies(check ${TARGET_NAME})
 endforeach()

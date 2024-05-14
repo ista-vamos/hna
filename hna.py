@@ -78,8 +78,8 @@ def parse_arguments():
     parser.add_argument(
         "--out-dir",
         action="store",
-        default="/tmp/hnl",
-        help="Output directory (default: /tmp/hnl)",
+        default="/tmp/hna",
+        help="Output directory (default: /tmp/hna)",
     )
     parser.add_argument(
         "--out-dir-overwrite",

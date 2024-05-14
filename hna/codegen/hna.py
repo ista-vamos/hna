@@ -3,6 +3,7 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
 
 from hna.codegen.common import dump_codegen_position
+from hna.codegen.hnl import CodeGenCpp as HNLCodeGenCpp
 from hna.hna.automaton import HyperNodeAutomaton
 from hna.hnl.formula import Constant
 from hna.hnl.parser import Parser as HNLParser
@@ -35,14 +36,17 @@ class CodeGenCpp(CodeGen):
 
     def _copy_common_files(self):
         files = [
+            "main.cpp",
+            "hna-monitor.h",
+            "hna-monitor.cpp",
+            #
+            "../monitor.h",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
-            "main.cpp",
+            "../traceset.cpp",
             "../cmd.h",
             "../cmd.cpp",
-            # "monitor.h",
-            # "monitor.cpp",
             "../verdict.h",
             "../csv.hpp",
         ]
@@ -53,7 +57,7 @@ class CodeGenCpp(CodeGen):
         for f in self.args.cpp_files:
             self.copy_file(f)
 
-    def _generate_cmake(self):
+    def _generate_cmake(self, add_subdirs):
         from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
@@ -70,6 +74,9 @@ class CodeGenCpp(CodeGen):
                 ),
                 "@additional_cflags@": " ".join((d for d in self.args.cflags)),
                 "@CMAKE_BUILD_TYPE@": build_type,
+                "@ADD_SUBDIRS@": "".join(
+                    f"add_subdirectory({subdir})\n" for subdir in add_subdirs
+                ),
             },
         )
 
@@ -107,8 +114,8 @@ class CodeGenCpp(CodeGen):
             wr("}\n")
 
     def _generate_csv_reader(self):
-        self.copy_file("csvreader.h")
-        self.copy_file("csvreader.cpp")
+        self.copy_file("../csvreader.h")
+        self.copy_file("../csvreader.cpp")
         self.args.add_gen_files.append("csvreader.cpp")
 
         with self.new_file("try_read_csv_event.cpp") as f:
@@ -146,12 +153,27 @@ class CodeGenCpp(CodeGen):
 
         assert alphabet, "The alphabet is empty"
 
+        ctx = None
+        cmake_subdirs = []
+        for state in hna.states():
+            hnl_id = hna.get_state_id(state)
+            subdir = f"hnl-{hnl_id}"
+            cmake_subdirs.append(subdir)
+
+            embedding_data = {
+                "monitor_name": f"monitor-{hnl_id}",
+                "namespace": f"hnl_{hnl_id}",
+                "tests": True,
+            }
+            hnl_codegen = HNLCodeGenCpp(self.args, ctx, f"{self.out_dir}/{subdir}")
+            hnl_codegen.generate_embedded(state.formula, alphabet, embedding_data)
+
         self._generate_monitor(hna)
 
         self._copy_common_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self._generate_cmake()
+        self._generate_cmake(cmake_subdirs)
 
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception

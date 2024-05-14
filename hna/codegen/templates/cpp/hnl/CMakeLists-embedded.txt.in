@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.9)
+project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
+
+set(EMBEDDED TRUE)
+
+if (@MONITOR_NAME@ STREQUAL "")
+set(MONITOR_NAME "monitor")
+else()
+set(MONITOR_NAME @MONITOR_NAME@)
+endif()
+
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
+set(CMAKE_VERBOSE_MAKEFILE 1)
+
+set(LIBRARY_NAME "hnl${MONITOR_NAME}")
+add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
+
+if (BUILD_HNL_EXE)
+add_executable(${MONITOR_NAME} main.cpp cmd.cpp @additional_sources@)
+target_link_libraries(${MONITOR_NAME} ${LIBRARY_NAME} trace events)
+target_include_directories(${MONITOR_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${MONITOR_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${MONITOR_NAME} PRIVATE @additional_cflags@)
+endif()
+
+if (ENABLE_TESTS)
+    enable_testing()
+    add_subdirectory(tests EXCLUDE_FROM_ALL)
+endif()

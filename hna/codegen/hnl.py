@@ -112,8 +112,8 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, args, ctx):
-        super().__init__(args, ctx)
+    def __init__(self, args, ctx, out_dir=None):
+        super().__init__(args, ctx, out_dir)
 
         self_path = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
@@ -121,6 +121,7 @@ class CodeGenCpp(CodeGen):
         self.templates_path = pathjoin(self_path, "templates/cpp/hnl")
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
+        self._add_gen_files = []
 
         assert (
             self.args.csv_header
@@ -130,15 +131,17 @@ class CodeGenCpp(CodeGen):
             for event in self.args.csv_header.split(",")
         ]
 
-        makedirs(f"{self.out_dir}/tests", exist_ok=True)
+    def copy_files(self, files):
+        for f in files:
+            if f not in self.args.overwrite_default:
+                self.copy_file(f)
+
+        for f in self.args.cpp_files:
+            self.copy_file(f)
 
     def _copy_common_files(self):
         files = [
-            "monitor.h",
-            "monitor.cpp",
-            "main.cpp",
-            "atommonitor.h",
-            # -- files shared with HNAs
+            "../monitor.h",
             "../cmd.h",
             "../cmd.cpp",
             "../trace.h",
@@ -148,32 +151,40 @@ class CodeGenCpp(CodeGen):
             "../verdict.h",
             "../csv.hpp",
         ]
-        for f in files:
-            if f not in self.args.overwrite_default:
-                self.copy_file(f)
+        self.copy_files(files)
 
-        for f in self.args.cpp_files:
-            self.copy_file(f)
-
-    def _generate_cmake(self):
+    def generate_cmake(self, overwrite_keys=None, embedded=False):
+        """
+        `embedded` is True if the HNL monitor is a subdirectory in some other project
+        """
         from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
         if not build_type:
             build_type = '"Debug"' if self.args.debug else ""
 
-        self.gen_config(
-            "CMakeLists.txt.in",
-            "CMakeLists.txt",
-            {
-                "@vamos-buffers_DIR@": vamos_buffers_DIR,
-                "@additional_sources@": " ".join(
-                    (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
-                ),
-                "@additional_cflags@": " ".join((d for d in self.args.cflags)),
-                "@CMAKE_BUILD_TYPE@": build_type,
-            },
-        )
+        values = {
+            "@vamos-buffers_DIR@": vamos_buffers_DIR,
+            "@additional_sources@": " ".join(
+                (
+                    basename(f)
+                    for f in self.args.cpp_files
+                    + self.args.add_gen_files
+                    + self._add_gen_files
+                )
+            ),
+            "@additional_cflags@": " ".join((d for d in self.args.cflags)),
+            "@CMAKE_BUILD_TYPE@": build_type,
+            "@MONITOR_NAME@": '""',
+        }
+        if overwrite_keys:
+            values.update(overwrite_keys)
+
+        if embedded:
+            cmakelists = "CMakeLists-embedded.txt.in"
+        else:
+            cmakelists = "CMakeLists.txt.in"
+        self.gen_config(cmakelists, "CMakeLists.txt", values)
 
     def _generate_events(self):
         with self.new_file("events.h") as f:
@@ -209,9 +220,9 @@ class CodeGenCpp(CodeGen):
             wr("}\n")
 
     def _generate_csv_reader(self):
-        self.copy_file("csvreader.h")
-        self.copy_file("csvreader.cpp")
-        self.args.add_gen_files.append("csvreader.cpp")
+        self.copy_file("../csvreader.h")
+        self.copy_file("../csvreader.cpp")
+        self._add_gen_files.append("csvreader.cpp")
 
         with self.new_file("try_read_csv_event.cpp") as f:
             wr = f.write
@@ -264,16 +275,19 @@ class CodeGenCpp(CodeGen):
             F = atoms_map[bdd.top]
             return f"AUTOMATON_{self._formula_to_automaton[F][0]}"
 
-        with self.new_file("actions.h") as f:
+        with self.new_file("hnl-state.h") as f:
             f.write("#pragma once\n\n")
+            f.write('#include  "namespace-start.h"\n\n')
             dump_codegen_position(f)
-            f.write("enum Action {\n")
+            f.write("enum HNLEvaluationState {\n")
             f.write("  INVALID      = 0,\n")
             f.write("  RESULT_TRUE  = -1,\n")
             f.write("  RESULT_FALSE = -2,\n")
             for num, A in self._formula_to_automaton.values():
                 f.write(f"  AUTOMATON_{num} = {num},\n")
             f.write("};\n")
+            f.write('#include  "namespace-end.h"\n\n')
+
         # this is so stupid, but I just cannot get the variable
         # for the node, because PyEDA does not have getters for `_VARS`
         # dictionary. So I'm just generating sub-BDDs from which I
@@ -281,7 +295,7 @@ class CodeGenCpp(CodeGen):
         with self.new_file("bdd-structure.h") as f:
             dump_codegen_position(f)
             f.write("/* AUTOMATON, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
-            f.write("constexpr Action BDD[][3] = {\n")
+            f.write("constexpr HNLEvaluationState BDD[][3] = {\n")
             f.write("  {INVALID, INVALID, INVALID},\n")
             seen = set()
             wbg = set()
@@ -305,16 +319,17 @@ class CodeGenCpp(CodeGen):
 
             dump_codegen_position(f)
             f.write(
-                f"static constexpr Action INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
+                f"static constexpr HNLEvaluationState INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
             )
 
     def _generate_hnlinstances(self, formula):
-        with self.new_file("hnlinstance.h") as f:
+        with self.new_file("hnl-instance.h") as f:
             wr = f.write
             wr("#pragma once\n\n")
             wr("#include <cassert>\n\n")
-            wr('#include "actions.h"\n')
+            wr('#include "hnl-state.h"\n')
             wr('#include "trace.h"\n\n')
+            wr('#include "namespace-start.h"\n\n')
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
             wr("struct HNLInstance {\n")
@@ -322,17 +337,18 @@ class CodeGenCpp(CodeGen):
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
-            wr(f"  Action state;\n\n")
+            wr(f"  HNLEvaluationState state;\n\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  AtomMonitor *monitor{nullptr};\n\n")
             wr(f"  HNLInstance(")
             for q in formula.quantifier_prefix:
                 wr(f"Trace *{q.var}, ")
-            wr("Action init_state)\n  : ")
+            wr("HNLEvaluationState init_state)\n  : ")
             for q in formula.quantifier_prefix:
                 wr(f"{q.var}({q.var}), ")
             wr("state(init_state) { assert(state != INVALID); }\n")
-            wr("};\n")
+            wr("};\n\n")
+            wr('#include "namespace-end.h"\n\n')
 
     def _generate_createinstances(self, formula):
         N = len(formula.quantifier_prefix)
@@ -415,7 +431,7 @@ class CodeGenCpp(CodeGen):
             with self.new_file(f"atom-{num}.h") as fh:
                 with self.new_file(f"atom-{num}.cpp") as fcpp:
                     self._generate_automaton_code(fh.write, fcpp.write, F, num, A)
-            self.args.add_gen_files.append(f"atom-{num}.cpp")
+            self._add_gen_files.append(f"atom-{num}.cpp")
 
         with self.new_file("atoms.h") as f:
             f.write("#pragma once\n\n")
@@ -440,7 +456,8 @@ class CodeGenCpp(CodeGen):
     ):
         wrh("#pragma once\n\n")
         dump_codegen_position(wrh)
-        wrh('#include "atommonitor.h"\n\n')
+        wrh('#include "atom-monitor.h"\n\n')
+        wrh('#include "namespace-start.h"\n\n')
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public AtomMonitor {{\n\n")
@@ -462,9 +479,11 @@ class CodeGenCpp(CodeGen):
         t2 = t2[0].name if t2 else "__no_trace"
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
-        wrh("};\n")
+        wrh("};\n\n")
+        wrh('#include "namespace-end.h"\n\n')
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
+        wrcpp('#include "namespace-using.h"\n\n')
         dump_codegen_position(wrcpp)
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : AtomMonitor(AUTOMATON_{num}, instance.{t1}, instance.{t2}) {{\n\n"
@@ -592,7 +611,7 @@ class CodeGenCpp(CodeGen):
 
         wrcpp(f"_cfgs.rotate();")
         wrcpp(" return Verdict::UNKNOWN;\n")
-        wrcpp("}\n")
+        wrcpp("}\n\n")
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):
 
@@ -771,8 +790,10 @@ class CodeGenCpp(CodeGen):
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
 
-    def _generate_tests(self, alphabet):
+    def generate_tests(self, alphabet):
         print("-- Generating tests --")
+        makedirs(f"{self.out_dir}/tests", exist_ok=True)
+
         self.gen_config(
             "CMakeLists-tests.txt.in",
             "tests/CMakeLists.txt",
@@ -835,12 +856,25 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-    def generate(self, formula):
+    def generate_namespace(self, namespace):
+        with self.new_file(f"namespace-start.h") as f:
+            if namespace:
+                f.write(f"namespace {namespace} {{\n\n")
+        with self.new_file(f"namespace-end.h") as f:
+            if namespace:
+                f.write(f"\n}} // end namespace {namespace}\n")
+        with self.new_file(f"namespace-using.h") as f:
+            if namespace:
+                f.write(f"using namespace {namespace};\n")
+
+    def generate(self, formula, namespace=None):
         """
         The top-level function to generate code
         """
 
         self._generate_events()
+
+        self.generate_namespace(namespace)
 
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
@@ -856,22 +890,38 @@ class CodeGenCpp(CodeGen):
 
         assert alphabet, "The alphabet is empty"
 
-        def gen_automaton(F):
-            if not isinstance(F, IsPrefix):
-                return
-            self.generate_atomic_comparison_automaton(F, alphabet)
+        self.generate_monitor(formula, alphabet)
 
-        formula.visit(gen_automaton)
+        self.generate_tests(alphabet)
 
-        self._generate_monitor(formula)
-
-        self._generate_tests(alphabet)
+        self.copy_files(["main.cpp"])
 
         self._copy_common_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self._generate_cmake()
+        self.generate_cmake()
 
+        self.format_generated_code()
+
+    def generate_embedded(self, formula, alphabet, embedding_data: dict):
+        """
+        The top-level function to generate code
+        """
+
+        self.generate_namespace(embedding_data.get("namespace"))
+        self.generate_monitor(formula, alphabet)
+        if embedding_data.get("tests"):
+            self.generate_tests(alphabet)
+        self.copy_files(["main.cpp"])
+        # cmake generation should go at the end so that
+        # it knows all the generated files
+        self.generate_cmake(
+            overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
+            embedded=True,
+        )
+        self.format_generated_code()
+
+    def format_generated_code(self):
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception
         try:
@@ -880,3 +930,14 @@ class CodeGenCpp(CodeGen):
                     run(["clang-format", "-i", f"{self.out_dir}/{path}"])
         except FileNotFoundError:
             pass
+
+    def generate_monitor(self, formula, alphabet):
+        self.copy_files(["hnl-monitor.h", "hnl-monitor.cpp", "atom-monitor.h"])
+
+        def gen_automaton(F):
+            if not isinstance(F, IsPrefix):
+                return
+            self.generate_atomic_comparison_automaton(F, alphabet)
+
+        formula.visit(gen_automaton)
+        self._generate_monitor(formula)
