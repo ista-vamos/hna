@@ -30,7 +30,9 @@ struct SliceTreeNode {
     }
 
     SliceTreeNode(SliceTreeNode&&) = default;
-    SliceTreeNode(HNLMonitorBase *m, HNANodeType ty) : monitor(m), type(ty) {}
+    SliceTreeNode(HNLMonitorBase *m, HNANodeType ty) : monitor(m), type(ty) {
+        assert(type != HNANodeType::INVALID && "Invalid node type");
+    }
 
     void newTrace(unsigned trace_id) {
         monitor->newTrace(trace_id);
@@ -49,7 +51,7 @@ struct SliceTreeNode {
     }
 
     bool hasTrace(unsigned trace_id) {
-        monitor->hasTrace(trace_id);
+        return monitor->hasTrace(trace_id);
     }
 
 };

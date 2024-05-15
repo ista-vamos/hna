@@ -51,6 +51,7 @@ void HNAMonitor::newTrace(unsigned trace_id) {
 void HNAMonitor::extendTrace(unsigned trace_id, const ActionEvent &e) {
     auto *N = getSlice(trace_id);
     assert(N && "Do not have the monitor for the slice");
+    assert((N->type != HNANodeType::INVALID) && "Invalid monitor");
 
     if (e.isAction()) {
         auto *slice = getOrCreateSlice(N, trace_id, e);

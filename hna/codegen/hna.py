@@ -337,7 +337,7 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(wr)
 
             wr("enum class HNANodeType {\n")
-            wr(f"INVALID,\n")
+            wr(f"INVALID = -1,\n")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
                 wr(f"NODE_{state_id} = {state_id},\n")
@@ -359,7 +359,12 @@ class CodeGenCpp(CodeGen):
 
             init_id = hna.get_state_id(hna.initial_states()[0])
             wr(
-                f"SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{ /* _monitors.push_back(root.monitor.get()); */ _nodes.push_back(&root); }}\n\n"
+                f"""
+                SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{
+                    /* _monitors.push_back(root.monitor.get()); */
+                    _nodes.push_back(&root);
+                    }}\n
+                """
             )
 
         self._gen_slice_node_dtor(hna)
