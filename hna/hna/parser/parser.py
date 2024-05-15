@@ -58,7 +58,7 @@ class YamlParser:
         aut = yaml_load(stream)
         for node, formula in aut["automaton"]["nodes"].items():
             A.add_state(HypernodeState(node, formula))
-        for edge in aut["automaton"]["edges"]:
+        for edge in aut["automaton"].get("edges") or ():
             e = parse_edge(edge["edge"])
             A.add_transition(Transition(A.get(e[0]), edge["action"], A.get(e[1])))
 

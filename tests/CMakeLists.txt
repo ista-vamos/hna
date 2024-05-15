@@ -15,3 +15,4 @@ else()
 endif()
 
 add_subdirectory(hnl)
+add_subdirectory(hna)

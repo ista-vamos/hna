@@ -35,7 +35,7 @@ SliceTreeNode *HNAMonitor::getSlice(unsigned trace_id) {
 }
 
 void HNAMonitor::newTrace(unsigned trace_id) {
-    assert(_trace_to_monitor.count(trace_id) == 0);
+    assert(_trace_to_slice.count(trace_id) == 0);
 
     auto &root = _slices_tree.getRoot();
     root.newTrace(trace_id);
@@ -70,7 +70,7 @@ SliceTreeNode *HNAMonitor::getOrCreateSlice(SliceTreeNode *current_node, unsigne
         ++stats.num_hnl_monitors;
     }
 
-    assert(!succ->hasTrace(trace_id));
+    // assert(!succ->hasTrace(trace_id));
     succ->newTrace(trace_id);
 
     return succ;

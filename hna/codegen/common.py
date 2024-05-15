@@ -18,7 +18,7 @@ def FIXME(f, msg, only_comment=False, to_stderr=True):
     if only_comment:
         msg = f"/* FIXME: {msg} */\n"
     else:
-        msg = f'std::cerr << "FIXME: {msg} \\n"'
+        msg = f'std::cerr << "FIXME: {msg} \\n";'
     if to_stderr:
         print(f"/* FIXME: {msg} */", file=stderr)
     if callable(f):

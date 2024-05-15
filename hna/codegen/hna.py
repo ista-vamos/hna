@@ -393,7 +393,8 @@ class CodeGenCpp(CodeGen):
                 state_id = hna.get_state_id(state)
                 wr(f"HNANodeType nextNode_{state_id}(ActionEventType action) {{\n")
                 wr("  switch (action) {\n")
-                for action, t in hna.transitions(state=state).items():
+                T = hna.transitions(state=state)
+                for action, t in T.items() if T else ():
                     assert len(t) == 1, "The automaton is non-deterministic"
                     wr(
                         f"  case ACTION_{action}: return HNANodeType::NODE_{hna.get_state_id(t[0].target)}; \n"
