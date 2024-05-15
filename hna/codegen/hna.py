@@ -2,7 +2,7 @@ from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
 
-from hna.codegen.common import dump_codegen_position
+from hna.codegen.common import dump_codegen_position, FIXME
 from hna.codegen.hnl import CodeGenCpp as HNLCodeGenCpp
 from hna.hna.automaton import HyperNodeAutomaton
 from hna.hnl.formula import Constant
@@ -34,6 +34,12 @@ class CodeGenCpp(CodeGen):
         ]
 
         makedirs(f"{self.out_dir}/tests", exist_ok=True)
+
+    def FIXME(self, f, msg):
+        if self.args.debug:
+            FIXME(f, msg)
+        else:
+            FIXME(f, msg, only_comment=True)
 
     def _copy_common_files(self):
         files = [
@@ -156,10 +162,51 @@ class CodeGenCpp(CodeGen):
             wr("return os;\n")
             wr("}\n")
 
-    def _generate_csv_reader(self):
+    def _generate_csv_reader(self, hna):
         self.copy_file("../csvreader.h")
         self.copy_file("../csvreader.cpp")
         self._add_gen_files.append("csvreader.cpp")
+
+        # def first(strings):
+        #    return [s[0] for s in strings]
+        # def deriv(strings, letter):
+        #    return [s[1:] for s in strings if strings[0] == letter]
+
+        with self.new_file("csvreader-aux.h") as f:
+            wr = f.write
+            dump_codegen_position(f)
+            wr("#pragma once\n\n")
+            wr('#include "events.h"\n\n')
+            wr(
+                "template <typename StreamTy> ActionEventType getAction(StreamTy &stream) {"
+            )
+            self.FIXME(wr, "Match the actions using DWAG")
+            # state = hna.actions()
+            # assert state, "No actions given"
+            # wr('int ch;')
+            # while state:
+            #    wr('if ((ch = stream.get()) == EOF) { return INVALID; }\n')
+            #    for letter in first(state):
+            #        wr(f" if(ch == '{letter}') {{\n")
+            #        wr('}\n')
+
+            wr(
+                """
+            std::string tmp;
+            stream >> std::ws;
+            stream >> tmp;
+            if (stream.fail()) {
+              std::cerr << "Failed trying to read action\\n";
+              abort();
+            }
+            stream >> std::ws;
+            """
+            )
+            for action in hna.actions():
+                wr(f'if (tmp == "{action}") {{ return ACTION_{action}; }}\n')
+
+            wr(" return INVALID;")
+            wr("}\n")
 
         with self.new_file("read_csv_event.h") as f:
             wr = f.write
@@ -173,7 +220,7 @@ class CodeGenCpp(CodeGen):
                 if n == 0:  # assume this is the header
                     wr(" if (_events_num_read == 0) {\n")
                     wr("   _stream.clear(); // assume this is the header\n")
-                    wr("   // FIXME: check that the header matches the events \n")
+                    self.FIXME(wr, "check that the header matches the events")
                     wr("   // ignore the rest of the line and try with the next one\n")
                     wr(
                         "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
@@ -187,8 +234,16 @@ class CodeGenCpp(CodeGen):
                     wr("  }")
                     wr("} else {")
                     wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
-                        f'    std::cerr << "ACTION?\\n";'
+                        """
+                        _stream.clear();
+                        ev.type = getAction(_stream);
+                        if (ev.isAction()) {
+                          std::cout << "[" << id() << "] IN: " << ev << "\\n";
+                          return true;
+                        } else {
+                        """
+                        f'   std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                        "}\n"
                     )
                     wr("    abort();")
                     wr("}")
@@ -358,7 +413,7 @@ class CodeGenCpp(CodeGen):
         self._generate_events(hna)
 
         if self.args.gen_csv_reader:
-            self._generate_csv_reader()
+            self._generate_csv_reader(hna)
 
         parser = HNLParser()
         for s in hna.states():

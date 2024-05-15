@@ -227,6 +227,9 @@ class CodeGenCpp(CodeGen):
         self.copy_file("../csvreader.cpp")
         self._add_gen_files.append("csvreader.cpp")
 
+        with self.new_file("csvreader-aux.h") as f:
+            dump_codegen_position(f)
+
         with self.new_file("read_csv_event.h") as f:
             wr = f.write
             wr(f"int ch;\n\n")

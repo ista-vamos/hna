@@ -8,11 +8,10 @@
 #include <memory>
 #include <fstream>
 #include <limits>
+#include <cassert>
 
 #include "cmd.h"
-#include "traceset.h"
-#include "trace.h"
-#include "csv.hpp"
+#include "csvreader-aux.h"
 
 
 class Stream {

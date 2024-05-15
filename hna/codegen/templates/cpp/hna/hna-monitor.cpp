@@ -84,5 +84,6 @@ void HNAMonitor::traceFinished(unsigned trace_id) {
 
 void HNAMonitor::tracesFinished() {
   _traces_finished = true;
+  std::cerr << "FIXME: terminate HNL monitors that have finished\n";
 }
 
