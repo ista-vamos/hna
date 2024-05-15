@@ -180,6 +180,16 @@ class Automaton:
     def origin(self):
         return self._origin
 
+    def is_deterministic(self) -> bool:
+        """
+        Return True if the automaton is deterministic, False otherwise
+        """
+        for tmap in self._transitions_mapping.values():
+            for T in tmap.values():
+                if len(T) > 1:
+                    return False
+        return True
+
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
         for _, state in self._states.items():

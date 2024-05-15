@@ -23,6 +23,7 @@ class CodeGenCpp(CodeGen):
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_path, "templates/cpp/hna")
+        self._add_gen_files = []
 
         assert (
             self.args.csv_header
@@ -57,7 +58,7 @@ class CodeGenCpp(CodeGen):
         for f in self.args.cpp_files:
             self.copy_file(f)
 
-    def _generate_cmake(self, add_subdirs):
+    def _generate_cmake(self, add_subdirs, monitor_names):
         from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
@@ -70,12 +71,21 @@ class CodeGenCpp(CodeGen):
             {
                 "@vamos-buffers_DIR@": vamos_buffers_DIR,
                 "@additional_sources@": " ".join(
-                    (basename(f) for f in self.args.cpp_files + self.args.add_gen_files)
+                    (
+                        basename(f)
+                        for f in self.args.cpp_files
+                        + self.args.add_gen_files
+                        + self._add_gen_files
+                    )
                 ),
                 "@additional_cflags@": " ".join((d for d in self.args.cflags)),
                 "@CMAKE_BUILD_TYPE@": build_type,
                 "@ADD_SUBDIRS@": "".join(
                     f"add_subdirectory({subdir})\n" for subdir in add_subdirs
+                ),
+                "@LINK_HNL_MONITORS@": "".join(
+                    f"target_link_libraries(monitor PUBLIC hnl{monitor_name} atoms{monitor_name})\n"
+                    for monitor_name in monitor_names
                 ),
             },
         )
@@ -139,7 +149,7 @@ class CodeGenCpp(CodeGen):
             wr("switch(ev.type) {\n")
             for action in hna.actions():
                 wr(f'case ACTION_{action}: os << "{action}"; break;\n')
-            wr(f"case EVENT: os << ev; break;\n")
+            wr(f"case EVENT: os << ev.event; break;\n")
             wr(f"default: abort();\n")
             wr("}\n")
             wr('os << ")";\n\n')
@@ -149,24 +159,117 @@ class CodeGenCpp(CodeGen):
     def _generate_csv_reader(self):
         self.copy_file("../csvreader.h")
         self.copy_file("../csvreader.cpp")
-        self.args.add_gen_files.append("csvreader.cpp")
+        self._add_gen_files.append("csvreader.cpp")
 
-        with self.new_file("try_read_csv_event.cpp") as f:
+        with self.new_file("read_csv_event.h") as f:
             wr = f.write
-            dump_codegen_position(wr)
-            wr("auto it = row.begin();")
-            for name, ty in self._event:
-                wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
+            wr(f"ev.type = EVENT;\n")
+            wr(f"int ch;\n\n")
+            for n, tmp in enumerate(self._event):
+                name, ty = tmp
+                # wr(f"char action[{max_len_action_name}];\n\n")
+                wr(f"_stream >> ev.event.{name};\n")
+                wr("if (_stream.fail()) {")
+                if n == 0:  # assume this is the header
+                    wr(" if (_events_num_read == 0) {\n")
+                    wr("   _stream.clear(); // assume this is the header\n")
+                    wr("   // FIXME: check that the header matches the events \n")
+                    wr("   // ignore the rest of the line and try with the next one\n")
+                    wr(
+                        "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
+                    )
+                    wr(f"   _stream >> ev.event.{name};\n")
+                    wr("    if (_stream.fail()) {")
+                    wr(
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                    )
+                    wr("    abort();")
+                    wr("  }")
+                    wr("} else {")
+                    wr(
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                        f'    std::cerr << "ACTION?\\n";'
+                    )
+                    wr("    abort();")
+                    wr("}")
+                else:
+                    wr(
+                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                    )
+                    wr("  abort();")
+                wr("}")
+                if n == len(self._event) - 1:
+                    wr(
+                        f"""
+                    while ((ch = _stream.get()) != EOF) {{
+                      if (ch == '\\n') {{
+                        break;
+                      }}
+
+                      if (!std::isspace(ch)) {{
+                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
+                        std::cerr << "Expected the end of line, got '" << static_cast<char>(ch) << "'\\n";
+                        abort();
+                      }}
+                    }}
+                    """
+                    )
+                else:
+                    wr(
+                        f"""
+                    while ((ch = _stream.get()) != EOF) {{
+                      if (ch == ',') {{
+                        break;
+                      }}
+
+                      if (!std::isspace(ch) || ch == '\\n') {{
+                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
+                        std::cerr << "Expected next column (',' character), got '" << static_cast<char>(ch) << "'\\n";
+                        abort();
+                      }}
+                    }}
+                    """
+                    )
 
     def _gen_dispatch(self, hna, wr, call):
         wr("switch (type) {")
         for state in hna.states():
             state_id = hna.get_state_id(state)
             wr(
-                f"case HNANodeType::NODE_{state_id}: static_cast<hnl_{state_id}::HNLMonitor*>(monitor.get())->{call}; break;"
+                f"case HNANodeType::NODE_{state_id}: static_cast<hnl_{state_id}::HNLMonitor*>(monitor.get())->{call}; break\n;"
             )
         wr(" default: abort();\n")
         wr("};\n")
+
+    def _gen_create_hnl_monitor(self, hna):
+        with self.new_file("create-hnl-monitor.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            wr("Monitor *createHNLMonitor(HNANodeType node) {")
+            wr(" switch (node) {")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(
+                    f"case HNANodeType::NODE_{state_id}: return new hnl_{state_id}::HNLMonitor();\n"
+                )
+            wr(" default: abort();\n")
+            wr(" };\n")
+            wr("}\n")
+
+    def _gen_do_step(self, hna):
+        with self.new_file("do_step.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            wr("Verdict do_step(SliceTreeNode *node) {")
+            wr(" switch (node->type) {")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(
+                    f"case HNANodeType::NODE_{state_id}: return static_cast<hnl_{state_id}::HNLMonitor *>(node->monitor.get())->step();\n"
+                )
+            wr(" default: abort();\n")
+            wr(" };\n")
+            wr("}\n")
 
     def _generate_monitor(self, hna):
         with self.new_file("hna_node_types.h") as f:
@@ -174,6 +277,7 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(wr)
 
             wr("enum class HNANodeType {\n")
+            wr(f"INVALID,\n")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
                 wr(f"NODE_{state_id} = {state_id},\n")
@@ -195,7 +299,7 @@ class CodeGenCpp(CodeGen):
 
             init_id = hna.get_state_id(hna.initial_states()[0])
             wr(
-                f"SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{}}\n\n"
+                f"SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{ /* _monitors.push_back(root.monitor.get()); */ _nodes.push_back(&root); }}\n\n"
             )
 
         with self.new_file("dispatch-new-trace.h") as f:
@@ -208,10 +312,48 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(f)
             self._gen_dispatch(hna, f.write, "extendTrace(trace_id, ev)")
 
+        self._gen_create_hnl_monitor(hna)
+        self._gen_hna_transitions(hna)
+        self._gen_do_step(hna)
+
+    def _gen_hna_transitions(self, hna):
+        with self.new_file("hna-next-slice.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+
+            wr(
+                "HNANodeType nextSliceTreeNode(HNANodeType current_node, ActionEventType action) {\n"
+            )
+            wr("  switch (current_node) {\n")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(
+                    f"  case HNANodeType::NODE_{state_id}:  return nextNode_{state_id}(action);\n"
+                )
+            wr("  default: abort();\n")
+            wr("  };\n")
+            wr("}\n\n")
+
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(f"HNANodeType nextNode_{state_id}(ActionEventType action) {{\n")
+                wr("  switch (action) {\n")
+                for action, t in hna.transitions(state=state).items():
+                    assert len(t) == 1, "The automaton is non-deterministic"
+                    wr(
+                        f"  case ACTION_{action}: return HNANodeType::NODE_{hna.get_state_id(t[0].target)}; \n"
+                    )
+                wr("  default: return HNANodeType::INVALID;\n")
+                wr("  };\n")
+                wr("}\n")
+
     def generate(self, hna: HyperNodeAutomaton):
         """
         The top-level function to generate code
         """
+
+        if not hna.is_deterministic():
+            raise RuntimeError("The HNA is not deterministic")
 
         self._generate_events(hna)
 
@@ -235,13 +377,17 @@ class CodeGenCpp(CodeGen):
 
         ctx = None
         cmake_subdirs = []
+        monitor_names = []
         for state in hna.states():
             hnl_id = hna.get_state_id(state)
             subdir = f"hnl-{hnl_id}"
+            monitor_name = f"monitor_{hnl_id}"
+
             cmake_subdirs.append(subdir)
+            monitor_names.append(monitor_name)
 
             embedding_data = {
-                "monitor_name": f"monitor_{hnl_id}",
+                "monitor_name": monitor_name,
                 "tests": True,
             }
             hnl_codegen = HNLCodeGenCpp(
@@ -254,7 +400,7 @@ class CodeGenCpp(CodeGen):
         self._copy_common_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self._generate_cmake(cmake_subdirs)
+        self._generate_cmake(cmake_subdirs, monitor_names)
 
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception

@@ -6,7 +6,6 @@
 
 //#include "inputs.h"
 #include "cmd.h"
-#include "traceset.h"
 #include "csvreader.h"
 #include "hnl-monitor.h"
 

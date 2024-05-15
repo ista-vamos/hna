@@ -123,6 +123,7 @@ class CodeGenCpp(CodeGen):
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
         self._add_gen_files = []
+        self._atoms_files = []
 
         assert (
             self.args.csv_header
@@ -174,6 +175,7 @@ class CodeGenCpp(CodeGen):
                     + self._add_gen_files
                 )
             ),
+            "@atoms_sources@": " ".join((basename(f) for f in self._atoms_files)),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@MONITOR_NAME@": '""',
@@ -225,14 +227,7 @@ class CodeGenCpp(CodeGen):
         self.copy_file("../csvreader.cpp")
         self._add_gen_files.append("csvreader.cpp")
 
-        # with self.new_file("read_csv_event.cpp") as f:
-        #    wr = f.write
-        #    dump_codegen_position(wr)
-        #    wr("auto it = row.begin();")
-        #    for name, ty in self._event:
-        #        wr(f"ev.{name} = it->get<{ty}>(); ++it;\n")
-
-        with self.new_file("read_csv_event.cpp") as f:
+        with self.new_file("read_csv_event.h") as f:
             wr = f.write
             wr(f"int ch;\n\n")
             for n, tmp in enumerate(self._event):
@@ -241,18 +236,25 @@ class CodeGenCpp(CodeGen):
                 wr(f"_stream >> ev.{name};\n")
                 wr("if (_stream.fail()) {")
                 if n == 0:  # assume this is the header
-                    wr("  _stream.clear(); // assume this is the header\n")
-                    wr("  // FIXME: check that the header matches the events \n")
-                    wr("  // ignore the rest of the line and try with the next one\n")
+                    wr(" if (_events_num_read == 0) {\n")
+                    wr("   _stream.clear(); // assume this is the header\n")
+                    wr("   // FIXME: check that the header matches the events \n")
+                    wr("   // ignore the rest of the line and try with the next one\n")
                     wr(
-                        "  _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
+                        "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
                     )
-                    wr(f"_stream >> ev.{name};\n")
-                    wr("if (_stream.fail()) {")
+                    wr(f"   _stream >> ev.{name};\n")
+                    wr("    if (_stream.fail()) {")
                     wr(
-                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
                     )
-                    wr("  abort();")
+                    wr("    abort();")
+                    wr("  }")
+                    wr("} else {")
+                    wr(
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                    )
+                    wr("    abort();")
                     wr("}")
                 else:
                     wr(
@@ -497,7 +499,7 @@ class CodeGenCpp(CodeGen):
             with self.new_file(f"atom-{num}.h") as fh:
                 with self.new_file(f"atom-{num}.cpp") as fcpp:
                     self._generate_automaton_code(fh.write, fcpp.write, F, num, A)
-            self._add_gen_files.append(f"atom-{num}.cpp")
+            self._atoms_files.append(f"atom-{num}.cpp")
 
         with self.new_file("atoms.h") as f:
             f.write("#pragma once\n\n")

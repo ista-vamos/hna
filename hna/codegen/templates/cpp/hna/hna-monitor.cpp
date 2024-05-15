@@ -2,8 +2,26 @@
 
 #include "hna-monitor.h"
 
+// generated
+#include "do_step.h"
+
 Verdict HNAMonitor::step() {
+  if (_result != Verdict::UNKNOWN) {
+    return _result;
+  }
+
   Verdict verdict;
+  // FIXME: do this event driven -- trace what HNL monitors
+  // are waiting for inputs and what have work to do
+  // and let the latter do steps (+ those of slices that we
+  // updated with events)
+  // FIXME: add iterator to SlicesTree
+  for (auto *node : _slices_tree) {
+    verdict = do_step(node);
+    if (verdict != Verdict::UNKNOWN) {
+      return verdict;
+    }
+  }
 
 
   return Verdict::UNKNOWN;
@@ -29,7 +47,12 @@ void HNAMonitor::extendTrace(unsigned trace_id, const ActionEvent &e) {
     assert(N && "Do not have the monitor for the slice");
 
     if (e.isAction()) {
-        _trace_to_slice[trace_id] = getOrCreateSlice(N, trace_id, e);
+        auto *slice = getOrCreateSlice(N, trace_id, e);
+        if (!slice) {
+          _result = Verdict::FALSE;
+          return;
+        }
+        _trace_to_slice[trace_id] = slice;
     } else {
         N->extendTrace(trace_id, e.event);
     }
@@ -40,6 +63,11 @@ SliceTreeNode *HNAMonitor::getOrCreateSlice(SliceTreeNode *current_node, unsigne
     auto *succ = _slices_tree.getSuccessor(current_node, e);
     if (!succ) {
         succ = _slices_tree.addSlice(current_node, e);
+        if (!succ) {
+            return nullptr;
+        }
+
+        ++stats.num_hnl_monitors;
     }
 
     assert(!succ->hasTrace(trace_id));

@@ -7,6 +7,7 @@
 #include <string>
 #include <memory>
 #include <fstream>
+#include <limits>
 
 #include "cmd.h"
 #include "traceset.h"
@@ -46,13 +47,30 @@ public:
   // Try reading an event. Return `true` if the event was read
   // in which case the event was stored into `ev`.
   // Otherwise return `false`.
-  bool try_read(Event &ev);
+  template <typename EventTy>
+  bool try_read(EventTy &ev) {
+    assert(!finished() && "Reading finished file");
+
+    _stream >> std::ws;
+    if (_stream.eof()) {
+        _finished = true;
+        return false;
+    }
+
+     // generated part follows
+    #include "read_csv_event.h"
+
+    ++_events_num_read;
+
+    std::cout << "[" << id() << "] IN: " << ev << "\n";
+    return true;
+  }
   // Return `true` if the stream finished.
   bool finished() const;
 };
 
 
-template <typename StreamTy, typename MonitorTy>
+template <typename StreamTy, typename MonitorTy, typename EventTy = Event>
 void read_csv(CmdArgs& args, MonitorTy& M, std::atomic<bool>& running) {
   std::cerr << "Reading CSV events\n";
 
@@ -73,12 +91,12 @@ void read_csv(CmdArgs& args, MonitorTy& M, std::atomic<bool>& running) {
     }
 
     // check if we can read from some of those files
-    Event ev;
+    EventTy ev;
     bool removed = false;
     for (size_t i = 0; i < streams.size(); ++i) {
       auto *stream = streams[i].get();
 
-      if (stream->try_read(ev)) {
+      if (stream->template try_read<EventTy>(ev)) {
         M.extendTrace(stream->id(), ev);
       } else {
         if (stream->finished()) {

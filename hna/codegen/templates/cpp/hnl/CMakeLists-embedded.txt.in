@@ -15,6 +15,10 @@ endif()
 
 set(CMAKE_VERBOSE_MAKEFILE 1)
 
+add_library(atoms${MONITOR_NAME} STATIC @atoms_sources@)
+target_compile_definitions(atoms${MONITOR_NAME} PRIVATE @additional_cflags@)
+target_include_directories(atoms${MONITOR_NAME} PUBLIC ${CMAKE_SOURCE_DIR})
+
 set(LIBRARY_NAME "hnl${MONITOR_NAME}")
 add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
 target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
@@ -23,7 +27,7 @@ target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
 
 if (BUILD_HNL_EXE)
 add_executable(${MONITOR_NAME} main.cpp cmd.cpp @additional_sources@)
-target_link_libraries(${MONITOR_NAME} ${LIBRARY_NAME} trace events)
+target_link_libraries(${MONITOR_NAME} ${LIBRARY_NAME} traceset trace events atoms${MONITOR_NAME})
 target_include_directories(${MONITOR_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_include_directories(${MONITOR_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 target_compile_definitions(${MONITOR_NAME} PRIVATE @additional_cflags@)

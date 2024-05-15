@@ -74,6 +74,8 @@ add_library(events STATIC events.cpp)
 add_library(trace STATIC trace.cpp)
 add_library(traceset STATIC traceset.cpp)
 
+add_library(atoms${MONITOR_NAME} STATIC @atoms_sources@)
+target_compile_definitions(atoms${MONITOR_NAME} PRIVATE @additional_cflags@)
 
 set(LIBRARY_NAME "hnl${MONITOR_NAME}")
 add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
@@ -82,7 +84,7 @@ target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
 
 if (BUILD_EXE)
 add_executable(${MONITOR_NAME} main.cpp cmd.cpp @additional_sources@)
-target_link_libraries(${MONITOR_NAME} ${LIBRARY_NAME} trace traceset events)
+target_link_libraries(${MONITOR_NAME} ${LIBRARY_NAME} traceset trace events atoms${MONITOR_NAME})
 target_include_directories(${MONITOR_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_compile_definitions(${MONITOR_NAME} PRIVATE @additional_cflags@)
 endif()
