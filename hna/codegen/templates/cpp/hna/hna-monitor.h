@@ -8,29 +8,48 @@
 #include "trace.h"
 #include "traceset.h"
 #include "verdict.h"
-#include "monitor.h"
+#include "hnl-monitor-base.h"
 
 // generated
 #include "events.h"
 #include "hnl-monitors.h"
 #include "hna_node_types.h"
 
+// Monitor + its type. We generate code that uses
+// static_cast where the particular type of the monitor is needed
+// XXX: in this case using virtual methods could be actually
+// very similar in speed, maybe do that to simplify the code?
 struct SliceTreeNode {
-    std::unique_ptr<Monitor> monitor;
+    std::unique_ptr<HNLMonitorBase> monitor;
     HNANodeType type;
 
-    SliceTreeNode(Monitor *m, HNANodeType ty) : monitor(m), type(ty) {}
+    ~SliceTreeNode() {
+        // we need to cast the unique_ptr to the right type
+        // so that the right dtor is called
+        #include "slice-tree-node-dtor.h"
+    }
+
+    SliceTreeNode(SliceTreeNode&&) = default;
+    SliceTreeNode(HNLMonitorBase *m, HNANodeType ty) : monitor(m), type(ty) {}
 
     void newTrace(unsigned trace_id) {
-        #include "dispatch-new-trace.h"
+        monitor->newTrace(trace_id);
     }
 
     void traceFinished(unsigned trace_id) {
-        #include "dispatch-trace-finished.h"
+        monitor->traceFinished(trace_id);
     }
 
     void extendTrace(unsigned trace_id, const Event& ev) {
-        #include "dispatch-extend-trace.h"
+        monitor->extendTrace(trace_id, ev);
+    }
+
+    void noFutureUpdates() {
+        monitor->noFutureUpdates();
+    }
+
+    bool hasTrace(unsigned trace_id) {
+        monitor->hasTrace(trace_id);
     }
 
 };
@@ -112,7 +131,7 @@ public:
   void newTrace(unsigned id);
   void extendTrace(unsigned trace_id, const ActionEvent &e);
   void traceFinished(unsigned trace_id);
-  void tracesFinished();
+  void noFutureUpdates();
 
   Verdict step();
 

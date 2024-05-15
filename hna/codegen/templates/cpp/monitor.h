@@ -17,6 +17,6 @@ public:
   /// Notify the end of the trace
   void traceFinished(unsigned trace_id);
 
-  /// Notify that no new trace can come in the future
-  void tracesFinished(unsigned trace_id);
+  /// Notify that no new trace neither events can come in the future
+  void noFutureUpdates(unsigned trace_id);
 };

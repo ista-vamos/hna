@@ -62,7 +62,7 @@ public:
 
     ++_events_num_read;
 
-    std::cout << "[" << id() << "] IN: " << ev << "\n";
+    //std::cout << "[" << id() << "] IN: " << ev << "\n";
     return true;
   }
   // Return `true` if the stream finished.
@@ -118,7 +118,7 @@ void read_csv(CmdArgs& args, MonitorTy& M, std::atomic<bool>& running) {
     }
 
     if (streams.empty()) {
-      M.tracesFinished();
+      M.noFutureUpdates();
       break;
     }
   }

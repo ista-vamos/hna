@@ -240,7 +240,7 @@ class CodeGenCpp(CodeGen):
                         _stream.clear();
                         ev.type = getAction(_stream);
                         if (ev.isAction()) {
-                          std::cout << "[" << id() << "] IN: " << ev << "\\n";
+                          //std::cout << "[" << id() << "] IN: " << ev << "\\n";
                           return true;
                         } else {
                         """
@@ -288,21 +288,11 @@ class CodeGenCpp(CodeGen):
                     """
                     )
 
-    def _gen_dispatch(self, hna, wr, call):
-        wr("switch (type) {")
-        for state in hna.states():
-            state_id = hna.get_state_id(state)
-            wr(
-                f"case HNANodeType::NODE_{state_id}: static_cast<hnl_{state_id}::HNLMonitor*>(monitor.get())->{call}; break\n;"
-            )
-        wr(" default: abort();\n")
-        wr("};\n")
-
     def _gen_create_hnl_monitor(self, hna):
         with self.new_file("create-hnl-monitor.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("Monitor *createHNLMonitor(HNANodeType node) {")
+            wr("HNLMonitorBase *createHNLMonitor(HNANodeType node) {")
             wr(" switch (node) {")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
@@ -327,6 +317,19 @@ class CodeGenCpp(CodeGen):
             wr(" default: abort();\n")
             wr(" };\n")
             wr("}\n")
+
+    def _gen_slice_node_dtor(self, hna):
+        with self.new_file("slice-tree-node-dtor.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            wr(" switch (type) {")
+            for state in hna.states():
+                state_id = hna.get_state_id(state)
+                wr(
+                    f"case HNANodeType::NODE_{state_id}: delete static_cast<hnl_{state_id}::HNLMonitor *>(monitor.release()); break;\n"
+                )
+            wr(" default: abort();\n")
+            wr(" };\n")
 
     def _generate_monitor(self, hna):
         with self.new_file("hna_node_types.h") as f:
@@ -359,15 +362,7 @@ class CodeGenCpp(CodeGen):
                 f"SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{ /* _monitors.push_back(root.monitor.get()); */ _nodes.push_back(&root); }}\n\n"
             )
 
-        with self.new_file("dispatch-new-trace.h") as f:
-            dump_codegen_position(f)
-            self._gen_dispatch(hna, f.write, "newTrace(trace_id)")
-        with self.new_file("dispatch-trace-finished.h") as f:
-            dump_codegen_position(f)
-            self._gen_dispatch(hna, f.write, "traceFinished(trace_id)")
-        with self.new_file("dispatch-extend-trace.h") as f:
-            dump_codegen_position(f)
-            self._gen_dispatch(hna, f.write, "extendTrace(trace_id, ev)")
+        self._gen_slice_node_dtor(hna)
 
         self._gen_create_hnl_monitor(hna)
         self._gen_hna_transitions(hna)

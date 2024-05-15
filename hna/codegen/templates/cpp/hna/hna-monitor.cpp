@@ -21,6 +21,12 @@ Verdict HNAMonitor::step() {
     if (verdict != Verdict::UNKNOWN) {
       return verdict;
     }
+
+    // there will be no future updates,
+    // propagate this information to the HNL monitors
+    if (_traces_finished) {
+        node->noFutureUpdates();
+    }
   }
 
 
@@ -85,8 +91,7 @@ void HNAMonitor::traceFinished(unsigned trace_id) {
   _trace_to_slice.erase(trace_id);
 }
 
-void HNAMonitor::tracesFinished() {
+void HNAMonitor::noFutureUpdates() {
   _traces_finished = true;
-  std::cerr << "FIXME: terminate HNL monitors that have finished\n";
 }
 

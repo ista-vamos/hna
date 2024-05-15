@@ -4,7 +4,7 @@ set -e
 
 SRCDIR="$(dirname $0)/../.."
 DIR="$(readlink -f $(dirname $0))"
-WORKDIR=$(mktemp -d -t hnl-test-XXX)
+WORKDIR=$(mktemp -d -t hna-test-XXX)
 
 
 export ASAN_OPTIONS=detect_leaks=0
@@ -19,8 +19,12 @@ function gen {
 	make check -j4
 }
 
+TEST_NUM=0
 
 function run {
+	echo " ---- TEST $TEST_NUM ----"
+	TEST_NUM=$(($TEST_NUM + 1))
+
 	RESULT=$1
 	shift
 
@@ -34,6 +38,6 @@ function run {
 		esac
 	done
 
-	$WORKDIR/monitor $FILES | grep "Formula is $RESULT"
+	$WORKDIR/monitor $FILES | grep "HNA $RESULT"
 }
 

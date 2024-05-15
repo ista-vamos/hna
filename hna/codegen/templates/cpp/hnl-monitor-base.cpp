@@ -15,7 +15,7 @@ void HNLMonitorBase::traceFinished(unsigned trace_id) {
   _traces.traceFinished(trace_id);
 }
 
-void HNLMonitorBase::tracesFinished() {
+void HNLMonitorBase::noFutureUpdates() {
   _traces_finished.store(true, std::memory_order_release);
 }
 

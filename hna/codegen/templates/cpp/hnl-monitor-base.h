@@ -14,7 +14,7 @@ public:
   void newTrace(unsigned id);
   void extendTrace(unsigned trace_id, const Event &e);
   void traceFinished(unsigned trace_id);
-  void tracesFinished();
+  void noFutureUpdates();
 
   bool allTracesFinished();
   bool hasTrace(unsigned trace_id);
