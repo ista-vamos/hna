@@ -20,7 +20,6 @@ class TraceSet {
   // concurrently with iterating over _traces
   Trace *get(unsigned trace_id);
 
-
 public:
   // Create a new trace in this TraceSet.
   Trace *newTrace(unsigned trace_id);
@@ -37,6 +36,11 @@ public:
   // Our code never iterates over traces and calls this method at the same
   // time, so there is no race while iterating unlocked over traces.
   Trace *getNewTrace();
+
+  // check if the finished flag is set for all the traces
+  bool allTracesFinished();
+
+  bool hasTrace(unsigned trace_id);
 
   auto begin() const -> auto { return _traces.begin(); }
   auto end() const -> auto { return _traces.end(); }

@@ -108,20 +108,4 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     _instances.pop_back();
 }
 
-void HNLMonitor::newTrace(unsigned trace_id) {
-    _traces.newTrace(trace_id);
-}
-
-void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
-    _traces.extendTrace(trace_id, e);
-}
-
-void HNLMonitor::traceFinished(unsigned trace_id) {
-  _traces.traceFinished(trace_id);
-}
-
-void HNLMonitor::tracesFinished() {
-  _traces_finished.store(true, std::memory_order_release);
-}
-
 @namespace_end@

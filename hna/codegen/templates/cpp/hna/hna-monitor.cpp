@@ -52,6 +52,8 @@ void HNAMonitor::extendTrace(unsigned trace_id, const ActionEvent &e) {
           _result = Verdict::FALSE;
           return;
         }
+        // in this slice the trace is finished, we continue in the new slice
+        N->traceFinished(trace_id);
         _trace_to_slice[trace_id] = slice;
     } else {
         N->extendTrace(trace_id, e.event);
@@ -70,7 +72,7 @@ SliceTreeNode *HNAMonitor::getOrCreateSlice(SliceTreeNode *current_node, unsigne
         ++stats.num_hnl_monitors;
     }
 
-    // assert(!succ->hasTrace(trace_id));
+    assert(!succ->hasTrace(trace_id));
     succ->newTrace(trace_id);
 
     return succ;
@@ -80,6 +82,7 @@ void HNAMonitor::traceFinished(unsigned trace_id) {
   auto *N = getSlice(trace_id);
   assert(N && "Do not have the monitor for the slice");
   N->traceFinished(trace_id);
+  _trace_to_slice.erase(trace_id);
 }
 
 void HNAMonitor::tracesFinished() {

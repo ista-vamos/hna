@@ -12,6 +12,7 @@
 
 #include "cmd.h"
 #include "csvreader-aux.h"
+#include "events.h"
 
 
 class Stream {

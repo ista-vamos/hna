@@ -15,17 +15,14 @@
 #include "verdict.h"
 #include "monitor.h"
 #include "atom-monitor.h"
+#include "hnl-monitor-base.h"
 
 /* generated */
 #include "hnl-instance.h"
 
 @namespace_start@
 
-class HNLMonitor : public Monitor {
-
-  TraceSet _traces;
-  std::atomic<bool> _traces_finished{false};
-
+class HNLMonitor : public HNLMonitorBase {
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
   std::list<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
@@ -33,21 +30,7 @@ public:
   AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
   void removeInstance(HNLInstance *instance);
 
-  // adding and extending traces
-  void newTrace(unsigned id);
-  void extendTrace(unsigned trace_id, const Event &e);
-  void traceFinished(unsigned trace_id);
-  void tracesFinished();
-
   Verdict step();
-
-  // statistics
-  struct {
-    // number of HNL configurations
-    size_t num_instances{0};
-    // number of atom monitors
-    size_t num_atoms{0};
-  } stats;
 };
 
 #endif // !HNL_MONITOR_H__@MONITOR_NAME@

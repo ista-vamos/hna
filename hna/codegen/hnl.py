@@ -144,6 +144,8 @@ class CodeGenCpp(CodeGen):
     def _copy_common_files(self):
         files = [
             "../monitor.h",
+            "../hnl-monitor-base.h",
+            "../hnl-monitor-base.cpp",
             "../cmd.h",
             "../cmd.cpp",
             "../trace.h",

@@ -51,16 +51,41 @@ Trace *TraceSet::get(unsigned trace_id) {
     auto it = _traces.find(trace_id);
     if (it != _traces.end()) {
         auto *ret = it->second.get();
-        _traces_mtx.unlock();
         return ret;
     }
 
     it = _new_traces.find(trace_id);
     if (it != _new_traces.end()) {
         auto *ret = it->second.get();
-        _traces_mtx.unlock();
         return ret;
     }
 
     return nullptr;
+}
+
+bool TraceSet::hasTrace(unsigned trace_id) {
+    bool ret;
+    _traces_mtx.lock();
+    ret = (get(trace_id) != nullptr);
+    _traces_mtx.unlock();
+
+    return ret;
+}
+
+bool TraceSet::allTracesFinished() {
+    _traces_mtx.lock();
+    if (_new_traces.size() > 0) {
+        _traces_mtx.unlock();
+        return false;
+    }
+
+    for (auto &it : _traces) {
+        if (!it.second->finished()) {
+            _traces_mtx.unlock();
+            return false;
+        }
+    }
+
+    _traces_mtx.unlock();
+    return true;
 }

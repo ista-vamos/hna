@@ -48,6 +48,8 @@ class CodeGenCpp(CodeGen):
             "hna-monitor.cpp",
             #
             "../monitor.h",
+            "../hnl-monitor-base.h",
+            "../hnl-monitor-base.cpp",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
