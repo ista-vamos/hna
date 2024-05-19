@@ -545,12 +545,12 @@ class CodeGenCpp(CodeGen):
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
 
         wrh("public:\n")
-        t1 = atom_formula.children[0].trace_variables()
-        t2 = atom_formula.children[1].trace_variables()
-        assert len(t1) <= 1, str(t1)
-        assert len(t2) <= 1, str(t2)
-        t1 = t1[0].name if t1 else "__no_trace"
-        t2 = t2[0].name if t2 else "__no_trace"
+        p1 = atom_formula.children[0].program_variables()
+        p2 = atom_formula.children[1].program_variables()
+        assert len(p1) <= 1, str(p1)
+        assert len(p2) <= 1, str(p2)
+        t1 = p1[0].trace.name if p1 else "__no_trace"
+        t2 = p2[0].trace.name if p2 else "__no_trace"
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")

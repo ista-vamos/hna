@@ -57,7 +57,7 @@ class Formula:
 
     def program_variable_occurrences(self) -> List["ProgramVariable"]:
         """
-        Get all occurrences of trace variables from this formula
+        Get all occurrences of program variables from this formula
         """
         return [t for c in self.children for t in c.program_variable_occurrences()]
 
@@ -66,6 +66,12 @@ class Formula:
         Get all trace variables from this formula
         """
         return list(set((t for c in self.children for t in c.program_variables())))
+
+    def functions(self) -> List["Function"]:
+        """
+        Get all trace variables from this formula
+        """
+        return list(set((t for c in self.children for t in c.functions())))
 
     def constants(self) -> List["Constant"]:
         """
@@ -282,6 +288,35 @@ class TraceVariable(TraceFormula):
     def trace_variables(self) -> List["TraceVariable"]:
         return [self]
 
+    def uniq_name(self) -> str:
+        return str(self.name)
+
+
+class Function(TraceFormula):
+    def __init__(self, name: Token, traces) -> None:
+        super().__init__()
+        self.name = name
+        assert all((map(lambda x: isinstance(x, TraceVariable), traces))), traces
+        self.traces = traces
+
+    def __str__(self) -> str:
+        return f"@{self.name}({', '.join(map(str, self.traces))})"
+
+    def __hash__(self) -> int:
+        return hash(str(self))
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, Function) and self.name == other.name
+
+    def functions(self):
+        return [self]
+
+    def trace_variables(self) -> List[TraceVariable]:
+        return self.traces
+
+    def uniq_name(self) -> str:
+        return f"{self.name}_{'_'.join(map(str, self.traces))}"
+
 
 class Epsilon(TraceFormula):
     def __eq__(self, other: Any) -> bool:
@@ -309,7 +344,7 @@ EPSILON = Epsilon()
 class ProgramVariable(TraceFormula):
     def __init__(self, name: str, trace: TraceVariable) -> None:
         super().__init__()
-        assert isinstance(trace, TraceVariable), trace
+        assert isinstance(trace, (TraceVariable, Function)), trace
         self.name: str = name
         self.trace: TraceVariable = trace
 
@@ -324,6 +359,8 @@ class ProgramVariable(TraceFormula):
         return (self.name, self.trace).__hash__()
 
     def trace_variables(self) -> List[TraceVariable]:
+        if isinstance(self.trace, Function):
+            return self.trace.trace_variables()
         return [self.trace]
 
     def program_variables(self) -> List["ProgramVariable"]:

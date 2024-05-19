@@ -34,6 +34,10 @@ class ProcessAST(Transformer):
     def stutter_reduce(self, items):
         return StutterReduce(items[0])
 
+    def funcall(self, items):
+        name = items[0].children[0].children[0]
+        return Function(name, items[1:])
+
     def quantifier(self, items):
         # our grammar assumes prenex form, so the quantifiers are just forall/exists and a name
         if items[0].data == "forall":
@@ -77,5 +81,6 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast, ctx=None):
+    print(lark_ast.pretty())
     T = ProcessAST(lark_ast)
     return T.transform(lark_ast)

@@ -40,7 +40,10 @@ _conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce
 stutter_reduce: "[" traceformula "]"
 seq: constant+
 
-progvar: name "(" tracevar ")"
+progvar:  name "(" tracevar ")"
+        | name "(" funcall ")"
+funcall: fun "(" tracevar ("," tracevar)* ")"
+fun: name
 constant: /[a-zA-Z0-9]/
 
 name: NAME
