@@ -818,18 +818,13 @@ class CodeGenCpp(CodeGen):
         if self._namespace:
             wrh(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
-        assert (
-            False
-        ), "HERE I MUST GENERATE THE CODE THAT PASSES REFERENCES TO TRACE SETS"
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : FunctionAtomMonitor(ATOM_{num} /*, instance.{t1}, instance.{t2}*/) {{ }}\n\n"
         )
 
         wrcpp(
-            f"void AtomMonitor{num}::_step(EvaluationState &cfg, const Event *ev1, const Event *ev2) {{ abort(); }}\n"
+            f"Verdict AtomMonitor{num}::step(unsigned num [[unused]]) {{ abort(); }}\n"
         )
-
-        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{ abort(); }}\n")
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):
 
@@ -1105,7 +1100,9 @@ class CodeGenCpp(CodeGen):
             wr(", ".join((f"{tr.name}" for tr in fun.traces)))
             wr("}];")
             wr("}\n")
+            wr("}\n")
             wr("};\n")
+            wr("#endif\n")
 
     def generate_functions(self, formula, embedding_data={"monitor_name": ""}):
         with self.new_file("functions.h") as f:

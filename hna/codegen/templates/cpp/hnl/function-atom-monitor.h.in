@@ -13,7 +13,7 @@
  * Class representing the evaluation of an atom that uses functions.
  * Internally, it is implemented as an HNLMonitor.
  **/
-class FunctionAtomMonitor : AtomMonitor {
+class FunctionAtomMonitor : public AtomMonitor {
 public:
   FunctionAtomMonitor(int ty) : AtomMonitor(ty) {}
 
