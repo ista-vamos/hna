@@ -7,7 +7,17 @@ from pyeda.inter import bddvar
 
 from hna.automata.automaton import Automaton
 from hna.codegen.common import dump_codegen_position
-from hna.hnl.formula import IsPrefix, And, Or, Not, Constant
+from hna.hnl.formula import (
+    IsPrefix,
+    And,
+    Or,
+    Not,
+    Constant,
+    Function,
+    ForAll,
+    TraceVariable,
+    PrenexFormula,
+)
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -124,6 +134,7 @@ class CodeGenCpp(CodeGen):
         self._automaton_to_formula = {}
         self._add_gen_files = []
         self._atoms_files = []
+        self._submonitors_dirs = {}
 
         assert (
             self.args.csv_header
@@ -153,7 +164,8 @@ class CodeGenCpp(CodeGen):
             "../traceset.h",
             "../traceset.cpp",
             "../verdict.h",
-            "../csv.hpp",
+            "../atom-base.h",
+            "../atom-evaluation-state.h",
         ]
         self.copy_files(files)
 
@@ -181,6 +193,12 @@ class CodeGenCpp(CodeGen):
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@MONITOR_NAME@": '""',
+            "@ADD_NESTED_MONITORS@": "\n".join(
+                (
+                    f"add_subdirectory({submon_dir})"
+                    for submon_dir in self._submonitors_dirs.values()
+                )
+            ),
         }
         if overwrite_keys:
             values.update(overwrite_keys)
@@ -342,10 +360,16 @@ class CodeGenCpp(CodeGen):
                 return "RESULT_FALSE"
 
             F = atoms_map[bdd.top]
-            return f"AUTOMATON_{self._formula_to_automaton[F][0]}"
+            return f"ATOM_{self._formula_to_automaton[F][0]}"
 
         with self.new_file("hnl-state.h") as f:
-            f.write("#pragma once\n\n")
+            ns = self._namespace or ""
+            f.write(
+                f"""
+            #ifndef _HNL_STATE_H__{ns}
+            #define _HNL_STATE_H__{ns}
+            """
+            )
             if self._namespace:
                 f.write(f"namespace {self._namespace} {{\n\n")
             dump_codegen_position(f)
@@ -354,10 +378,11 @@ class CodeGenCpp(CodeGen):
             f.write("  RESULT_TRUE  = -1,\n")
             f.write("  RESULT_FALSE = -2,\n")
             for num, A in self._formula_to_automaton.values():
-                f.write(f"  AUTOMATON_{num} = {num},\n")
+                f.write(f"  ATOM_{num} = {num},\n")
             f.write("};\n")
             if self._namespace:
                 f.write(f"}} // namespace {self._namespace}\n\n")
+            f.write("#endif\n")
 
         # this is so stupid, but I just cannot get the variable
         # for the node, because PyEDA does not have getters for `_VARS`
@@ -365,7 +390,7 @@ class CodeGenCpp(CodeGen):
         # can get the root variable.
         with self.new_file("bdd-structure.h") as f:
             dump_codegen_position(f)
-            f.write("/* AUTOMATON, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
+            f.write("/* ATOM, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
             f.write("constexpr HNLEvaluationState BDD[][3] = {\n")
             f.write("  {INVALID, INVALID, INVALID},\n")
             seen = set()
@@ -396,7 +421,13 @@ class CodeGenCpp(CodeGen):
     def _generate_hnlinstances(self, formula):
         with self.new_file("hnl-instance.h") as f:
             wr = f.write
-            wr("#pragma once\n\n")
+            ns = self._namespace or ""
+            wr(
+                f"""
+            #ifndef _HNL_INSTANCE_H__{ns}
+            #define _HNL_INSTANCE_H__{ns}
+            """
+            )
             wr("#include <cassert>\n\n")
             wr('#include "hnl-state.h"\n')
             wr('#include "trace.h"\n\n')
@@ -422,6 +453,7 @@ class CodeGenCpp(CodeGen):
             wr("};\n\n")
             if self._namespace:
                 wr(f" }} // namespace {self._namespace}\n")
+            wr("#endif\n")
 
     def _generate_createinstances(self, formula):
         N = len(formula.quantifier_prefix)
@@ -480,38 +512,86 @@ class CodeGenCpp(CodeGen):
                 wr("}\n")
 
     def _generate_atom_monitor(self):
-        with self.new_file("createatommonitor.h") as f:
+        with self.new_file("create-atom-monitor.h") as f:
             dump_codegen_position(f)
             f.write("switch(monitor_type) {\n")
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
                 f.write(
-                    f"case AUTOMATON_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
+                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
                 )
             f.write("default: abort();\n")
             f.write("}\n\n")
 
-    def _generate_monitor(self, formula):
+    def _generate_monitor(self, formula, alphabet):
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
         self._generate_createinstances(formula)
-        self._generate_automata_code()
+        self._generate_automata_code(alphabet)
         self._generate_atom_monitor()
 
-    def _generate_automata_code(self):
+    def _generate_automata_code(self, alphabet):
+        # NOTE: this must preceed generating the `atom-*` files,
+        # because it initializes the `self._submonitors_dirs`
+        for F, tmp in self._formula_to_automaton.items():
+            num, A = tmp
+            if not F.functions():
+                continue
+            submon_dir = f"mon-atom-{num}"
+            assert num not in self._submonitors_dirs
+            self._submonitors_dirs[num] = submon_dir
+            nested_mon = CodeGenCpp(
+                self.args,
+                ctx=None,
+                out_dir=f"{self.out_dir}/{submon_dir}",
+                namespace=f"atom{num}",
+            )
+
+            embedding_data = {
+                "monitor_name": f"atom{num}",
+                "tests": True,
+            }
+            tr1 = None
+            tr2 = None
+            subs = {}
+            lf, rf = F.children[0].functions(), F.children[1].functions()
+            if lf:
+                assert len(lf) == 1, lf
+                tr1 = TraceVariable(f"tr_{lf[0].name}")
+                subs[lf[0]] = tr1
+            if rf:
+                assert len(rf) == 1, rf
+                tr2 = TraceVariable(f"tr_{rf[0].name}")
+                subs[rf[0]] = tr2
+
+            formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], F.substitute(subs))
+            nested_mon.generate_embedded(formula, alphabet, embedding_data)
+
         for F, tmp in self._formula_to_automaton.items():
             num, A = tmp
             with self.new_file(f"atom-{num}.h") as fh:
                 with self.new_file(f"atom-{num}.cpp") as fcpp:
-                    self._generate_automaton_code(fh.write, fcpp.write, F, num, A)
+                    if F.functions():
+                        self._generate_automaton_code_with_funs(
+                            fh.write, fcpp.write, F, num
+                        )
+                    else:
+                        self._generate_automaton_code(fh.write, fcpp.write, F, num, A)
             self._atoms_files.append(f"atom-{num}.cpp")
 
         with self.new_file("atoms.h") as f:
-            f.write("#pragma once\n\n")
+            ns = self._namespace or ""
+            f.write(
+                f"""
+            #ifndef _ATOMS_H__{ns}
+            #define _ATOMS_H__{ns}
+            """
+            )
             dump_codegen_position(f)
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
                 f.write(f'#include "atom-{num}.h"\n')
+            f.write("#endif\n")
 
         with self.new_file("do_step.h") as f:
             dump_codegen_position(f)
@@ -527,14 +607,28 @@ class CodeGenCpp(CodeGen):
     def _generate_automaton_code(
         self, wrh, wrcpp, atom_formula: IsPrefix, num, automaton
     ):
-        wrh("#pragma once\n\n")
+        ns = self._namespace or ""
+        wrh(
+            f"""
+        #ifndef _ATOM_{num}_H__{ns}
+        #define _ATOM_{num}_H__{ns}
+        """
+        )
         dump_codegen_position(wrh)
-        wrh('#include "atom-monitor.h"\n\n')
+        wrh('#include "regular-atom-monitor.h"\n\n')
         if self._namespace:
             wrh(f"namespace {self._namespace} {{\n\n")
+
+        p1 = atom_formula.children[0].program_variables()
+        p2 = atom_formula.children[1].program_variables()
+        assert len(p1) <= 1, str(p1)
+        assert len(p2) <= 1, str(p2)
+        t1 = p1[0].trace.name if p1 else "__no_trace"
+        t2 = p2[0].trace.name if p2 else "__no_trace"
+
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
-        wrh(f"class AtomMonitor{num} : public AtomMonitor {{\n\n")
+        wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
 
         for state in automaton.states():
             dump_codegen_position(wrcpp)
@@ -545,25 +639,20 @@ class CodeGenCpp(CodeGen):
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
 
         wrh("public:\n")
-        p1 = atom_formula.children[0].program_variables()
-        p2 = atom_formula.children[1].program_variables()
-        assert len(p1) <= 1, str(p1)
-        assert len(p2) <= 1, str(p2)
-        t1 = p1[0].trace.name if p1 else "__no_trace"
-        t2 = p2[0].trace.name if p2 else "__no_trace"
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
 
         if self._namespace:
             wrh(f"}} // namespace {self._namespace}\n")
+        wrh("#endif\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
-            wrh(f"using namespace {self._namespace};\n\n")
+            wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : AtomMonitor(AUTOMATON_{num}, instance.{t1}, instance.{t2}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : RegularAtomMonitor(ATOM_{num}, instance.{t1}, instance.{t2}) {{\n\n"
         )
         # create the initial configuration
         priorities = list(set(t.priority for t in automaton.transitions()))
@@ -577,7 +666,7 @@ class CodeGenCpp(CodeGen):
         )
         wrcpp("}\n\n")
 
-        wrcpp(f"/* THE AUTOMATON */\n")
+        wrcpp(f"/* THE AUTOMATON FOR THE ATOM */\n")
         for state in automaton.states():
             wrcpp(f"/* {state} */\n")
         wrcpp("/* --- */\n")
@@ -689,6 +778,58 @@ class CodeGenCpp(CodeGen):
         wrcpp(f"_cfgs.rotate();")
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n\n")
+
+    def _generate_automaton_code_with_funs(
+        self, wrh, wrcpp, atom_formula: IsPrefix, num
+    ):
+        ns = self._namespace or ""
+        wrh(
+            f"""
+        #ifndef _ATOM_{num}_H__{ns}
+        #define _ATOM_{num}_H__{ns}
+        """
+        )
+        dump_codegen_position(wrh)
+        wrh('#include "function-atom-monitor.h"\n\n')
+        wrh(f'#include "{self._submonitors_dirs[num]}/hnl-monitor.h"\n\n')
+        if self._namespace:
+            wrh(f"namespace {self._namespace} {{\n\n")
+        dump_codegen_position(wrh)
+        wrh(f"/* {atom_formula}*/\n")
+        wrh(f"class AtomMonitor{num} : public FunctionAtomMonitor {{\n\n")
+        wrh(f"  atom{num}::HNLMonitor monitor;\n")
+        wrh("public:\n")
+        wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
+        wrh(f"Verdict step(unsigned num = 0);\n\n")
+        wrh("};\n\n")
+
+        if self._namespace:
+            wrh(f"}} // namespace {self._namespace}\n")
+        wrh("#endif\n")
+
+        p1 = atom_formula.children[0].program_variables()
+        p2 = atom_formula.children[1].program_variables()
+        assert len(p1) <= 1, str(p1)
+        assert len(p2) <= 1, str(p2)
+        t1 = p1[0].trace.name if p1 else "__no_trace"
+        t2 = p2[0].trace.name if p2 else "__no_trace"
+
+        wrcpp(f'#include "atom-{num}.h"\n\n')
+        if self._namespace:
+            wrh(f"using namespace {self._namespace};\n\n")
+        dump_codegen_position(wrcpp)
+        assert (
+            False
+        ), "HERE I MUST GENERATE THE CODE THAT PASSES REFERENCES TO TRACE SETS"
+        wrcpp(
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : FunctionAtomMonitor(ATOM_{num} /*, instance.{t1}, instance.{t2}*/) {{ }}\n\n"
+        )
+
+        wrcpp(
+            f"void AtomMonitor{num}::_step(EvaluationState &cfg, const Event *ev1, const Event *ev2) {{ abort(); }}\n"
+        )
+
+        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{ abort(); }}\n")
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):
 
@@ -936,10 +1077,72 @@ class CodeGenCpp(CodeGen):
             },
         )
 
+    def _gen_function_files(self, fun: Function):
+        with self.new_file(f"function-{fun.name}.h") as f:
+            wr = f.write
+            ns = self._namespace or ""
+            wr(
+                f"""
+            #ifndef _FUNCTION_{fun.name}_H__{ns}
+            #define _FUNCTION_{fun.name}_H__{ns}
+            """
+            )
+
+            wr('#include "traceset.h"\n\n')
+            wr(f"class Function_{fun.name} {{\n")
+
+            wr(f" using TraceVec = std::tuple<")
+            wr(", ".join((f"unsigned" for _ in fun.traces)))
+            wr(" >;\n\n")
+            wr("std::map<TraceVec, std::unique_ptr<TraceSet>> _trace_sets;\n\n")
+
+            wr("public:\n")
+            wr(" TraceSet& getTraceSet(")
+            wr(", ".join((f"unsigned {tr.name}" for tr in fun.traces)))
+            wr(") {\n")
+            wr(" abort();")
+            wr(" // return _trace_sets[TraceVec{")
+            wr(", ".join((f"{tr.name}" for tr in fun.traces)))
+            wr("}];")
+            wr("}\n")
+            wr("};\n")
+
+    def generate_functions(self, formula, embedding_data={"monitor_name": ""}):
+        with self.new_file("functions.h") as f:
+            dump_codegen_position(f)
+            for fun in formula.functions():
+                f.write(f'#include "function-{fun.name}.h"\n')
+
+        with self.new_file("function-instances.h") as f:
+            dump_codegen_position(f)
+            for fun in formula.functions():
+                f.write(f"Function_{fun.name} function_{fun.name};\n")
+
+        for fun in formula.functions():
+            self._gen_function_files(fun)
+
+        self.gen_file(
+            "function-atom-monitor.h.in",
+            "function-atom-monitor.h",
+            {
+                "@MONITOR_NAME@": f'{embedding_data["monitor_name"]}',
+                "@namespace@": self._namespace or "",
+                "@namespace_start@": (
+                    f"namespace {self._namespace} {{" if self._namespace else ""
+                ),
+                "@namespace_end@": (
+                    f"}} // namespace {self._namespace}" if self._namespace else ""
+                ),
+            },
+        )
+
     def generate(self, formula):
         """
         The top-level function to generate code
         """
+
+        if formula.functions():
+            self._have_functions = True
 
         self._generate_events()
 
@@ -958,6 +1161,8 @@ class CodeGenCpp(CodeGen):
         assert alphabet, "The alphabet is empty"
 
         self.generate_monitor(formula, alphabet)
+
+        self.generate_functions(formula)
 
         self.generate_tests(alphabet)
 
@@ -983,9 +1188,13 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
+        self.generate_functions(formula)
+
         self.generate_monitor(formula, alphabet, embedding_data)
+
         if embedding_data.get("tests"):
             self.generate_tests(alphabet)
+
         self.gen_file(
             "main.cpp.in",
             "main.cpp",
@@ -995,6 +1204,7 @@ class CodeGenCpp(CodeGen):
                 )
             },
         )
+
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
@@ -1036,6 +1246,7 @@ class CodeGenCpp(CodeGen):
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
         self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
+        self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):
@@ -1043,4 +1254,4 @@ class CodeGenCpp(CodeGen):
             self.generate_atomic_comparison_automaton(F, alphabet)
 
         formula.visit(gen_automaton)
-        self._generate_monitor(formula)
+        self._generate_monitor(formula, alphabet)

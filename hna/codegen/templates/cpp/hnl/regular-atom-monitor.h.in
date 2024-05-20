@@ -1,0 +1,26 @@
+#ifndef REGULAR_ATOM_MONITOR__@MONITOR_NAME@
+#define REGULAR_ATOM_MONITOR__@MONITOR_NAME@
+
+#include "verdict.h"
+#include "hnl-instance.h"
+#include "atom-monitor.h"
+
+@namespace_start@
+
+/**
+ * Class representing the evaluation of an atom on a pair of traces
+ **/
+class RegularAtomMonitor : public AtomMonitor {
+protected:
+  Trace *t1;
+  Trace *t2;
+
+public:
+  RegularAtomMonitor(int ty, Trace *t1, Trace *t2) : AtomMonitor(ty), t1(t1), t2(t2) {}
+
+  Verdict step(const unsigned step_num);
+};
+
+@namespace_end@
+
+#endif // REGULAR_ATOM_MONITOR__@MONITOR_NAME@

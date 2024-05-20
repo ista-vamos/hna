@@ -16,6 +16,7 @@
 #include "monitor.h"
 #include "atom-monitor.h"
 #include "hnl-monitor-base.h"
+#include "functions.h"
 
 /* generated */
 #include "hnl-instance.h"
@@ -25,6 +26,8 @@
 class HNLMonitor : public HNLMonitorBase {
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
   std::list<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
+
+  #include "function-instances.h"
 
 public:
   AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);

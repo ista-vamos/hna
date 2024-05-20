@@ -22,13 +22,6 @@ static inline Verdict do_step(AtomMonitor *M) {
 Verdict HNLMonitor::step() {
   Verdict verdict;
 
-//#if 0
-  if (auto *t1 = _traces.getNewTrace()) {
-      /* GENERATED */
-      #include "createinstances.h"
-  }
-//#endif
-
   for (auto atom_monitor_it = _atom_monitors.begin(),
             atom_monitor_et = _atom_monitors.end();
             atom_monitor_it != atom_monitor_et;) {
@@ -87,7 +80,7 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
     AtomMonitor *monitor;
 
     /* GENERATED */
-    #include "createatommonitor.h"
+    #include "create-atom-monitor.h"
 
     monitor->setUsedBy(instance);
     _atom_monitors.emplace_back(monitor);

@@ -69,7 +69,7 @@ class Formula:
 
     def functions(self) -> List["Function"]:
         """
-        Get all trace variables from this formula
+        Get all functions from this formula
         """
         return list(set((t for c in self.children for t in c.functions())))
 
@@ -138,6 +138,25 @@ class Formula:
             nc = x.remove_stutter_reductions()
             children.append(nc)
         new_self.children = children
+
+        return new_self
+
+    def substitute(self, S):
+        if self in S:
+            return copy(S[self])
+
+        new_self = copy(self)
+        new_self.children = [c.substitute(S) for c in self.children]
+
+        # Special cases
+        ### XXX: these should be children too (or inherit the substitute method
+        # instead of these if blocks)
+        if isinstance(self, ProgramVariable):
+            new_self.trace = self.trace.substitute(S)
+        elif isinstance(self, Quantifier):
+            new_self.var = self.var.substitute(S)
+        elif isinstance(self, Function):
+            new_self.traces = [t.substitute(S) for t in self.traces]
 
         return new_self
 
@@ -238,6 +257,14 @@ class PrenexFormula(Formula):
     def remove_stutter_reductions(self) -> Formula:
         return PrenexFormula(
             self.quantifier_prefix, self.formula.remove_stutter_reductions()
+        )
+
+    def functions(self) -> List["Function"]:
+        return self.formula.functions()
+
+    def substitute(self, S):
+        return PrenexFormula(
+            [t.substitute(S) for t in self.quantifiers()], self.formula.substitute(S)
         )
 
     def __str__(self) -> str:
@@ -368,6 +395,10 @@ class ProgramVariable(TraceFormula):
 
     def program_variable_occurrences(self) -> List["ProgramVariable"]:
         return [self]
+
+    def functions(self) -> List["Function"]:
+        # Functions are inside the 'trace' variable
+        return self.trace.functions()
 
     def derivative(self, wrt: "Constant") -> DerivativesSet:
         if wrt.is_rep() or not wrt.is_x():

@@ -1,0 +1,25 @@
+#ifndef FUNCTION_ATOM_MONITOR__@MONITOR_NAME@
+#define FUNCTION_ATOM_MONITOR__@MONITOR_NAME@
+
+#include <algorithm>
+#include <cassert>
+
+#include "verdict.h"
+#include "atom-monitor.h"
+
+@namespace_start@
+
+/**
+ * Class representing the evaluation of an atom that uses functions.
+ * Internally, it is implemented as an HNLMonitor.
+ **/
+class FunctionAtomMonitor : AtomMonitor {
+public:
+  FunctionAtomMonitor(int ty) : AtomMonitor(ty) {}
+
+  Verdict step(const unsigned step_num);
+};
+
+@namespace_end@
+
+#endif // FUNCTION_ATOM_MONITOR__@MONITOR_NAME@

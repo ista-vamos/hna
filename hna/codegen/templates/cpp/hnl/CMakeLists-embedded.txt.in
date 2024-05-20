@@ -37,3 +37,5 @@ if (ENABLE_TESTS)
     enable_testing()
     add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()
+
+@ADD_NESTED_MONITORS@

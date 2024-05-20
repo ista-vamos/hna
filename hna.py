@@ -25,7 +25,7 @@ def dbg(m):
 
 
 def compile_monitor(args):
-    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs] , cwd=args.out_dir)
+    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs], cwd=args.out_dir)
     run(["make", f"-j{int(cpu_count()/2)+1}"], cwd=args.out_dir)
 
 
@@ -102,7 +102,10 @@ def parse_arguments():
         "-D", action="append", default=[], help="Additional CMake definitions"
     )
     parser.add_argument(
-        "--cflags", action="append", default=[], help="Additional C flags for the compiler"
+        "--cflags",
+        action="append",
+        default=[],
+        help="Additional C flags for the compiler",
     )
     parser.add_argument(
         "--alphabet",
@@ -114,7 +117,7 @@ def parse_arguments():
         action="append",
         default=[],
         help="Do not generate the default version of the given file, its replacement is assumed to be "
-             "provided as an additional source.",
+        "provided as an additional source.",
     )
     parser.add_argument(
         "--gen-only",
@@ -127,9 +130,9 @@ def parse_arguments():
         action="store_true",
         default=True,
         help="Generate code that can read CSV files as input. "
-             "It is enabled by default even for monitors with other "
-             "inputs (for testing). See --help of the monitor binary "
-             "for instructions on how to use the CSV reader if the monitor has also other inputs.",
+        "It is enabled by default even for monitors with other "
+        "inputs (for testing). See --help of the monitor binary "
+        "for instructions on how to use the CSV reader if the monitor has also other inputs.",
     )
     parser.add_argument(
         "--csv-header",
@@ -157,11 +160,11 @@ def parse_arguments():
                 raise RuntimeError("Multiple .hna or .yml files given")
             args.input_file = fl
         elif (
-                fl.endswith(".cpp")
-                or fl.endswith(".h")
-                or fl.endswith(".hpp")
-                or fl.endswith(".cxx")
-                or fl.endswith("cc")
+            fl.endswith(".cpp")
+            or fl.endswith(".h")
+            or fl.endswith(".hpp")
+            or fl.endswith(".cxx")
+            or fl.endswith("cc")
         ):
             args.cpp_files.append(abspath(fl))
         elif fl.endswith(".vsrc"):

@@ -27,7 +27,7 @@ def dbg(m):
 
 
 def compile_monitor(args):
-    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs] , cwd=args.out_dir)
+    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs], cwd=args.out_dir)
     run(["make", f"-j{int(cpu_count()/2)+1}"], cwd=args.out_dir)
 
 
@@ -146,7 +146,10 @@ def parse_arguments():
         "-D", action="append", default=[], help="Additional CMake definitions"
     )
     parser.add_argument(
-        "--cflags", action="append", default=[], help="Additional C flags for the compiler"
+        "--cflags",
+        action="append",
+        default=[],
+        help="Additional C flags for the compiler",
     )
     parser.add_argument(
         "--reduction",
