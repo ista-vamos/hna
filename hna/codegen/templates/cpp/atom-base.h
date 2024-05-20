@@ -5,7 +5,6 @@
 #include <vector>
 #include <cassert>
 
-#include "atom-evaluation-state.h"
 #include "hnl-state.h"
 
 template <typename HNLInstance>
@@ -15,7 +14,6 @@ protected:
   const int _type = INVALID;
 
   std::vector<HNLInstance *> _used_by;
-  EvaluationStateSet _cfgs;
 
 public:
   AtomBase(int ty) : _type(ty) {}

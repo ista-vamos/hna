@@ -4,6 +4,7 @@
 #include "verdict.h"
 #include "hnl-instance.h"
 #include "atom-monitor.h"
+#include "atom-evaluation-state.h"
 
 @namespace_start@
 
@@ -14,6 +15,8 @@ class RegularAtomMonitor : public AtomMonitor {
 protected:
   Trace *t1;
   Trace *t2;
+
+  EvaluationStateSet _cfgs;
 
 public:
   RegularAtomMonitor(int ty, Trace *t1, Trace *t2) : AtomMonitor(ty), t1(t1), t2(t2) {}
