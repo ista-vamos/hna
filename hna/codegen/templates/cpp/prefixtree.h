@@ -1,25 +1,24 @@
 #ifndef PREFIXTREE_H
 #define PREFIXTREE_H
 
-#include <vector>
+#include <cassert>
 #include <map>
 #include <memory>
-#include <cassert>
+#include <vector>
 
-template <typename ElemTy>
-class PrefixTreeNode {
+template <typename ElemTy> class PrefixTreeNode {
   ElemTy _value;
   std::vector<std::unique_ptr<PrefixTreeNode<ElemTy>>> _children;
-public:
 
+public:
   PrefixTreeNode() = default;
-  PrefixTreeNode(const ElemTy& val) : _value(val) {}
-  PrefixTreeNode(ElemTy&& val) : _value(std::move(val)) {}
+  PrefixTreeNode(const ElemTy &val) : _value(val) {}
+  PrefixTreeNode(ElemTy &&val) : _value(std::move(val)) {}
 
   template <typename IterableTy>
-  PrefixTreeNode<ElemTy> *get(const IterableTy& seq) {
+  PrefixTreeNode<ElemTy> *get(const IterableTy &seq) {
     auto *cur = this;
-    for (auto& val : seq) {
+    for (auto &val : seq) {
       cur = cur->get(val);
       if (!cur)
         return nullptr;
@@ -29,10 +28,10 @@ public:
   }
 
   template <typename IterableTy>
-  PrefixTreeNode<ElemTy> *get_longest_prefix(const IterableTy& seq) {
+  PrefixTreeNode<ElemTy> *get_longest_prefix(const IterableTy &seq) {
     auto *cur = this;
     auto *tmp = cur;
-    for (auto& val : seq) {
+    for (auto &val : seq) {
       tmp = cur->get(val);
       if (!cur)
         return tmp;
@@ -42,8 +41,8 @@ public:
     return cur;
   }
 
-  PrefixTreeNode<ElemTy> *get(const ElemTy& val) {
-    for (auto& chld : _children) {
+  PrefixTreeNode<ElemTy> *get(const ElemTy &val) {
+    for (auto &chld : _children) {
       if (chld->value() == val)
         return chld.get();
     }
@@ -52,24 +51,23 @@ public:
   }
 
   template <typename IterableTy>
-  std::pair<PrefixTreeNode<ElemTy>*, bool>
-  insert(const IterableTy& seq) {
+  std::pair<PrefixTreeNode<ElemTy> *, bool> insert(const IterableTy &seq) {
     auto *node = this;
     bool isnew;
-    for (auto& val : seq) {
+    for (auto &val : seq) {
       std::tie(node, isnew) = node->insert(val);
       assert(node);
     }
     return {node, isnew};
   }
 
-  std::pair<PrefixTreeNode<ElemTy>*, bool>
-  insert(const ElemTy& val) {
+  std::pair<PrefixTreeNode<ElemTy> *, bool> insert(const ElemTy &val) {
     auto *node = get(val);
     if (node)
       return {node, false};
 
-    return {_children.emplace_back(new PrefixTreeNode<ElemTy>(val)).get(), true};
+    return {_children.emplace_back(new PrefixTreeNode<ElemTy>(val)).get(),
+            true};
   }
 
   auto begin() -> auto { return _children.begin(); }
@@ -77,25 +75,19 @@ public:
   auto begin() const -> auto { return _children.begin(); }
   auto end() const -> auto { return _children.end(); }
 
-
   bool has_children() const { return !_children.empty(); }
-  ElemTy& value() { return _value; }
-  const ElemTy& value() const { return _value; }
-
+  ElemTy &value() { return _value; }
+  const ElemTy &value() const { return _value; }
 };
 
-template <typename ElemTy>
-class PrefixTree {
+template <typename ElemTy> class PrefixTree {
   PrefixTreeNode<ElemTy> _root;
 
 public:
-
-
   PrefixTreeNode<ElemTy> *get() { return &_root; }
 
-
   template <typename IterableTy>
-  PrefixTreeNode<ElemTy> *get(const IterableTy& seq) {
+  PrefixTreeNode<ElemTy> *get(const IterableTy &seq) {
     auto *cur = &_root;
     auto seq_it = seq.begin();
     auto seq_end = seq.end();
@@ -111,11 +103,9 @@ public:
   }
 
   template <typename IterableTy>
-  std::pair<PrefixTreeNode<ElemTy>*, bool>
-  insert(const IterableTy& seq) {
+  std::pair<PrefixTreeNode<ElemTy> *, bool> insert(const IterableTy &seq) {
     return _root.insert(seq);
   }
-
 };
 
 #endif

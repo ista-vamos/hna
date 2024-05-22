@@ -1,9 +1,9 @@
 #ifndef TRACESET_H_
 #define TRACESET_H_
 
+#include <map>
 #include <memory>
 #include <mutex>
-#include <map>
 #include <vector>
 
 #include "trace.h"
@@ -55,4 +55,3 @@ public:
 };
 
 #endif
-

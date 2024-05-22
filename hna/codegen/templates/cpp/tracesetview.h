@@ -1,9 +1,9 @@
 #ifndef TRACESETREF_H_
 #define TRACESETREF_H_
 
+#include <map>
 #include <memory>
 #include <mutex>
-#include <map>
 #include <vector>
 
 #include "trace.h"
@@ -27,7 +27,7 @@ class TraceSetView {
 public:
   TraceSetView() = default;
   ~TraceSetView();
-  TraceSetView(TraceSet&);
+  TraceSetView(TraceSet &);
   TraceSetView(Trace *);
 
   // Announce a new trace in this TraceSet.
@@ -53,4 +53,3 @@ public:
 };
 
 #endif
-

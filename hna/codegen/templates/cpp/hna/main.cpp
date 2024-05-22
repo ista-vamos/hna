@@ -2,13 +2,11 @@
 #include <cstdlib>
 #include <iostream>
 #include <thread>
-#include <cassert>
 
 #include "cmd.h"
 #include "csvreader.h"
-#include "hna-monitor.h"
 #include "events.h"
-
+#include "hna-monitor.h"
 
 int main(int argc, char *argv[]) {
   CmdArgs cmd(argc, argv);
@@ -28,15 +26,16 @@ int main(int argc, char *argv[]) {
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {
       inputs_thrd = std::thread([&cmd, &monitor, &running] {
-                      read_csv<CSVEventsStream, HNAMonitor, ActionEvent>(cmd, monitor, running);
-                    });
+        read_csv<CSVEventsStream, HNAMonitor, ActionEvent>(cmd, monitor,
+                                                           running);
+      });
     } else {
       assert(false && "Not implemented yet");
       abort();
-    /*
-    if (cmd.trace_are_aps)
-    if (cmd.trace_is_signal)
-    */
+      /*
+      if (cmd.trace_are_aps)
+      if (cmd.trace_is_signal)
+      */
     }
   } else {
     assert(false && "Not implemeted yet");
@@ -55,11 +54,12 @@ int main(int argc, char *argv[]) {
   assert(verdict != Verdict::UNKNOWN);
   std::cout << " -- verdict --\n";
   if (verdict == Verdict::TRUE)
-      std::cout << "HNA accepts\n";
+    std::cout << "HNA accepts\n";
   else if (verdict == Verdict::FALSE)
-      std::cout << "HNA rejects\n";
+    std::cout << "HNA rejects\n";
   std::cout << " -- stats --\n";
-  std::cout << "  Number of HNL monitors: " << monitor.stats.num_hnl_monitors << "\n";
+  std::cout << "  Number of HNL monitors: " << monitor.stats.num_hnl_monitors
+            << "\n";
 
   return static_cast<int>(verdict);
 }

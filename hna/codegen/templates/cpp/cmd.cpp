@@ -1,7 +1,7 @@
-#include <iostream>
-#include <cstring>
-#include <cassert>
 #include "cmd.h"
+#include <cassert>
+#include <cstring>
+#include <iostream>
 
 bool CmdArgs::parse() {
   // the object should not be initialized
@@ -37,14 +37,20 @@ bool CmdArgs::parse() {
 }
 
 void CmdArgs::help() const {
-  std::cerr << "Usage: monitor [--no-ignore-unknown] [--csv] [--signal] [--aps]\n\n"
-            << "  --no-ignore-unknown     Do not ignore unknown variables and constants in input.\n"
-            << "  --csv                   Input files are CSV files.\n\n"
-            << "If the monitor was generated with fixed input channels, it will use that\n"
-            << "unless --csv is specified, in which case it is going to read traces from provided\n"
-            << "CSV files. CSV is also the default option if the monitor had no input method specified.\n"
-            << "With --csv, these additional options can be used:\n\n"
-            << "  --aps     Lines in input file represent atomic propositions.\n"
-            << "            If this option is missing, trace is considered to be a sequence of variable assignments.\n"
-            << "  --signal  Lines specify changes in the state (signal semantics).\n";
+  std::cerr
+      << "Usage: monitor [--no-ignore-unknown] [--csv] [--signal] [--aps]\n\n"
+      << "  --no-ignore-unknown     Do not ignore unknown variables and "
+         "constants in input.\n"
+      << "  --csv                   Input files are CSV files.\n\n"
+      << "If the monitor was generated with fixed input channels, it will use "
+         "that\n"
+      << "unless --csv is specified, in which case it is going to read traces "
+         "from provided\n"
+      << "CSV files. CSV is also the default option if the monitor had no "
+         "input method specified.\n"
+      << "With --csv, these additional options can be used:\n\n"
+      << "  --aps     Lines in input file represent atomic propositions.\n"
+      << "            If this option is missing, trace is considered to be a "
+         "sequence of variable assignments.\n"
+      << "  --signal  Lines specify changes in the state (signal semantics).\n";
 }

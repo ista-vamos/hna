@@ -5,8 +5,8 @@
 #include <vector>
 
 /***
-* Class to parse command-line arguments
-*/
+ * Class to parse command-line arguments
+ */
 class CmdArgs {
   int argc;
   char **argv;
@@ -25,7 +25,8 @@ public:
 
   // do not have open more than this amount of traces at once
   size_t open_traces_limit = 5000;
-  // read at most this number of events before switching to extending some other trace
+  // read at most this number of events before switching to extending some other
+  // trace
   size_t read_max_num_events_at_once = 1000000;
 
   bool parse();
@@ -33,4 +34,3 @@ public:
 };
 
 #endif
-

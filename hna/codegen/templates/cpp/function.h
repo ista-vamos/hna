@@ -5,8 +5,8 @@
 
 class Function {
 public:
-    virtual void step() = 0;
-    virtual bool noFutureUpdates() const = 0;
+  virtual void step() = 0;
+  virtual bool noFutureUpdates() const = 0;
 };
 
 #endif // HNL_FUNCTION_H_

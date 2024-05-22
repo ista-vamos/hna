@@ -19,7 +19,6 @@ Trace *TraceSet::newTrace(unsigned trace_id) {
   return t;
 }
 
-
 Trace *TraceSet::getNewTrace() {
   Trace *t = nullptr;
 
@@ -37,12 +36,12 @@ Trace *TraceSet::getNewTrace() {
 }
 
 void TraceSet::extendTrace(unsigned trace_id, const Event &e) {
-    _traces_mtx.lock();
-    Trace *trace = get(trace_id);
-    assert(trace && "Do not have such a trace");
-    _traces_mtx.unlock();
+  _traces_mtx.lock();
+  Trace *trace = get(trace_id);
+  assert(trace && "Do not have such a trace");
+  _traces_mtx.unlock();
 
-    trace->append(e);
+  trace->append(e);
 }
 
 void TraceSet::traceFinished(unsigned trace_id) {
@@ -53,60 +52,57 @@ void TraceSet::traceFinished(unsigned trace_id) {
   _traces_mtx.unlock();
 }
 
-
 Trace *TraceSet::get(unsigned trace_id) {
-    auto it = _traces.find(trace_id);
-    if (it != _traces.end()) {
-        auto *ret = it->second.get();
-        return ret;
-    }
+  auto it = _traces.find(trace_id);
+  if (it != _traces.end()) {
+    auto *ret = it->second.get();
+    return ret;
+  }
 
-    it = _new_traces.find(trace_id);
-    if (it != _new_traces.end()) {
-        auto *ret = it->second.get();
-        return ret;
-    }
+  it = _new_traces.find(trace_id);
+  if (it != _new_traces.end()) {
+    auto *ret = it->second.get();
+    return ret;
+  }
 
-    return nullptr;
+  return nullptr;
 }
 
 bool TraceSet::hasTrace(unsigned trace_id) {
-    bool ret;
-    _traces_mtx.lock();
-    ret = (get(trace_id) != nullptr);
-    _traces_mtx.unlock();
+  bool ret;
+  _traces_mtx.lock();
+  ret = (get(trace_id) != nullptr);
+  _traces_mtx.unlock();
 
-    return ret;
+  return ret;
 }
 
 bool TraceSet::allTracesFinished() {
-    _traces_mtx.lock();
-    if (_new_traces.size() > 0) {
-        _traces_mtx.unlock();
-        return false;
-    }
-
-    for (auto &it : _traces) {
-        if (!it.second->finished()) {
-            _traces_mtx.unlock();
-            return false;
-        }
-    }
-
+  _traces_mtx.lock();
+  if (_new_traces.size() > 0) {
     _traces_mtx.unlock();
-    return true;
-}
+    return false;
+  }
 
+  for (auto &it : _traces) {
+    if (!it.second->finished()) {
+      _traces_mtx.unlock();
+      return false;
+    }
+  }
+
+  _traces_mtx.unlock();
+  return true;
+}
 
 // NOTE: this should not be called concurrently, do not lock
 void TraceSet::addView(TraceSetView *view) {
-    assert(std::find(_views.begin(), _views.end(), view) == _views.end());
-    _views.push_back(view);
+  assert(std::find(_views.begin(), _views.end(), view) == _views.end());
+  _views.push_back(view);
 }
 
 void TraceSet::removeView(TraceSetView *view) {
-    auto it = std::find(_views.begin(), _views.end(), view);
-    assert (it != _views.end());
-    _views.erase(it);
+  auto it = std::find(_views.begin(), _views.end(), view);
+  assert(it != _views.end());
+  _views.erase(it);
 }
-
