@@ -157,16 +157,19 @@ class CodeGenCpp(CodeGen):
         files = [
             "../monitor.h",
             "../hnl-monitor-base.h",
-            "../hnl-monitor-base.cpp",
             "../cmd.h",
             "../cmd.cpp",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
             "../traceset.cpp",
+            "../tracesetview.h",
+            "../tracesetview.cpp",
             "../verdict.h",
             "../atom-base.h",
             "../atom-evaluation-state.h",
+            # XXX: do this only when functions are used
+            "../function.h",
         ]
         self.copy_files(files)
 
@@ -457,9 +460,9 @@ class CodeGenCpp(CodeGen):
                 wr(f" }} // namespace {self._namespace}\n")
             wr("#endif\n")
 
-    def _generate_createinstances(self, formula):
+    def _generate_create_instances(self, formula):
         N = len(formula.quantifier_prefix)
-        with self.new_file("createinstances.h") as f:
+        with self.new_file("create-instances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
@@ -467,51 +470,76 @@ class CodeGenCpp(CodeGen):
                 wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
                 wr(f"  auto *t{i} = t{i}_ptr.get();\n")
 
-            dump_codegen_position(wr)
-            wr("\n  /* Create the instances */\n")
-            wr(
-                "    /* XXX: Maybe it could be more efficient to just have a hash map */\n"
-            )
-            wr(
-                "    /* XXX: and check if we have generated the combination (instead of checking */\n"
-            )
-            wr("    /* XXX: those conditions) */\n")
-            for t1_pos in range(1, N + 1):
-                # compute the condition to avoid repeating the combinations
-                # of traces
-                conds = []
-                # FIXME: generate the matrix instead of generating the rows again and again
-                posrow = list(traces_positions(t1_pos, N))
-                for r in range(1, t1_pos):
-                    # these traces cannot be the same
-                    diffs = set()
-                    for i1, i2 in zip(
-                        posrow[r - 1 : t1_pos],
-                        list(traces_positions(r, N))[r - 1 : t1_pos],
-                    ):
-                        diffs.add((i1, i2) if i1 < i2 else (i2, i1))
-                    c = "||".join((f"t{i1} != t{i2}" for i1, i2 in diffs))
-                    conds.append(f"({c})" if len(diffs) > 1 else c)
-                cond = "&&".join(conds) if conds else "true"
-                wr(f"if ({cond}) {{")
-                dump_codegen_position(wr)
-                wr("\n  _instances.emplace_back(new HNLInstance{")
-                for i in traces_positions(t1_pos, N):
-                    wr(f"t{i}, ")
-                wr("INITIAL_ATOM});\n")
-                wr("++stats.num_instances;\n\n")
-                wr(
-                    "_instances.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_instances.back().get());\n"
-                )
-                dump_codegen_position(wr)
-                wr(f'std::cerr << "HNLInstance[init"')
-                for i in traces_positions(t1_pos, N):
-                    wr(f' << ", " << t{i}->id()')
-                wr('<< "]\\n";\n')
-                wr("}\n")
+            self._gen_create_instance(N, formula, wr)
 
-            for i in range(2, len(formula.quantifier_prefix) + 1):
-                wr("}\n")
+        # XXX: only if functions are used
+        self._generate_create_instances_function_mon(formula)
+
+    def _gen_create_instance(self, N, formula, wr):
+        wr(
+            """
+        /* Create the instances
+        
+           XXX: Maybe it could be more efficient to just have a hash map 
+           XXX: and check if we have generated the combination (instead of checking
+           XXX: those conditions) */
+        """
+        )
+
+        dump_codegen_position(wr)
+        for t1_pos in range(1, N + 1):
+            # compute the condition to avoid repeating the combinations
+            # of traces
+            conds = []
+            # FIXME: generate the matrix instead of generating the rows again and again
+            posrow = list(traces_positions(t1_pos, N))
+            for r in range(1, t1_pos):
+                # these traces cannot be the same
+                diffs = set()
+                for i1, i2 in zip(
+                    posrow[r - 1 : t1_pos],
+                    list(traces_positions(r, N))[r - 1 : t1_pos],
+                ):
+                    diffs.add((i1, i2) if i1 < i2 else (i2, i1))
+                c = "||".join((f"t{i1} != t{i2}" for i1, i2 in diffs))
+                conds.append(f"({c})" if len(diffs) > 1 else c)
+            cond = "&&".join(conds) if conds else "true"
+            wr(f"if ({cond}) {{")
+            dump_codegen_position(wr)
+            wr("\n  _instances.emplace_back(new HNLInstance{")
+            for i in traces_positions(t1_pos, N):
+                wr(f"t{i}, ")
+            wr("INITIAL_ATOM});\n")
+            wr("++stats.num_instances;\n\n")
+            wr(
+                "_instances.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_instances.back().get());\n"
+            )
+            dump_codegen_position(wr)
+            ns = f"{self._namespace}::" if self._namespace else ""
+            wr(f'std::cerr << "{ns}HNLInstance[init"')
+            for i in traces_positions(t1_pos, N):
+                wr(f' << ", " << t{i}->id()')
+            wr('<< "]\\n";\n')
+            wr("}\n")
+        for i in range(2, len(formula.quantifier_prefix) + 1):
+            wr("}\n")
+
+    def _generate_create_instances_function_mon(self, formula):
+        with self.new_file("create-instances-left.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            wr("/* the code that precedes this defines a variable `t1` */\n\n")
+            wr(f"for (auto &[t2_id, t2] : _traces_r) {{\n")
+
+            self._gen_create_instance(2, formula, wr)
+
+        with self.new_file("create-instances-right.h") as f:
+            wr = f.write
+            dump_codegen_position(wr)
+            wr("/* the code that precedes this defines a variable `t1` */\n\n")
+            wr(f"for (auto &[t2_id, t2] : _traces_l) {{\n")
+
+            self._gen_create_instance(2, formula, wr)
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
@@ -519,8 +547,11 @@ class CodeGenCpp(CodeGen):
             f.write("switch(monitor_type) {\n")
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
+                lf, rf = F.children[0].functions(), F.children[1].functions()
+                lf = f", function_{lf[0].name}.get()" if lf else ""
+                rf = f", function_{rf[0].name}.get()" if rf else ""
                 f.write(
-                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
+                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance{lf}{rf}); break;\n"
                 )
             f.write("default: abort();\n")
             f.write("}\n\n")
@@ -528,7 +559,7 @@ class CodeGenCpp(CodeGen):
     def _generate_monitor(self, formula, alphabet):
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
-        self._generate_createinstances(formula)
+        self._generate_create_instances(formula)
         self._generate_automata_code(alphabet)
         self._generate_atom_monitor()
 
@@ -597,6 +628,7 @@ class CodeGenCpp(CodeGen):
             embedding_data = {
                 "monitor_name": f"atom{num}",
                 "tests": True,
+                "is_function_monitor": True,
             }
             tr1 = None
             tr2 = None
@@ -785,20 +817,43 @@ class CodeGenCpp(CodeGen):
         wrh("#endif\n")
 
     def _generate_atom_with_funs(self, wrcpp, atom_formula: IsPrefix, num):
-        p1 = atom_formula.children[0].program_variables()
-        p2 = atom_formula.children[1].program_variables()
-        assert len(p1) <= 1, str(p1)
-        assert len(p2) <= 1, str(p2)
-        t1 = p1[0].trace.name if p1 else "__no_trace"
-        t2 = p2[0].trace.name if p2 else "__no_trace"
+        lf, rf = (
+            atom_formula.children[0].functions(),
+            atom_formula.children[1].functions(),
+        )
+        lf_name, rf_name = lf[0].name, rf[0].name
+        lfarg = f", Function *{lf_name}" if lf else ""
+        rfarg = f", Function *{rf_name}" if rf else ""
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
+        if lf_name:
+            wrcpp(f'#include "function-{lf_name}.h"\n')
+        if rf_name:
+            wrcpp(f'#include "function-{rf_name}.h"\n')
+
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : FunctionAtomMonitor(ATOM_{num} /*, instance.{t1}, instance.{t2}*/) {{ }}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor(ATOM_{num}), "
         )
+        monitor_init = []
+        if lf:
+            args = ", ".join(f"instance.{t.name}" for t in lf[0].traces)
+            monitor_init.append(
+                f"static_cast<Function_{lf_name}*>({lf_name})->getTraceSet({args})"
+            )
+        if rf:
+            if not lf:
+                # dummy argument that says the trace set is the one on the right
+                monitor_init.append("false")
+
+            args = ", ".join(f"instance.{t.name}" for t in rf[0].traces)
+            monitor_init.append(
+                f"static_cast<Function_{rf_name}*>({rf_name})->getTraceSet({args})"
+            )
+        wrcpp(f"monitor({', '.join(monitor_init)})")
+        wrcpp("{}\n\n")
 
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num [[unused]]) {{ \n")
         wrcpp(
@@ -825,12 +880,25 @@ class CodeGenCpp(CodeGen):
         wrh(f'#include "{self._submonitors_dirs[num]}/hnl-monitor.h"\n\n')
         if self._namespace:
             wrh(f"namespace {self._namespace} {{\n\n")
+
+        lf, rf = (
+            atom_formula.children[0].functions(),
+            atom_formula.children[1].functions(),
+        )
+        lf_name, rf_name = lf[0].name, rf[0].name
+        lf = f", Function *{lf_name}" if lf else ""
+        rf = f", Function *{rf_name}" if rf else ""
+
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public FunctionAtomMonitor {{\n\n")
-        wrh(f"  atom{num}::HNLMonitor monitor;\n")
+        wrh(f"  atom{num}::FunctionHNLMonitor monitor;\n")
+        # if lf_name:
+        #    wrh(f"  TraceSet& traces_{lf_name};\n")
+        # if rf_name:
+        #    wrh(f"  TraceSet& traces_{rf_name};\n")
         wrh("public:\n")
-        wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
+        wrh(f"AtomMonitor{num}(HNLInstance& instance{lf}{rf});\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
         if self._namespace:
@@ -1094,46 +1162,57 @@ class CodeGenCpp(CodeGen):
             """
             )
 
+            wr('#include "function.h"\n')
             wr('#include "traceset.h"\n\n')
-            wr(f"class Function_{fun.name} {{\n")
 
-            wr(f" using TraceVec = std::tuple<")
-            wr(", ".join((f"unsigned" for _ in fun.traces)))
-            wr(" >;\n\n")
-            wr("std::map<TraceVec, std::unique_ptr<TraceSet>> _trace_sets;\n\n")
+            wr(f"class Function_{fun.name} : public Function{{\n")
 
             wr("public:\n")
-            wr(" TraceSet& getTraceSet(")
-            wr(", ".join((f"unsigned {tr.name}" for tr in fun.traces)))
-            wr(") {\n")
-            wr(" abort();")
-            wr(" // return _trace_sets[TraceVec{")
-            wr(", ".join((f"{tr.name}" for tr in fun.traces)))
-            wr("}];")
-            wr("}\n")
-            wr("}\n")
+            wr(" virtual TraceSet& getTraceSet(")
+            wr(", ".join((f"Trace *{tr.name}" for tr in fun.traces)))
+            wr(") = 0;\n")
             wr("};\n")
             wr("#endif\n")
 
     def generate_functions(self, formula, embedding_data={"monitor_name": ""}):
         with self.new_file("functions.h") as f:
             dump_codegen_position(f)
+            f.write(f'#ifndef HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
+            f.write(f'#define HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
+            f.write("#include <memory>\n")
+            f.write('#include "function.h"\n\n')
             for fun in formula.functions():
-                f.write(f'#include "function-{fun.name}.h"\n')
+                f.write(f"std::unique_ptr<Function> createFunction_{fun.name}();\n")
+            f.write(f'#endif // !HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
+
+        with self.new_file("functions-initialize.h") as f:
+            dump_codegen_position(f)
+            for fun in formula.functions():
+                f.write(f"function_{fun.name} = createFunction_{fun.name}();\n")
 
         with self.new_file("function-instances.h") as f:
             dump_codegen_position(f)
             for fun in formula.functions():
-                f.write(f"Function_{fun.name} function_{fun.name};\n")
+                f.write(f"std::unique_ptr<Function> function_{fun.name};\n")
 
         for fun in formula.functions():
             self._gen_function_files(fun)
+
+        with self.new_file("gen-function-traces.h") as f:
+            dump_codegen_position(f)
+            for fun in formula.functions():
+                f.write(f"function_{fun.name}->step();\n")
+            f.write("if (finished) {")
+            f.write(" // check if also the function traces generators finished\n")
+            for fun in formula.functions():
+                f.write(f"finished &= function_{fun.name}->noFutureUpdates();\n")
+            f.write("}")
 
         self.gen_file(
             "function-atom-monitor.h.in",
             "function-atom-monitor.h",
             {
-                "@MONITOR_NAME@": f'{embedding_data["monitor_name"]}',
+                "@MONITOR_NAME@": embedding_data["monitor_name"],
                 "@namespace@": self._namespace or "",
                 "@namespace_start@": (
                     f"namespace {self._namespace} {{" if self._namespace else ""

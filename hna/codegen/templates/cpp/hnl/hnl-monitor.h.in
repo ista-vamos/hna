@@ -10,30 +10,67 @@
 #include <list>
 #include <memory>
 
-#include "trace.h"
-#include "traceset.h"
 #include "verdict.h"
 #include "monitor.h"
 #include "atom-monitor.h"
+#include "function.h"
+#include "traceset.h"
+#include "tracesetview.h"
+
 #include "hnl-monitor-base.h"
-#include "functions.h"
 
 /* generated */
 #include "hnl-instance.h"
+#include "functions.h"
 
 @namespace_start@
 
-class HNLMonitor : public HNLMonitorBase {
+
+class HNLMonitor : public HNLMonitorBase<TraceSet> {
+protected:
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
   std::list<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
   #include "function-instances.h"
 
+  // check for new traces and create HNLInstances for them
+  // if there are some
+  virtual void addNewTraces();
+
 public:
+  HNLMonitor() {
+    #include "functions-initialize.h"
+  }
+
+  virtual ~HNLMonitor() {}
+
+  Verdict step();
+
   AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
   void removeInstance(HNLInstance *instance);
 
-  Verdict step();
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t num_instances{0};
+    // number of atom monitors
+    size_t num_atoms{0};
+  } stats;
+};
+
+
+// specialization of the monitor for function atoms -- this one does not own the trace set,
+// but only uses a view of existing trace sets
+class FunctionHNLMonitor : public HNLMonitor {
+  TraceSetView _traces_l;
+  TraceSetView _traces_r;
+
+  void addNewTraces() override;
+public:
+    FunctionHNLMonitor(TraceSet& traces_l) : _traces_l(traces_l) {}
+    // the `bool` here is just a dummy argument so that we can overload
+    FunctionHNLMonitor(bool, TraceSet& traces_r) : _traces_r(traces_r) {}
+    FunctionHNLMonitor(TraceSet& traces_l, TraceSet& traces_r) : _traces_l(traces_l),  _traces_r(traces_r) {}
 };
 
 #endif // !HNL_MONITOR_H__@MONITOR_NAME@

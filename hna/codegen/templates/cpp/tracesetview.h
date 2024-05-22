@@ -7,9 +7,12 @@
 #include <vector>
 
 #include "trace.h"
+#include "traceset.h"
 
 // trace set that only references traces from some other (shared) trace set.
 class TraceSetView {
+  TraceSet *traceset;
+
   // mapping from IDs to traces
   std::map<unsigned, Trace *> _traces;
   std::map<unsigned, Trace *> _new_traces;
@@ -22,6 +25,11 @@ class TraceSetView {
   Trace *get(unsigned trace_id);
 
 public:
+  TraceSetView() = default;
+  ~TraceSetView();
+  TraceSetView(TraceSet&);
+  TraceSetView(Trace *);
+
   // Announce a new trace in this TraceSet.
   void newTrace(unsigned trace_id, Trace *);
 

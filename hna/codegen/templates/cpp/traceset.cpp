@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <cassert>
 
 #include "traceset.h"
+#include "tracesetview.h"
 
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t;
@@ -8,6 +10,11 @@ Trace *TraceSet::newTrace(unsigned trace_id) {
   _traces_mtx.lock();
   t = _new_traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
   _traces_mtx.unlock();
+
+  // update views with the new trace
+  for (auto *view : _views) {
+    view->newTrace(trace_id, t);
+  }
 
   return t;
 }
@@ -89,3 +96,17 @@ bool TraceSet::allTracesFinished() {
     _traces_mtx.unlock();
     return true;
 }
+
+
+// NOTE: this should not be called concurrently, do not lock
+void TraceSet::addView(TraceSetView *view) {
+    assert(std::find(_views.begin(), _views.end(), view) == _views.end());
+    _views.push_back(view);
+}
+
+void TraceSet::removeView(TraceSetView *view) {
+    auto it = std::find(_views.begin(), _views.end(), view);
+    assert (it != _views.end());
+    _views.erase(it);
+}
+

@@ -1,91 +1,90 @@
 #include <cassert>
 
-#include "traceset.h"
+#include "tracesetview.h"
 
-Trace *TraceSet::newTrace(unsigned trace_id) {
-  Trace *t;
 
-  _traces_mtx.lock();
-  t = _new_traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
-  _traces_mtx.unlock();
+// NOTE: we do not lock anything as there should be no concurrency here.
 
-  return t;
+TraceSetView::TraceSetView(TraceSet& S) : traceset(&S) {
+    // register this view so that we'll get updated on new traces
+    S.addView(this);
+
+    for (auto& [trid, tr_ptr] : S) {
+        newTrace(trid, tr_ptr.get());
+    }
 }
 
+TraceSetView::~TraceSetView() {
+    if (traceset) {
+        traceset->removeView(this);
+    }
+}
 
-Trace *TraceSet::getNewTrace() {
+// This view is a view of a single trace only
+TraceSetView::TraceSetView(Trace *t) {
+    newTrace(t->id(), t);
+}
+
+void TraceSetView::newTrace(unsigned trace_id, Trace *tr) {
+  //_traces_mtx.lock();
+  _new_traces.emplace(trace_id, tr);
+  //_traces_mtx.unlock();
+}
+
+Trace *TraceSetView::getNewTrace() {
   Trace *t = nullptr;
 
-  _traces_mtx.lock();
+  //_traces_mtx.lock();
   auto trace_it = _new_traces.begin();
   if (trace_it != _new_traces.end()) {
-    t = trace_it->second.get();
-
-    _traces.emplace(t->id(), std::move(trace_it->second));
+    t = trace_it->second;
+    _traces.emplace(t->id(), t);
     _new_traces.erase(trace_it);
   }
-  _traces_mtx.unlock();
+  //_traces_mtx.unlock();
 
   return t;
 }
 
-void TraceSet::extendTrace(unsigned trace_id, const Event &e) {
-    _traces_mtx.lock();
-    Trace *trace = get(trace_id);
-    assert(trace && "Do not have such a trace");
-    _traces_mtx.unlock();
-
-    trace->append(e);
-}
-
-void TraceSet::traceFinished(unsigned trace_id) {
-  _traces_mtx.lock();
-  Trace *trace = get(trace_id);
-  assert(trace && "Do not have such a trace");
-  trace->setFinished();
-  _traces_mtx.unlock();
-}
-
-
-Trace *TraceSet::get(unsigned trace_id) {
+Trace *TraceSetView::get(unsigned trace_id) {
     auto it = _traces.find(trace_id);
     if (it != _traces.end()) {
-        auto *ret = it->second.get();
+        auto *ret = it->second;
         return ret;
     }
 
     it = _new_traces.find(trace_id);
     if (it != _new_traces.end()) {
-        auto *ret = it->second.get();
+        auto *ret = it->second;
         return ret;
     }
 
     return nullptr;
 }
 
-bool TraceSet::hasTrace(unsigned trace_id) {
+bool TraceSetView::hasTrace(unsigned trace_id) {
     bool ret;
-    _traces_mtx.lock();
+    //_traces_mtx.lock();
     ret = (get(trace_id) != nullptr);
-    _traces_mtx.unlock();
+    //_traces_mtx.unlock();
 
     return ret;
 }
 
-bool TraceSet::allTracesFinished() {
-    _traces_mtx.lock();
+bool TraceSetView::allTracesFinished() {
+    //_traces_mtx.lock();
     if (_new_traces.size() > 0) {
-        _traces_mtx.unlock();
+        //_traces_mtx.unlock();
         return false;
     }
 
     for (auto &it : _traces) {
         if (!it.second->finished()) {
-            _traces_mtx.unlock();
+            //_traces_mtx.unlock();
             return false;
         }
     }
 
-    _traces_mtx.unlock();
+    //_traces_mtx.unlock();
     return true;
 }

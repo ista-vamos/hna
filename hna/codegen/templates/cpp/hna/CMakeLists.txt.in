@@ -65,7 +65,7 @@ get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 
 add_library(events STATIC events.cpp)
 add_library(trace STATIC trace.cpp)
-add_library(traceset STATIC traceset.cpp)
+add_library(traceset STATIC traceset.cpp tracesetview.cpp)
 add_library(hnlmonitor-base STATIC hnl-monitor-base.cpp)
 
 add_library(hnamonitor STATIC hna-monitor.cpp)
