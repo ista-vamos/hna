@@ -1,13 +1,12 @@
 #ifndef HNL_FUNCTION_H_
 #define HNL_FUNCTION_H_
 
-@namespace_start@
+#include "traceset.h"
 
 class Function {
 public:
+    virtual void step() = 0;
+    virtual bool noFutureUpdates() const = 0;
 };
-
-
-@namespace_end@
 
 #endif // HNL_FUNCTION_H_

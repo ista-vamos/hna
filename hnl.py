@@ -152,13 +152,6 @@ def parse_arguments():
         help="Additional C flags for the compiler",
     )
     parser.add_argument(
-        "--reduction",
-        action="append",
-        default=[],
-        choices=["symmetry", "reflexivity"],
-        help="Do not process reflexive and symmetric pairs of  traces",
-    )
-    parser.add_argument(
         "--alphabet",
         action="store",
         help="Comma-separated list of letter to use as the alphabet",

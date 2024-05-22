@@ -611,7 +611,7 @@ class CodeGenCpp(CodeGen):
                 tr2 = TraceVariable(f"tr_{rf[0].name}")
                 subs[rf[0]] = tr2
 
-            formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], F.substitute(subs))
+            formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], Not(F.substitute(subs)))
             nested_mon.generate_embedded(formula, alphabet, embedding_data)
 
     def _generate_atom(self, wrcpp, atom_formula: IsPrefix, num, automaton):
@@ -801,7 +801,15 @@ class CodeGenCpp(CodeGen):
         )
 
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num [[unused]]) {{ \n")
-        wrcpp("  return monitor.step();")
+        wrcpp(
+            """
+        auto verdict = monitor.step();
+        if (verdict == Verdict::FALSE) {
+            return Verdict::TRUE;
+        }
+        return Verdict::UNKNOWN;
+        """
+        )
         wrcpp("}")
 
     def _generate_atom_with_funs_header(self, atom_formula, num, wrh):
@@ -1188,7 +1196,7 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
-        self.generate_functions(formula)
+        self.generate_functions(formula, embedding_data)
 
         self.generate_monitor(formula, alphabet, embedding_data)
 
