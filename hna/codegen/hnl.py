@@ -636,11 +636,11 @@ class CodeGenCpp(CodeGen):
             lf, rf = F.children[0].functions(), F.children[1].functions()
             if lf:
                 assert len(lf) == 1, lf
-                tr1 = TraceVariable(f"tr_{lf[0].name}")
+                tr1 = TraceVariable(f"tr_f1_{lf[0].name}")
                 subs[lf[0]] = tr1
             if rf:
                 assert len(rf) == 1, rf
-                tr2 = TraceVariable(f"tr_{rf[0].name}")
+                tr2 = TraceVariable(f"tr_f2_{rf[0].name}")
                 subs[rf[0]] = tr2
 
             formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], Not(F.substitute(subs)))
@@ -730,6 +730,8 @@ class CodeGenCpp(CodeGen):
         wrcpp("  };\n")
         wrcpp("}\n\n")
 
+        ns = f"{self._namespace}::" if self._namespace else ""
+
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
         wrcpp(
             f"""
@@ -758,7 +760,7 @@ class CodeGenCpp(CodeGen):
                 }}
 
                 /* Debugging code */
-                std::cerr << "Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
+                std::cerr << "{ns}Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
                 if (ev1ty == TraceQuery::END) {{
                     std::cerr << "END";
                 }} else {{
@@ -822,8 +824,8 @@ class CodeGenCpp(CodeGen):
             atom_formula.children[1].functions(),
         )
         lf_name, rf_name = lf[0].name, rf[0].name
-        lfarg = f", Function *{lf_name}" if lf else ""
-        rfarg = f", Function *{rf_name}" if rf else ""
+        lfarg = f", Function *lf /* {lf_name} */" if lf else ""
+        rfarg = f", Function *rf /* {rf_name} */" if rf else ""
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if lf_name:
@@ -841,7 +843,7 @@ class CodeGenCpp(CodeGen):
         if lf:
             args = ", ".join(f"instance.{t.name}" for t in lf[0].traces)
             monitor_init.append(
-                f"static_cast<Function_{lf_name}*>({lf_name})->getTraceSet({args})"
+                f"static_cast<Function_{lf_name}*>(lf)->getTraceSet({args})"
             )
         if rf:
             if not lf:
@@ -850,7 +852,7 @@ class CodeGenCpp(CodeGen):
 
             args = ", ".join(f"instance.{t.name}" for t in rf[0].traces)
             monitor_init.append(
-                f"static_cast<Function_{rf_name}*>({rf_name})->getTraceSet({args})"
+                f"static_cast<Function_{rf_name}*>(rf)->getTraceSet({args})"
             )
         wrcpp(f"monitor({', '.join(monitor_init)})")
         wrcpp("{}\n\n")
@@ -859,10 +861,11 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             """
         auto verdict = monitor.step();
-        if (verdict == Verdict::FALSE) {
-            return Verdict::TRUE;
-        }
-        return Verdict::UNKNOWN;
+        switch (verdict) {
+          case Verdict::FALSE: return Verdict::TRUE;
+          case Verdict::TRUE:  return Verdict::FALSE;
+          default:             return Verdict::UNKNOWN;
+        };
         """
         )
         wrcpp("}")
@@ -886,8 +889,8 @@ class CodeGenCpp(CodeGen):
             atom_formula.children[1].functions(),
         )
         lf_name, rf_name = lf[0].name, rf[0].name
-        lf = f", Function *{lf_name}" if lf else ""
-        rf = f", Function *{rf_name}" if rf else ""
+        lf = f", Function * lf/* {lf_name} */" if lf else ""
+        rf = f", Function * rf/* {rf_name} */" if rf else ""
 
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")

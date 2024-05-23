@@ -330,7 +330,7 @@ class Function(TraceFormula):
         return f"@{self.name}({', '.join(map(str, self.traces))})"
 
     def __hash__(self) -> int:
-        return hash(str(self))
+        return hash(str(self.name))
 
     def __eq__(self, other) -> bool:
         return isinstance(other, Function) and self.name == other.name

@@ -20,14 +20,16 @@ static inline Verdict do_step(AtomMonitor *M) {
 }
 
 
-void HNLMonitor::addNewTraces() {
+bool HNLMonitor::addNewTraces() {
   if (auto *t1 = _traces.getNewTrace()) {
       /* GENERATED */
       #include "create-instances.h"
   }
+
+  return _traces.finished();
 }
 
-void FunctionHNLMonitor::addNewTraces() {
+bool FunctionHNLMonitor::addNewTraces() {
   // We know that this HNL monitor has only two quantifiers,
   // so this code is not generated
   if (auto *t1 = _traces_l.getNewTrace()) {
@@ -37,6 +39,8 @@ void FunctionHNLMonitor::addNewTraces() {
   if (auto *t1 = _traces_r.getNewTrace()) {
       #include "create-instances-right.h"
   }
+
+  return _traces_l.finished() && _traces_r.finished();
 }
 
 Verdict HNLMonitor::step() {
@@ -81,9 +85,8 @@ Verdict HNLMonitor::step() {
       }
   }
 
-  addNewTraces();
-
-  bool finished = _instances.empty() && _traces_finished.load(std::memory_order_acquire);
+  bool traces_finished = addNewTraces();
+  bool finished = traces_finished && _instances.empty();
 
   /* GENERATED */
   /* It can modify the `finished` variable */

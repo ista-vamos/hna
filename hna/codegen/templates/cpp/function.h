@@ -5,6 +5,8 @@
 
 class Function {
 public:
+  virtual ~Function() {}
+
   virtual void step() = 0;
   virtual bool noFutureUpdates() const = 0;
 };

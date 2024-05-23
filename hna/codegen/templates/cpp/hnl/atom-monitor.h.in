@@ -8,6 +8,8 @@
 
 class AtomMonitor : public AtomBase<HNLInstance> {
 public:
+  virtual ~AtomMonitor() {}
+
   AtomMonitor(int ty) : AtomBase(ty) {}
 };
 

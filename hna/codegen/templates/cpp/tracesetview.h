@@ -11,13 +11,14 @@
 
 // trace set that only references traces from some other (shared) trace set.
 class TraceSetView {
-  TraceSet *traceset;
+  TraceSet *traceset{nullptr};
+  bool _traceset_destroyed{false};
 
   // mapping from IDs to traces
   std::map<unsigned, Trace *> _traces;
   std::map<unsigned, Trace *> _new_traces;
 
-  std::mutex _traces_mtx;
+  //std::mutex _traces_mtx;
 
   // get the trace with the given ID
   // NOTE: lock is not held as this method should not be called
@@ -29,6 +30,19 @@ public:
   ~TraceSetView();
   TraceSetView(TraceSet &);
   TraceSetView(Trace *);
+
+  bool finished() const {
+    if (!_new_traces.empty()) {
+        return false;
+    }
+
+    if (traceset) {
+      return traceset->finished();
+    }
+
+    assert(_traces.size() == 1);
+    return _traces.begin()->second->finished();
+  }
 
   // Announce a new trace in this TraceSet.
   void newTrace(unsigned trace_id, Trace *);
@@ -42,6 +56,8 @@ public:
   // Our code never iterates over traces and calls this method at the same
   // time, so there is no race while iterating unlocked over traces.
   Trace *getNewTrace();
+
+  void traceSetDestroyed();
 
   // check if the finished flag is set for all the traces
   bool allTracesFinished();

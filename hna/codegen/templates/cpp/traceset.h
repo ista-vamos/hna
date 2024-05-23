@@ -1,6 +1,7 @@
 #ifndef TRACESET_H_
 #define TRACESET_H_
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -18,14 +19,21 @@ class TraceSet {
   // views that should be updated about new traces
   std::vector<TraceSetView *> _views;
 
+  std::atomic<bool> _traces_finished{false};
+
   std::mutex _traces_mtx;
 
   // get the trace with the given ID
   // NOTE: lock is not held as this method should not be called
-  // concurrently with iterating over _traces
+  // concurrently with iterating or modifying the containers
   Trace *get(unsigned trace_id);
 
+  void lock() { _traces_mtx.lock(); }
+  void unlock() { _traces_mtx.unlock(); }
+
 public:
+  ~TraceSet();
+
   // Create a new trace in this TraceSet.
   Trace *newTrace(unsigned trace_id);
 
@@ -41,6 +49,20 @@ public:
   // Our code never iterates over traces and calls this method at the same
   // time, so there is no race while iterating unlocked over traces.
   Trace *getNewTrace();
+
+  void noFutureUpdates() {
+    _traces_finished.store(true, std::memory_order_release);
+  }
+
+  bool finished() {
+    bool r = _traces_finished.load(std::memory_order_acquire);
+    if (r) {
+        lock();
+        r = _new_traces.empty();
+        unlock();
+    }
+    return r;
+  }
 
   // check if the finished flag is set for all the traces
   bool allTracesFinished();

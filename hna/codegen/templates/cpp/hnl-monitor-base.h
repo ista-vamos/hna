@@ -1,14 +1,12 @@
 #ifndef HNLMONITOR_BASE_H_
 #define HNLMONITOR_BASE_H_
 
-#include <atomic>
 
 #include "monitor.h"
 #include "traceset.h"
 
 template <typename TraceSetTy> class HNLMonitorBase : public Monitor {
 protected:
-  std::atomic<bool> _traces_finished{false};
   TraceSetTy _traces;
 
 public:
@@ -22,7 +20,7 @@ public:
   void traceFinished(unsigned trace_id) { _traces.traceFinished(trace_id); }
 
   void noFutureUpdates() {
-    _traces_finished.store(true, std::memory_order_release);
+    _traces.noFutureUpdates();
   }
 
   bool allTracesFinished() { return _traces.allTracesFinished(); }

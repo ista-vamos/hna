@@ -14,9 +14,13 @@ TraceSetView::TraceSetView(TraceSet &S) : traceset(&S) {
 }
 
 TraceSetView::~TraceSetView() {
-  if (traceset) {
+  if (!_traceset_destroyed && traceset) {
     traceset->removeView(this);
   }
+}
+
+void TraceSetView::traceSetDestroyed() {
+    _traceset_destroyed = true;
 }
 
 // This view is a view of a single trace only
@@ -24,6 +28,7 @@ TraceSetView::TraceSetView(Trace *t) { newTrace(t->id(), t); }
 
 void TraceSetView::newTrace(unsigned trace_id, Trace *tr) {
   //_traces_mtx.lock();
+  assert(_traces.count(trace_id) == 0);
   _new_traces.emplace(trace_id, tr);
   //_traces_mtx.unlock();
 }

@@ -35,7 +35,7 @@ protected:
 
   // check for new traces and create HNLInstances for them
   // if there are some
-  virtual void addNewTraces();
+  virtual bool addNewTraces();
 
 public:
   HNLMonitor() {
@@ -65,7 +65,7 @@ class FunctionHNLMonitor : public HNLMonitor {
   TraceSetView _traces_l;
   TraceSetView _traces_r;
 
-  void addNewTraces() override;
+  bool addNewTraces() override;
 public:
     FunctionHNLMonitor(TraceSet& traces_l) : _traces_l(traces_l) {}
     // the `bool` here is just a dummy argument so that we can overload

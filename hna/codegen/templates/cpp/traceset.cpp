@@ -4,12 +4,20 @@
 #include "traceset.h"
 #include "tracesetview.h"
 
+TraceSet::~TraceSet() {
+  for (auto *view : _views) {
+    view->traceSetDestroyed();
+  }
+  _traces.clear();
+  _new_traces.clear();
+}
+
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t;
 
-  _traces_mtx.lock();
+  lock();
   t = _new_traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
-  _traces_mtx.unlock();
+  unlock();
 
   // update views with the new trace
   for (auto *view : _views) {
@@ -22,7 +30,7 @@ Trace *TraceSet::newTrace(unsigned trace_id) {
 Trace *TraceSet::getNewTrace() {
   Trace *t = nullptr;
 
-  _traces_mtx.lock();
+  lock();
   auto trace_it = _new_traces.begin();
   if (trace_it != _new_traces.end()) {
     t = trace_it->second.get();
@@ -30,26 +38,26 @@ Trace *TraceSet::getNewTrace() {
     _traces.emplace(t->id(), std::move(trace_it->second));
     _new_traces.erase(trace_it);
   }
-  _traces_mtx.unlock();
+  unlock();
 
   return t;
 }
 
 void TraceSet::extendTrace(unsigned trace_id, const Event &e) {
-  _traces_mtx.lock();
+  lock();
   Trace *trace = get(trace_id);
   assert(trace && "Do not have such a trace");
-  _traces_mtx.unlock();
+  unlock();
 
   trace->append(e);
 }
 
 void TraceSet::traceFinished(unsigned trace_id) {
-  _traces_mtx.lock();
+  lock();
   Trace *trace = get(trace_id);
   assert(trace && "Do not have such a trace");
   trace->setFinished();
-  _traces_mtx.unlock();
+  unlock();
 }
 
 Trace *TraceSet::get(unsigned trace_id) {
@@ -70,28 +78,28 @@ Trace *TraceSet::get(unsigned trace_id) {
 
 bool TraceSet::hasTrace(unsigned trace_id) {
   bool ret;
-  _traces_mtx.lock();
+  lock();
   ret = (get(trace_id) != nullptr);
-  _traces_mtx.unlock();
+  unlock();
 
   return ret;
 }
 
 bool TraceSet::allTracesFinished() {
-  _traces_mtx.lock();
+  lock();
   if (_new_traces.size() > 0) {
-    _traces_mtx.unlock();
+    unlock();
     return false;
   }
 
   for (auto &it : _traces) {
     if (!it.second->finished()) {
-      _traces_mtx.unlock();
+      unlock();
       return false;
     }
   }
 
-  _traces_mtx.unlock();
+  unlock();
   return true;
 }
 
