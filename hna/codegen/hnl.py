@@ -661,10 +661,16 @@ class CodeGenCpp(CodeGen):
                 assert len(lf) == 1, lf
                 tr1 = TraceVariable(f"tr_f1_{lf[0].name}")
                 subs[lf[0]] = tr1
+            else:
+                assert len(F.children[0].trace_variables()) == 1, F.children[0]
+                tr1 = F.children[0].trace_variables()[0]
             if rf:
                 assert len(rf) == 1, rf
                 tr2 = TraceVariable(f"tr_f2_{rf[0].name}")
                 subs[rf[0]] = tr2
+            else:
+                assert len(F.children[1].trace_variables()) == 1, F.children[1]
+                tr2 = F.children[1].trace_variables()[0]
 
             formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], Not(F.substitute(subs)))
             nested_mon.generate_embedded(formula, alphabet, embedding_data)
@@ -755,7 +761,7 @@ class CodeGenCpp(CodeGen):
 
         ns = f"{self._namespace}::" if self._namespace else ""
 
-        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num) {{\n")
+        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned /* num_steps */) {{\n")
         wrcpp(
             f"""
             // No more configurations and we have not accepted.
@@ -846,7 +852,7 @@ class CodeGenCpp(CodeGen):
             atom_formula.children[0].functions(),
             atom_formula.children[1].functions(),
         )
-        lf_name, rf_name = lf[0].name, rf[0].name
+        lf_name, rf_name = lf[0].name if lf else None, rf[0].name if rf else None
         lfarg = f", Function *lf /* {lf_name} */" if lf else ""
         rfarg = f", Function *rf /* {rf_name} */" if rf else ""
 
@@ -868,19 +874,27 @@ class CodeGenCpp(CodeGen):
             monitor_init.append(
                 f"static_cast<Function_{lf_name}*>(lf)->getTraceSet({args})"
             )
-        if rf:
-            if not lf:
-                # dummy argument that says the trace set is the one on the right
-                monitor_init.append("false")
+        else:
+            # dummy argument that says the trace set is the one on the right
+            tr = atom_formula.children[0].trace_variables()
+            assert len(tr) == 1, atom_formula.children[0]
+            monitor_init.append(f"instance.{tr[0].name}")
 
+        if rf:
             args = ", ".join(f"instance.{t.name}" for t in rf[0].traces)
             monitor_init.append(
                 f"static_cast<Function_{rf_name}*>(rf)->getTraceSet({args})"
             )
+        else:
+            # dummy argument that says the trace set is the one on the right
+            tr = atom_formula.children[1].trace_variables()
+            assert len(tr) == 1, atom_formula.children[1]
+            monitor_init.append(f"instance.{tr[0].name}")
+
         wrcpp(f"monitor({', '.join(monitor_init)})")
         wrcpp("{}\n\n")
 
-        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned num [[unused]]) {{ \n")
+        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned /* num_steps */) {{ \n")
         wrcpp(
             """
         auto verdict = monitor.step();
@@ -911,7 +925,7 @@ class CodeGenCpp(CodeGen):
             atom_formula.children[0].functions(),
             atom_formula.children[1].functions(),
         )
-        lf_name, rf_name = lf[0].name, rf[0].name
+        lf_name, rf_name = lf[0].name if lf else None, rf[0].name if rf else None
         lf = f", Function * lf/* {lf_name} */" if lf else ""
         rf = f", Function * rf/* {rf_name} */" if rf else ""
 
@@ -919,10 +933,6 @@ class CodeGenCpp(CodeGen):
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public FunctionAtomMonitor {{\n\n")
         wrh(f"  atom{num}::FunctionHNLMonitor monitor;\n")
-        # if lf_name:
-        #    wrh(f"  TraceSet& traces_{lf_name};\n")
-        # if rf_name:
-        #    wrh(f"  TraceSet& traces_{rf_name};\n")
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(HNLInstance& instance{lf}{rf});\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")

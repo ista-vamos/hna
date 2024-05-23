@@ -76,7 +76,7 @@ void read_csv(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
   size_t num_open_files = 0;
   size_t next_input = 0;
   const size_t inputs_num = args.inputs.size();
-  const size_t read_limit = args.read_max_num_events_at_once;
+  //const size_t read_limit = args.read_max_num_events_at_once;
 
   while (running.load(std::memory_order_acquire)) {
     // check if we have new files to open

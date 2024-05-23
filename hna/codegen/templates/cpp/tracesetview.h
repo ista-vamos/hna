@@ -9,7 +9,8 @@
 #include "trace.h"
 #include "sharedtraceset.h"
 
-// trace set that only references traces from some other (shared) trace set.
+// trace set that only references traces from some other (shared) trace set
+// (or references a single trace from some trace set)
 class TraceSetView {
   SharedTraceSet *traceset{nullptr};
   bool _traceset_destroyed{false};
@@ -37,9 +38,11 @@ public:
     }
 
     if (traceset) {
+      assert(!_traceset_destroyed);
       return traceset->finished();
     }
 
+    assert(_traces.size() != 0);
     assert(_traces.size() == 1);
     return _traces.begin()->second->finished();
   }
