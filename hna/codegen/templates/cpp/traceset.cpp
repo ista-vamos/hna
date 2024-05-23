@@ -3,7 +3,6 @@
 
 #include "traceset.h"
 
-
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t;
 

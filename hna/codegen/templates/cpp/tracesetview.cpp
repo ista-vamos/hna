@@ -19,9 +19,7 @@ TraceSetView::~TraceSetView() {
   }
 }
 
-void TraceSetView::traceSetDestroyed() {
-    _traceset_destroyed = true;
-}
+void TraceSetView::traceSetDestroyed() { _traceset_destroyed = true; }
 
 // This view is a view of a single trace only
 TraceSetView::TraceSetView(Trace *t) { newTrace(t->id(), t); }

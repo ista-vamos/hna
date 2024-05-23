@@ -6,8 +6,8 @@
 #include <mutex>
 #include <vector>
 
-#include "trace.h"
 #include "sharedtraceset.h"
+#include "trace.h"
 
 // trace set that only references traces from some other (shared) trace set
 // (or references a single trace from some trace set)
@@ -19,7 +19,7 @@ class TraceSetView {
   std::map<unsigned, Trace *> _traces;
   std::map<unsigned, Trace *> _new_traces;
 
-  //std::mutex _traces_mtx;
+  // std::mutex _traces_mtx;
 
   // get the trace with the given ID
   // NOTE: lock is not held as this method should not be called
@@ -34,7 +34,7 @@ public:
 
   bool finished() const {
     if (!_new_traces.empty()) {
-        return false;
+      return false;
     }
 
     if (traceset) {

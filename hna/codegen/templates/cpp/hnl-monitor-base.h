@@ -1,7 +1,6 @@
 #ifndef HNLMONITOR_BASE_H_
 #define HNLMONITOR_BASE_H_
 
-
 #include "monitor.h"
 #include "traceset.h"
 
@@ -19,9 +18,7 @@ public:
 
   void traceFinished(unsigned trace_id) { _traces.traceFinished(trace_id); }
 
-  void noFutureUpdates() {
-    _traces.noFutureUpdates();
-  }
+  void noFutureUpdates() { _traces.noFutureUpdates(); }
 
   bool allTracesFinished() { return _traces.allTracesFinished(); }
 

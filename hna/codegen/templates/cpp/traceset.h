@@ -52,9 +52,9 @@ public:
   bool finished() {
     bool r = _traces_finished.load(std::memory_order_acquire);
     if (r) {
-        lock();
-        r = _new_traces.empty();
-        unlock();
+      lock();
+      r = _new_traces.empty();
+      unlock();
     }
     return r;
   }
