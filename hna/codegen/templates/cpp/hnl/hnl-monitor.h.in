@@ -31,13 +31,18 @@
 class HNLMonitor : public HNLMonitorBase<TraceSet> {
 protected:
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
-  std::list<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
+  // XXX: based on profiling, we could keep a vector of raw pointers
+  //  (additionally to this vector) that we would you for iterating over the atoms.
+  // (Or we do it entirely event driven -- update the atoms for which the traces were updated)
+  std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
   #include "function-instances.h"
 
   // check for new traces and create HNLInstances for them
   // if there are some
   virtual bool addNewTraces();
+
+  void condenseAtomsVector();
 
 public:
   HNLMonitor() {

@@ -46,11 +46,10 @@ bool FunctionHNLMonitor::addNewTraces() {
 Verdict HNLMonitor::step() {
   Verdict verdict;
 
-  for (auto atom_monitor_it = _atom_monitors.begin(),
-            atom_monitor_et = _atom_monitors.end();
-            atom_monitor_it != atom_monitor_et;) {
-      auto *atom_monitor = atom_monitor_it->get();
-      auto atom_monitor_erase_it = atom_monitor_it++;
+  bool erased{false};
+  const unsigned n_atoms = _atom_monitors.size();
+  for (unsigned n = 0; n < n_atoms; ++n) {
+      auto *atom_monitor = _atom_monitors[n].get();
 
       if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
           // std::cerr << "CACHE THE RESULT\n";
@@ -81,8 +80,13 @@ Verdict HNLMonitor::step() {
               instance->monitor = createAtomMonitor(action, *instance);
           }
 
-          _atom_monitors.erase(atom_monitor_erase_it);
+          _atom_monitors[n].reset();
+          erased = true;
       }
+  }
+
+  if (erased) {
+      condenseAtomsVector();
   }
 
   bool traces_finished = addNewTraces();
@@ -125,6 +129,39 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     // reference to the configuration.
     *it = std::move(_instances[_instances.size() - 1]);
     _instances.pop_back();
+}
+
+void HNLMonitor::condenseAtomsVector() {
+    if (_atom_monitors.empty())
+        return;
+
+    // FIXME: do it in place without creating a new vector
+    decltype(_atom_monitors) tmp;
+    tmp.reserve(_atom_monitors.size());
+
+    for (auto& ptr : _atom_monitors) {
+        if (ptr) {
+            tmp.push_back(std::move(ptr));
+        }
+    }
+    _atom_monitors.swap(tmp);
+
+#if 0
+    // swap valid unique_ptr's from back of the vector to the
+    // cleared places at the front
+    size_t l = 0, r = _atom_monitors.size() - 1;
+    while (true) {
+        // clear the vector from the back and find first valid ptr
+        while (l <= r && !_atom_monitors[r]) {
+            _atom_monitors.pop_back();
+            --r;
+        }
+
+        // find the first clear space from the left
+        while (l < r && _atom_monitors[l])
+            ++l;
+    }
+#endif
 }
 
 @namespace_end@
