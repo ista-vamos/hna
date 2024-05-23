@@ -32,11 +32,11 @@ bool HNLMonitor::addNewTraces() {
 bool FunctionHNLMonitor::addNewTraces() {
   // We know that this HNL monitor has only two quantifiers,
   // so this code is not generated
-  if (auto *t1 = _traces_l.getNewTrace()) {
+  if (auto *tl = _traces_l.getNewTrace()) {
       #include "create-instances-left.h"
   }
 
-  if (auto *t1 = _traces_r.getNewTrace()) {
+  if (auto *tr = _traces_r.getNewTrace()) {
       #include "create-instances-right.h"
   }
 

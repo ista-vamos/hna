@@ -1,5 +1,5 @@
-#ifndef TRACESETREF_H_
-#define TRACESETREF_H_
+#ifndef TRACESETVIEW_H_
+#define TRACESETVIEW_H_
 
 #include <map>
 #include <memory>
@@ -7,11 +7,11 @@
 #include <vector>
 
 #include "trace.h"
-#include "traceset.h"
+#include "sharedtraceset.h"
 
 // trace set that only references traces from some other (shared) trace set.
 class TraceSetView {
-  TraceSet *traceset{nullptr};
+  SharedTraceSet *traceset{nullptr};
   bool _traceset_destroyed{false};
 
   // mapping from IDs to traces
@@ -28,7 +28,7 @@ class TraceSetView {
 public:
   TraceSetView() = default;
   ~TraceSetView();
-  TraceSetView(TraceSet &);
+  TraceSetView(SharedTraceSet &);
   TraceSetView(Trace *);
 
   bool finished() const {
@@ -44,7 +44,7 @@ public:
     return _traces.begin()->second->finished();
   }
 
-  // Announce a new trace in this TraceSet.
+  // Announce a new trace in this SharedTraceSet.
   void newTrace(unsigned trace_id, Trace *);
 
   // Get a trace announced by `newTrace` if there is one.

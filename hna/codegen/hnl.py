@@ -165,6 +165,8 @@ class CodeGenCpp(CodeGen):
             "../traceset.cpp",
             "../tracesetview.h",
             "../tracesetview.cpp",
+            "../sharedtraceset.h",
+            "../sharedtraceset.cpp",
             "../verdict.h",
             "../atom-base.h",
             "../atom-evaluation-state.h",
@@ -525,21 +527,42 @@ class CodeGenCpp(CodeGen):
             wr("}\n")
 
     def _generate_create_instances_function_mon(self, formula):
+        ns = f"{self._namespace}::" if self._namespace else ""
         with self.new_file("create-instances-left.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("/* the code that precedes this defines a variable `t1` */\n\n")
-            wr(f"for (auto &[t2_id, t2] : _traces_r) {{\n")
-
-            self._gen_create_instance(2, formula, wr)
+            wr("/* the code that precedes this defines a variable `tl` */\n\n")
+            wr(
+                f"""
+            for (auto &[tr_id, tr] : _traces_r) {{
+                _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                ++stats.num_instances;
+                
+                _instances.back()->monitor =
+                    createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                std::cerr << "{ns}HNLInstance[init"
+                          << ", " << tl->id() << ", " << tr->id() << "]\\n";
+            }}
+            """
+            )
 
         with self.new_file("create-instances-right.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("/* the code that precedes this defines a variable `t1` */\n\n")
-            wr(f"for (auto &[t2_id, t2] : _traces_l) {{\n")
+            wr("/* the code that precedes this defines a variable `tr` */\n\n")
+            wr(
+                f"""
+            for (auto &[tl_id, tl] : _traces_l) {{
+                _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                ++stats.num_instances;
 
-            self._gen_create_instance(2, formula, wr)
+                _instances.back()->monitor =
+                    createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                std::cerr << "{ns}HNLInstance[init"
+                          << ", " << tl->id() << ", " << tr->id() << "]\\n";
+            }}
+            """
+            )
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
@@ -1166,12 +1189,12 @@ class CodeGenCpp(CodeGen):
             )
 
             wr('#include "function.h"\n')
-            wr('#include "traceset.h"\n\n')
+            wr('#include "sharedtraceset.h"\n\n')
 
             wr(f"class Function_{fun.name} : public Function{{\n")
 
             wr("public:\n")
-            wr(" virtual TraceSet& getTraceSet(")
+            wr(" virtual SharedTraceSet& getTraceSet(")
             wr(", ".join((f"Trace *{tr.name}" for tr in fun.traces)))
             wr(") = 0;\n")
             wr("};\n")

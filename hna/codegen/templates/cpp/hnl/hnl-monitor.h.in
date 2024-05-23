@@ -15,6 +15,7 @@
 #include "atom-monitor.h"
 #include "function.h"
 #include "traceset.h"
+#include "sharedtraceset.h"
 #include "tracesetview.h"
 
 #include "hnl-monitor-base.h"
@@ -67,10 +68,10 @@ class FunctionHNLMonitor : public HNLMonitor {
 
   bool addNewTraces() override;
 public:
-    FunctionHNLMonitor(TraceSet& traces_l) : _traces_l(traces_l) {}
+    FunctionHNLMonitor(SharedTraceSet& traces_l) : _traces_l(traces_l) {}
     // the `bool` here is just a dummy argument so that we can overload
-    FunctionHNLMonitor(bool, TraceSet& traces_r) : _traces_r(traces_r) {}
-    FunctionHNLMonitor(TraceSet& traces_l, TraceSet& traces_r) : _traces_l(traces_l),  _traces_r(traces_r) {}
+    FunctionHNLMonitor(bool, SharedTraceSet& traces_r) : _traces_r(traces_r) {}
+    FunctionHNLMonitor(SharedTraceSet& traces_l, SharedTraceSet& traces_r) : _traces_l(traces_l),  _traces_r(traces_r) {}
 };
 
 #endif // !HNL_MONITOR_H__@MONITOR_NAME@

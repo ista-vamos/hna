@@ -16,9 +16,6 @@ class TraceSet {
   std::map<unsigned, std::unique_ptr<Trace>> _traces;
   std::map<unsigned, std::unique_ptr<Trace>> _new_traces;
 
-  // views that should be updated about new traces
-  std::vector<TraceSetView *> _views;
-
   std::atomic<bool> _traces_finished{false};
 
   std::mutex _traces_mtx;
@@ -32,8 +29,6 @@ class TraceSet {
   void unlock() { _traces_mtx.unlock(); }
 
 public:
-  ~TraceSet();
-
   // Create a new trace in this TraceSet.
   Trace *newTrace(unsigned trace_id);
 
@@ -68,9 +63,6 @@ public:
   bool allTracesFinished();
 
   bool hasTrace(unsigned trace_id);
-
-  void addView(TraceSetView *);
-  void removeView(TraceSetView *);
 
   auto begin() const -> auto { return _traces.begin(); }
   auto end() const -> auto { return _traces.end(); }
