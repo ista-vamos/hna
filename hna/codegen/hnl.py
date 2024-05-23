@@ -1,7 +1,7 @@
+import random
 from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
-import random
 
 from pyeda.inter import bddvar
 
@@ -474,9 +474,6 @@ class CodeGenCpp(CodeGen):
 
             self._gen_create_instance(N, formula, wr)
 
-        # XXX: only if functions are used
-        self._generate_create_instances_function_mon(formula)
-
     def _gen_create_instance(self, N, formula, wr):
         wr(
             """
@@ -518,51 +515,65 @@ class CodeGenCpp(CodeGen):
             )
             dump_codegen_position(wr)
             ns = f"{self._namespace}::" if self._namespace else ""
+            wr("#ifdef DEBUG_PRINTS\n")
             wr(f'std::cerr << "{ns}HNLInstance[init"')
             for i in traces_positions(t1_pos, N):
                 wr(f' << ", " << t{i}->id()')
             wr('<< "]\\n";\n')
+            wr("#endif /* !DEBUG_PRINTS */\n")
             wr("}\n")
         for i in range(2, len(formula.quantifier_prefix) + 1):
             wr("}\n")
 
-    def _generate_create_instances_function_mon(self, formula):
+    def _generate_create_instances_function_mon(self, embedding_data):
+        is_fun_monitor = embedding_data.get("is_function_monitor") is not None
         ns = f"{self._namespace}::" if self._namespace else ""
+
         with self.new_file("create-instances-left.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("/* the code that precedes this defines a variable `tl` */\n\n")
-            wr(
-                f"""
-            for (auto &[tr_id, tr] : _traces_r) {{
-                _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
-                ++stats.num_instances;
-                
-                _instances.back()->monitor =
-                    createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
-                std::cerr << "{ns}HNLInstance[init"
-                          << ", " << tl->id() << ", " << tr->id() << "]\\n";
-            }}
-            """
-            )
+            if is_fun_monitor:
+                wr("/* the code that precedes this defines a variable `tl` */\n\n")
+                wr(
+                    f"""
+                for (auto &[tr_id, tr] : _traces_r) {{
+                    _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                    ++stats.num_instances;
+                    
+                    _instances.back()->monitor =
+                        createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                    #ifdef DEBUG_PRINTS
+                    std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
+                    #endif /* !DEBUG_PRINTS */
+                """
+                )
+                wr("}\n")
+            else:
+                wr("(void)tl; abort(); /* this function should be never called */\n")
 
         with self.new_file("create-instances-right.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("/* the code that precedes this defines a variable `tr` */\n\n")
-            wr(
-                f"""
-            for (auto &[tl_id, tl] : _traces_l) {{
-                _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
-                ++stats.num_instances;
+            if is_fun_monitor:
+                wr("/* the code that precedes this defines a variable `tr` */\n\n")
+                wr(
+                    f"""
+                for (auto &[tl_id, tl] : _traces_l) {{
+                    _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                    ++stats.num_instances;
 
-                _instances.back()->monitor =
-                    createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
-                std::cerr << "{ns}HNLInstance[init"
-                          << ", " << tl->id() << ", " << tr->id() << "]\\n";
-            }}
-            """
-            )
+                    _instances.back()->monitor =
+                        createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                        
+                    #ifdef DEBUG_PRINTS
+                    std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
+                    #endif /* !DEBUG_PRINTS */
+                }}
+                """
+                )
+
+            else:
+                wr("(void)tr; abort(); /* this function should be never called */\n")
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
@@ -579,10 +590,11 @@ class CodeGenCpp(CodeGen):
             f.write("default: abort();\n")
             f.write("}\n\n")
 
-    def _generate_monitor(self, formula, alphabet):
+    def _generate_monitor(self, formula, alphabet, embedding_data):
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
+        self._generate_create_instances_function_mon(embedding_data)
         self._generate_automata_code(alphabet)
         self._generate_atom_monitor()
 
@@ -653,8 +665,6 @@ class CodeGenCpp(CodeGen):
                 "tests": True,
                 "is_function_monitor": True,
             }
-            tr1 = None
-            tr2 = None
             subs = {}
             lf, rf = F.children[0].functions(), F.children[1].functions()
             if lf:
@@ -788,7 +798,7 @@ class CodeGenCpp(CodeGen):
                     continue;
                 }}
 
-                /* Debugging code */
+                #ifdef DEBUG_PRINTS
                 std::cerr << "{ns}Atom {num} [" << t1->id() << ", " << t2->id() << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
                 if (ev1ty == TraceQuery::END) {{
                     std::cerr << "END";
@@ -802,7 +812,8 @@ class CodeGenCpp(CodeGen):
                     std::cerr << ev2;
                 }}
                 std::cerr << "\\n";
-                                    
+                #endif /* !DEBUG_PRINTS */
+                
                 if (ev1ty == TraceQuery::END) {{
                     if (state_is_accepting(cfg.state)) {{
                         return Verdict::TRUE;
@@ -967,9 +978,11 @@ class CodeGenCpp(CodeGen):
                     for t in ptransitions
                     if t.label[0].is_epsilon() and t.label[1].is_epsilon()
                 ):
-                    wrcpp(f" /* {t} */\n ")
                     wrcpp(
-                        f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                        f" /* {t} */\n "
+                        "#ifdef DEBUG_PRINTS\n"
+                        f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                        "#endif /* !DEBUG_PRINTS */\n"
                     )
                     dump_codegen_position(wrcpp)
                     wrcpp(f"   matched = true;\n ")
@@ -977,7 +990,9 @@ class CodeGenCpp(CodeGen):
                         f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2);\n "
                     )
                     wrcpp(
-                        f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
+                        "#ifdef DEBUG_PRINTS\n"
+                        f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
+                        "#endif /* !DEBUG_PRINTS */\n"
                     )
 
                 ### Handle left-epsilon steps
@@ -988,21 +1003,24 @@ class CodeGenCpp(CodeGen):
                 ]
                 if tmp:
                     dump_codegen_position(wrcpp)
-                    wrcpp(f" if (ev2 != nullptr) {{\n ")
+                    wrcpp(f" if (ev2 != nullptr) {{\n")
                     for t in tmp:
-                        wrcpp(f" /* {t} */\n ")
                         wrcpp(
-                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                            f" /* {t} */\n "
+                            "#ifdef DEBUG_PRINTS\n"
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
-                        wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{")
-                        wrcpp(f"   matched = true;\n ")
+                        wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{\n")
                         wrcpp(
+                            f"   matched = true;\n "
                             f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";'
+                            "#ifdef DEBUG_PRINTS\n"
+                            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
-
                         wrcpp("}\n")
                     wrcpp("}\n")
 
@@ -1014,19 +1032,23 @@ class CodeGenCpp(CodeGen):
                 ]
                 if tmp:
                     dump_codegen_position(wrcpp)
-                    wrcpp(f" if (ev1 != nullptr) {{\n ")
+                    wrcpp(f" if (ev1 != nullptr) {{\n")
                     for t in tmp:
-                        wrcpp(f" /* {t} */\n ")
                         wrcpp(
-                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                            f" /* {t} */\n "
+                            "#ifdef DEBUG_PRINTS\n"
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
                         wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{")
-                        wrcpp(f"   matched = true;\n ")
                         wrcpp(
+                            f"   matched = true;\n "
                             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
+                            "#ifdef DEBUG_PRINTS\n"
+                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")
@@ -1041,19 +1063,23 @@ class CodeGenCpp(CodeGen):
                     dump_codegen_position(wrcpp)
                     wrcpp(f" if (ev1 && ev2) {{\n ")
                     for t in tmp:
-                        wrcpp(f" /* {t} */\n ")
                         wrcpp(
-                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";'
+                            f" /* {t} */\n "
+                            "#ifdef DEBUG_PRINTS\n"
+                            f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
                         wrcpp(
-                            f" if (ev1->{lvar} == {t.label[0]} && ev2->{rvar} == {t.label[1]}) {{"
+                            f" if (ev1->{lvar} == {t.label[0]} && ev2->{rvar} == {t.label[1]}) {{\n"
                         )
-                        wrcpp(f"   matched = true;\n ")
                         wrcpp(
+                            f"   matched = true;\n "
                             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1);\n "
                         )
                         wrcpp(
-                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";'
+                            "#ifdef DEBUG_PRINTS\n"
+                            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
+                            "#endif /* !DEBUG_PRINTS */\n"
                         )
                         wrcpp("}\n")
                     wrcpp("}\n")
@@ -1063,15 +1089,19 @@ class CodeGenCpp(CodeGen):
                 if prio > 0:
                     wrcpp(
                         "else { "
-                        f'std::cerr << "    => no transition in priority {prio} matched\\n"; '
+                        "#ifdef DEBUG_PRINTS\n"
+                        f'std::cerr << "    => no transition in priority {prio} matched\\n";\n'
+                        "#endif /* !DEBUG_PRINTS */\n"
                         "}"
                     )
                 else:
                     wrcpp(
-                        "else {  "
-                        f'std::cerr << "    => no transition matched\\n"; '
-                        "/* this was the least priority, drop the cfg */\n"
-                        "return;"
+                        "else {  \n"
+                        "     #ifdef DEBUG_PRINTS\n"
+                        f'    std::cerr << "    => no transition matched\\n";\n'
+                        "     #endif /* !DEBUG_PRINTS */\n"
+                        "     /* this was the least priority, drop the cfg */\n"
+                        "     return;"
                         "}\n\n"
                     )
             wrcpp("}\n\n ")
@@ -1359,6 +1389,7 @@ class CodeGenCpp(CodeGen):
                 ),
             }
         else:
+            embedding_data = {}
             values = {
                 "@MONITOR_NAME@": "",
                 "@namespace@": self._namespace or "",
@@ -1377,4 +1408,4 @@ class CodeGenCpp(CodeGen):
             self.generate_atomic_comparison_automaton(F, alphabet)
 
         formula.visit(gen_automaton)
-        self._generate_monitor(formula, alphabet)
+        self._generate_monitor(formula, alphabet, embedding_data)

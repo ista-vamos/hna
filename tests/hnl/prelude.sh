@@ -11,8 +11,9 @@ export ASAN_OPTIONS=detect_leaks=0
 
 function gen {
 	FORMULA="$1"
+	shift
 	cd $DIR
-	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=ON
+	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=ON
 
 
 	cd $WORKDIR

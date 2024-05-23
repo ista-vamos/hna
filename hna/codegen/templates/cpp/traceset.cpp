@@ -17,13 +17,16 @@ Trace *TraceSet::getNewTrace() {
   Trace *t = nullptr;
 
   lock();
-  auto trace_it = _new_traces.begin();
-  if (trace_it != _new_traces.end()) {
-    t = trace_it->second.get();
-
-    _traces.emplace(t->id(), std::move(trace_it->second));
-    _new_traces.erase(trace_it);
+  if (_new_traces.empty()) {
+    unlock();
+    return nullptr;
   }
+
+  auto trace_it = _new_traces.begin();
+  t = trace_it->second.get();
+
+  _traces.emplace(t->id(), std::move(trace_it->second));
+  _new_traces.erase(trace_it);
   unlock();
 
   return t;

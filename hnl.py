@@ -134,7 +134,8 @@ def parse_arguments():
     parser.add_argument(
         "--sanitize", action="store", help="Compile the monitor with sanitizers"
     )
-    parser.add_argument("--debug", action="store_true", help="Debugging mode")
+    parser.add_argument("--debug", action="store_true", help="Compile in debugging mode and produce debugging files")
+    parser.add_argument("--debug-prints", action="store_true", help="--debug + print debugging messages to stderr")
     parser.add_argument(
         "--exit-on-error", action="store_true", help="Stop when a violation is found"
     )
@@ -185,6 +186,9 @@ def parse_arguments():
     )
     args = parser.parse_args()
 
+    if args.debug_prints:
+        args.debug = True
+
     args.input_formula = None
     args.cpp_files = []
     args.add_gen_files = []
@@ -194,7 +198,7 @@ def parse_arguments():
         if not isfile(fl):
             if args.input_formula:
                 raise RuntimeError(
-                    f"Multiple formulas given (previous: {args.input_formula}"
+                        f"Multiple formulas given (previous: {args.input_formula}, now: {fl})"
                 )
             args.input_formula = fl
             continue

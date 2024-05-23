@@ -45,6 +45,7 @@ option(BUILD_EXE "Compile executable monitor (ON by default)" ON)
 option(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
 option(NO_RTTI "Compile with -fno-rtti (ON by default)" ON)
 option(ENABLE_TESTS "Compile tests (ON by default)" ON)
+option(DEBUG_PRINTS "Print debugging messages on stderr (OFF by default)" OFF)
 option(SANITIZE "Compile with -fsanitize=address,undefined (OFF by default)" OFF)
 option(SANITIZE_THREAD "Compile with -fsanitize=thread (OFF by default)" OFF)
 
@@ -64,6 +65,9 @@ if(SANITIZE_THREAD)
   endif()
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+endif()
+if (DEBUG_PRINTS)
+    add_compile_definitions(DEBUG_PRINTS)
 endif()
 
 
@@ -100,9 +104,9 @@ target_include_directories(${MONITOR_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_compile_definitions(${MONITOR_NAME} PRIVATE @additional_cflags@)
 endif()
 
-if (ENABLE_TESTS)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
+if (ENABLE_TESTS)
 enable_testing()
 add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()

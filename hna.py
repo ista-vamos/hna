@@ -94,6 +94,7 @@ def parse_arguments():
         "--sanitize", action="store", help="Compile the monitor with sanitizers"
     )
     parser.add_argument("--debug", action="store_true", help="Debugging mode")
+    parser.add_argument("--debug-prints", action="store_true", help="--debug + print debugging messages to stderr")
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Print more messages"
     )
@@ -140,6 +141,9 @@ def parse_arguments():
         help="The header for CSV with types, a comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type",
     )
     args = parser.parse_args()
+
+    if args.debug_prints:
+        args.debug = True
 
     args.input_file = None
     args.cpp_files = []
