@@ -18,7 +18,7 @@ int main() {
   // Generated variable `Trace *trace1, *trace2`
   @TRACE@
 
-  HNLInstance instance{trace1, trace2, /* NOT USED */ AUTOMATON_@ATOM_NUM@};
+  HNLInstance instance{trace1, trace2, /* NOT USED */ ATOM_@ATOM_NUM@};
   AtomMonitor@ATOM_NUM@ M(instance);
 
   size_t steps = 0;

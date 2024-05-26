@@ -5,12 +5,10 @@
 #include <cassert>
 #include <vector>
 
-#include "hnl-state.h"
-
 template <typename HNLInstance> class AtomBase {
 protected:
   // which AtomMonitor this is
-  const int _type = INVALID;
+  const int _type;
 
   std::vector<HNLInstance *> _used_by;
 

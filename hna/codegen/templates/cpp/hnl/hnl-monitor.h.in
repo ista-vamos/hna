@@ -28,7 +28,7 @@
 @namespace_start@
 
 
-class HNLMonitor : public HNLMonitorBase<TraceSet> {
+class HNLMonitor : public HNLMonitorBase {
 protected:
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
   // XXX: based on profiling, we could keep a vector of raw pointers

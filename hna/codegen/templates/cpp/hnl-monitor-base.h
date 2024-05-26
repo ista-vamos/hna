@@ -4,9 +4,9 @@
 #include "monitor.h"
 #include "traceset.h"
 
-template <typename TraceSetTy> class HNLMonitorBase : public Monitor {
+class HNLMonitorBase : public Monitor {
 protected:
-  TraceSetTy _traces;
+  TraceSet _traces;
 
 public:
   // adding and extending traces

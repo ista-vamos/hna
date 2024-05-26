@@ -1155,11 +1155,10 @@ class CodeGenCpp(CodeGen):
         self.gen_config(
             "CMakeLists-tests.txt.in",
             "tests/CMakeLists.txt",
-            {},
+            {
+                "@submonitors_libs@": " ".join(self._submonitors),
+            },
         )
-
-        # our alphabet are pairs of letters
-        alphabet = [TupleLabel((a, b)) for a in alphabet for b in alphabet]
 
         for F, tmp in self._formula_to_automaton.items():
             num, A = tmp
