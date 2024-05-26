@@ -4,7 +4,8 @@ set -e
 
 source prelude.sh
 
-gen "forall t1: x(t1) <= 1.2 && y(t1) <= 3.2"
+# we do not have tests for functions
+gen "forall t1: x(t1) <= x(id(t1))" id.cpp -DENABLE_TESTS=OFF
 
 echo "x,y"  > /tmp/1.csv
 echo "1,3" >> /tmp/1.csv
@@ -46,7 +47,7 @@ echo "1,2" >> /tmp/5.csv
 echo "2,2" >> /tmp/5.csv
 echo "2,1" >> /tmp/5.csv
 
-run FALSE /tmp/1.csv /tmp/2.csv /tmp/3.csv /tmp/4.csv /tmp/5.csv
+run TRUE /tmp/1.csv /tmp/2.csv /tmp/3.csv /tmp/4.csv /tmp/5.csv
 
 rm /tmp/{1,2,3,4,5}.csv
 
