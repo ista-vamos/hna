@@ -3,7 +3,7 @@
 import sys
 import csv
 
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, TimeoutExpired
 from os.path import abspath, dirname, join as pathjoin
 from tempfile import mkdtemp
 from shutil import rmtree
@@ -14,7 +14,6 @@ from statistics import mean, stdev
 SRCDIR=f"{dirname(sys.argv[0])}/../"
 HNL_SCRIPT=f"{SRCDIR}/hnl.py"
 TRIALS=10 # how many times run the monitor on a given input
-REPEAT=10 # how many times repeat all experiments
 
 def err(msg):
     print(msg, file=sys.stderr)
@@ -213,33 +212,46 @@ else:
 # if r[0] != 0:
 #     err("Failed tests")
 
-print("--- Starting measurements ---")
-traces_dir = f"{mondir}/traces-single-input"
+def _run_measurement(NUM, LEN, method):
+    if method == "single-input":
+        traces_dir = f"{mondir}/traces-{method}"
+        gen_traces_single_input(alphabet, traces_dir, num=NUM, length=LEN)
+    elif method == "two-inputs":
+        traces_dir = f"{mondir}/traces-{method}"
+        gen_traces_two_inputs(alphabet, traces_dir, num=NUM, length=LEN)
+    elif method == "rand-inputs":
+        traces_dir = f"{mondir}/traces-{method}"
+        gen_traces_two_inputs(alphabet, traces_dir, num=NUM, length=LEN)
+    else:
+        raise RuntimeError("Invalid config")
 
-with open("output.csv", "w") as f:
+    inputs = [f"{abspath(pathjoin(traces_dir, f))}" for f in listdir(traces_dir) if f.endswith(".csv")]
+
+    verdict = None
+    times = []
+    for values in measure(inputs):
+        W.writerow([NUM, LEN] + [values[1], values[2]])
+        sys.stdout.flush()
+
+        # check that the verdict is stable
+        if verdict:
+            assert verdict == values[1], (verdict, values)
+        else:
+            verdict = values[1]
+
+        times.append(values[2])
+    return times
+
+with open("output.csv", "a") as f:
     W = csv.writer(f)
 
-    for NUM in (100, 200, 300, 400, 500):
-        for LEN in (500, 1000, 1500, 2000):
-            gen_traces_single_input(alphabet, traces_dir, num=NUM, length=LEN)
-            inputs = [f"{abspath(pathjoin(traces_dir, f))}" for f in listdir(traces_dir) if f.endswith(".csv")]
+    for method in ("single-input", "two-inputs", "rand-inputs"):
+        print(f"--- Starting measurements for {method} ---")
+        for NUM in (100, 200, 300, 400, 500):
+            for LEN in (500, 1000, 1500, 2000):
+                times = _run_measurement(NUM, LEN, method)
+                print(f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3} ms")
 
-            verdict = None
-            times = []
-            for values in measure(inputs):
-                W.writerow([NUM, LEN] + [x for x in values])
-                print(NUM, LEN, values)
-                sys.stdout.flush()
-
-                # check that the verdict is stable
-                if verdict:
-                    assert verdict == values[1], (verdict, values)
-                else:
-                    verdict = values[1]
-
-                times.append(values[2])
-
-print(f"Avg cputime: {mean(times)} +- {stdev(times)} ms")
 
 chdir("/tmp")
 rmtree(mondir)
