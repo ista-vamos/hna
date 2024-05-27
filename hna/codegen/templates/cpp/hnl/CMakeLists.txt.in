@@ -49,6 +49,8 @@ option(DEBUG_PRINTS "Print debugging messages on stderr (OFF by default)" OFF)
 option(SANITIZE "Compile with -fsanitize=address,undefined (OFF by default)" OFF)
 option(SANITIZE_THREAD "Compile with -fsanitize=thread (OFF by default)" OFF)
 
+option(MEASURE_CPUTIME "Measure and print CPU time of running monitors (ON by default)" ON)
+
 if(NO_EXCEPTIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 endif()
@@ -68,6 +70,9 @@ if(SANITIZE_THREAD)
 endif()
 if (DEBUG_PRINTS)
     add_compile_definitions(DEBUG_PRINTS)
+endif()
+if (MEASURE_CPUTIME)
+    add_compile_definitions(MEASURE_CPUTIME)
 endif()
 
 

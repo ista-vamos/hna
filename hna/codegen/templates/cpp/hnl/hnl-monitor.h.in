@@ -10,6 +10,12 @@
 #include <list>
 #include <memory>
 
+#ifdef MEASURE_CPUTIME
+// There's no guarantee that chrono::high_resolution_clock will actually measure
+// CPU time, so use clock_gettime from `ctime`
+#include <ctime>
+#endif // !MEASURE_CPUTIME
+
 #include "verdict.h"
 #include "monitor.h"
 #include "atom-monitor.h"
@@ -62,6 +68,12 @@ public:
     size_t num_instances{0};
     // number of atom monitors
     size_t num_atoms{0};
+
+    // CPU time taken by running the HNL monitor
+    #ifdef MEASURE_CPUTIME
+    struct timespec cputime{0, 0};
+    struct timespec cputime_adding_instances{0, 0};
+    #endif
   } stats;
 };
 
