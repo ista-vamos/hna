@@ -183,7 +183,7 @@ class CodeGenCpp(CodeGen):
 
         build_type = self.args.build_type
         if not build_type:
-            build_type = '"Debug"' if self.args.debug else ""
+            build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
             "@vamos-buffers_DIR@": vamos_buffers_DIR,
