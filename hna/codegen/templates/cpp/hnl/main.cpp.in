@@ -66,12 +66,12 @@ int main(int argc, char *argv[]) {
   std::cout << "  Total atom monitors: " << monitor.stats.num_atoms << "\n";
 #ifdef MEASURE_CPUTIME
   std::cout << "  CPU time in milliseconds: "
-            << monitor.stats.cputime.tv_sec*1e6 + monitor.stats.cputime.tv_nsec*1e-6
+            << monitor.stats.cputime.tv_sec*1e3 + monitor.stats.cputime.tv_nsec*1e-6
             << " ms\n";
 
   std::cout << "    from which:\n";
   std::cout << "    - generating instances took: "
-            << monitor.stats.cputime_adding_instances.tv_sec*1e6 + monitor.stats.cputime_adding_instances.tv_nsec*1e-6
+            << monitor.stats.cputime_adding_instances.tv_sec*1e3 + monitor.stats.cputime_adding_instances.tv_nsec*1e-6
             << " ms\n";
 #endif
 
