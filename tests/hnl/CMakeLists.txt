@@ -5,7 +5,8 @@
 add_test(NAME test1 COMMAND ./test1.sh)
 add_test(NAME test2 COMMAND ./test2.sh)
 add_test(NAME test3 COMMAND ./test3.sh)
-#add_test(NAME test4 COMMAND ./test4.sh)
+
+add_test(NAME test-trace-1 COMMAND ./test-trace-1.sh)
 
 add_test(NAME test-od-1 COMMAND ./test-od-1.sh)
 add_test(NAME test-od-2 COMMAND ./test-od-2.sh)
