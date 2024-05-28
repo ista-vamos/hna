@@ -676,16 +676,16 @@ class CodeGenCpp(CodeGen):
                 f.write(f'#include "atom-{num}.h"\n')
             f.write("#endif\n")
 
-        with self.new_file("do_step.h") as f:
-            dump_codegen_position(f)
-            f.write("switch (M->type()) {")
-            for F, tmp in self._formula_to_automaton.items():
-                num, A = tmp
-                f.write(
-                    f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();"
-                )
-            f.write("  default: abort(); ")
-            f.write("}")
+       #with self.new_file("do_step.h") as f:
+       #    dump_codegen_position(f)
+       #    f.write("switch (M->type()) {")
+       #    for F, tmp in self._formula_to_automaton.items():
+       #        num, A = tmp
+       #        f.write(
+       #            f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();"
+       #        )
+       #    f.write("  default: abort(); ")
+       #    f.write("}")
 
     def _generate_submonitors(self, alphabet):
         assert self._formula_to_automaton, "Formulas not translated to automata"
@@ -962,7 +962,7 @@ class CodeGenCpp(CodeGen):
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
-        wrh(f"Verdict step(unsigned num = 0);\n\n")
+        wrh(f"Verdict step(unsigned num = 0) override;\n\n")
         wrh("};\n\n")
         if self._namespace:
             wrh(f"}} // namespace {self._namespace}\n")

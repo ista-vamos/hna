@@ -19,10 +19,6 @@
 // must be inside the namespace
 #include "bdd-structure.h"
 
-static inline Verdict do_step(AtomMonitor *M) {
-  #include "do_step.h"
-}
-
 
 bool HNLMonitor::addNewTraces() {
   if (auto *t1 = _traces.getNewTrace()) {
@@ -60,7 +56,7 @@ Verdict HNLMonitor::step() {
   for (unsigned n = 0; n < n_atoms; ++n) {
       auto *atom_monitor = _atom_monitors[n].get();
 
-      if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
+      if ((verdict = atom_monitor->step()) != Verdict::UNKNOWN) {
           #ifdef CACHE_ATOMS_RESULTS
           #endif // !CACHE_ATOMS_RESULTS
 

@@ -4,6 +4,7 @@
 #include "atom-base.h"
 #include "hnl-instance.h"
 #include "atom-identifier.h"
+#include "verdict.h"
 
 @namespace_start@
 
@@ -16,6 +17,8 @@ public:
   AtomMonitor(const AtomIdentifier& identifier) : AtomBase(std::get<0>(identifier)), _id(identifier) {}
 
   const AtomIdentifier& id() const { return _id; }
+
+  virtual Verdict step(unsigned = 1) = 0;
 };
 
 @namespace_end@

@@ -21,7 +21,6 @@ protected:
 public:
   RegularAtomMonitor(const AtomIdentifier& id, Trace *t1, Trace *t2) : AtomMonitor(id), t1(t1), t2(t2) {}
 
-  Verdict step(const unsigned step_num);
 };
 
 @namespace_end@
