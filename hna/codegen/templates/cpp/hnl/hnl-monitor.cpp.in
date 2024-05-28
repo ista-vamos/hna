@@ -61,8 +61,8 @@ Verdict HNLMonitor::step() {
       auto *atom_monitor = _atom_monitors[n].get();
 
       if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
-          // std::cerr << "CACHE THE RESULT\n";
-          // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
+          #ifdef CACHE_ATOMS_RESULTS
+          #endif // !CACHE_ATOMS_RESULTS
 
           for (auto it = atom_monitor->used_by_begin(),
                     et = atom_monitor->used_by_end(); it != et; ++it) {

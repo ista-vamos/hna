@@ -36,6 +36,7 @@ option(SANITIZE "Compile with -fsanitize=address,undefined (OFF by default)" OFF
 option(SANITIZE_THREAD "Compile with -fsanitize=thread (OFF by default)" OFF)
 OPTION(ENABLE_IPO "Enable interprocedural optimizations (forced OFF for Debug builds, otherwise ON)" ON)
 option(MEASURE_CPUTIME "Measure and print CPU time of running monitors (ON by default)" ON)
+option(CACHE_ATOMS_RESULTS "Do not create atoms for the same traces multiple times (ON by default)" ON)
 
 if(NO_EXCEPTIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
@@ -59,6 +60,9 @@ if (DEBUG_PRINTS)
 endif()
 if (MEASURE_CPUTIME)
     add_compile_definitions(MEASURE_CPUTIME)
+endif()
+if (CACHE_ATOMS_RESULTS)
+    add_compile_definitions(CACHE_ATOMS_RESULTS)
 endif()
 
 

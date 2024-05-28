@@ -30,6 +30,7 @@
 /* generated */
 #include "hnl-instance.h"
 #include "functions.h"
+#include "atom-identifier.h"
 
 @namespace_start@
 
@@ -41,6 +42,10 @@ protected:
   //  (additionally to this vector) that we would you for iterating over the atoms.
   // (Or we do it entirely event driven -- update the atoms for which the traces were updated)
   std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
+
+#ifdef CACHE_ATOMS_RESULTS
+  std::map<AtomIdentifier, Verdict> _verdicts_cache;
+#endif
 
   #include "function-instances.h"
 

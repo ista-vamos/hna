@@ -4,6 +4,7 @@
 #include <atomic>
 #include <mutex>
 #include <vector>
+#include <cassert>
 
 #include "events.h"
 
@@ -31,7 +32,7 @@ class Trace {
   void unlock();
 
 public:
-  Trace(size_t id) : _id(id) {}
+  Trace(size_t id) : _id(id) { assert(id > 0); }
 
   size_t id() const { return _id; }
 

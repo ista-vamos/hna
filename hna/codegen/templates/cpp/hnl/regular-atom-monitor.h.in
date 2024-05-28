@@ -19,7 +19,7 @@ protected:
   EvaluationStateSet _cfgs;
 
 public:
-  RegularAtomMonitor(int ty, Trace *t1, Trace *t2) : AtomMonitor(ty), t1(t1), t2(t2) {}
+  RegularAtomMonitor(const AtomIdentifier& id, Trace *t1, Trace *t2) : AtomMonitor(id), t1(t1), t2(t2) {}
 
   Verdict step(const unsigned step_num);
 };
