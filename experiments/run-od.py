@@ -99,7 +99,6 @@ def gen_traces_single_input(alphabet, outdir, num, length):
 
     all_traces = []
     traces = {}
-    alphabet=alphabet.split(",")
     for i in range(1, num + 1):
         a_i = alphabet[randrange(0, len(alphabet))]
         trace_in = []
@@ -134,7 +133,6 @@ def gen_traces_two_inputs(alphabet, outdir, num, length):
 
     all_traces = []
     traces = {}
-    alphabet=alphabet.split(",")
     for i in range(1, num + 1):
         a_i1 = alphabet[randrange(0, len(alphabet))]
         a_i2 = alphabet[randrange(0, len(alphabet))]
@@ -169,7 +167,6 @@ def gen_traces_rand_inputs(alphabet, outdir, num, length):
 
     all_traces = []
     traces = {}
-    alphabet=alphabet.split(",")
     for i in range(1, num + 1):
         trace_in = []
         trace_out = []
@@ -198,14 +195,16 @@ def gen_traces_rand_inputs(alphabet, outdir, num, length):
 
 
 # numbers on 3 bits
-alphabet="0,1,2,3,4,5,6,7"
+alphabet=[str(i) for i in range(0, 2**3)]
+alphabet=[str(i) for i in range(0, 2**4)]
+alphabet=[str(i) for i in range(0, 2)]
 csv_header = "in: int, out: int"
 
 if len(sys.argv) > 1:
     mondir = dirname(sys.argv[1])
 else:
     mondir = gen("forall t1, t2: !(in(t1) <= in(t2)) || (out(t1) <= out(t2))",
-                 alphabet, csv_header)
+                 ",".join(alphabet), csv_header)
 
 # chdir(mondir)
 # r = runcmd(['make', 'check', '-j4'], no_capture=True)
