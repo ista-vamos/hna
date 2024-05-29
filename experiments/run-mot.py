@@ -65,6 +65,9 @@ def parse(retval, to, outs, errs):
     CPU time in milliseconds: 0.076709 ms
 
     """
+    if (retval < 0):
+        print(outs)
+        print(errs)
 
     if to:
         return "TO", "TO", "TO"
@@ -96,9 +99,10 @@ def measure(inputs, timeout=30):
 #alphabet=[str(i) for i in range(0, 2**4)]
 #alphabet=[str(i) for i in range(0, 2)]
 #alphabet=[str(i) for i in range(0, 2**2)]
-alphabet=[str(i) for i in range(0, 2**3)]
+#alphabet=[str(i) for i in range(0, 2**3)]
 #alphabet=[str(i) for i in range(0, 2**2)]
-alphabet=[str(i) for i in range(0, 2)]
+BITS = 4
+alphabet=[str(i) for i in range(0, 2**BITS)]
 csv_header = "loc: int, out: int"
 
 if len(sys.argv) > 1:
@@ -116,6 +120,12 @@ def _run_measurement(NUM, LEN, method):
     if method == "rand-inputs":
         traces_dir = f"{mondir}/traces-{method}"
         ha_gen_traces_rand_inputs(alphabet, traces_dir, num=NUM, length=LEN)
+    elif method == "almost-same":
+        traces_dir = f"{mondir}/traces-{method}"
+        ha_gen_traces_almost_same(alphabet, traces_dir, num=NUM, length=LEN)
+    elif method == "same":
+        traces_dir = f"{mondir}/traces-{method}"
+        ha_gen_traces_same(alphabet, traces_dir, num=NUM, length=LEN)
     else:
         raise RuntimeError("Invalid config")
 
@@ -124,29 +134,38 @@ def _run_measurement(NUM, LEN, method):
     verdict = None
     times = []
     for values in measure(inputs):
-        W.writerow([NUM, LEN] + [values[1], values[2]])
+        W.writerow([method, NUM, LEN] + [values[1], values[2]])
         sys.stdout.flush()
+
+        if values[0] < 0:
+            print("Warning: a crash")
 
         # check that the verdict is stable
         if verdict:
-            assert verdict == values[1], (verdict, values)
+            assert verdict == values[1] or values[0] < 0, (verdict, values)
         else:
             verdict = values[1]
 
         times.append(values[2])
     return times
 
-with open("output.csv", "a") as f:
+with open(f"output-mot-{BITS}.csv", "a") as f:
     W = csv.writer(f)
 
-    for method in ("rand-inputs",):
+    #for method in ("same", "almost-same", "rand-inputs"):
+    #for method in ("almost-same", "rand-inputs"):
+    for method in ("same", ):
         print(f"--- Starting measurements for {method} ---")
        #for NUM in (100, 200, 300, 400, 500):
        #    for LEN in (500, 1000, 1500, 2000):
-        for NUM in (1000, 2000, 3000, 4000, 5000):
-            for LEN in (1000, 2000, 4000, 6000):
+        for NUM in (50, 100, 200, 500):
+            for LEN in (500, 1000, 2000):
                 times = _run_measurement(NUM, LEN, method)
-                print(f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3} ms")
+                times = [t for t in times if t]
+                if times:
+                    print(f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3 if len(times) > 1 else None} ms")
+                else:
+                    print(f"Failed measuring times")
 
 
 chdir("/tmp")

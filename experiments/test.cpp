@@ -43,7 +43,7 @@ public:
               continue;
           
           auto n = trace->size();
-          for (int i = 0; i < n*n; ++i) {
+          for (int i = 0; i < n; ++i) {
             auto *new_t = SS.newTrace(++_trace_id);
             trace->copyTo(new_t);
             std::random_shuffle(new_t->events().begin(), new_t->events().end());

@@ -24,7 +24,7 @@ public:
   std::vector<std::string> inputs;
 
   // do not have open more than this amount of traces at once
-  size_t open_traces_limit = 500;
+  size_t open_traces_limit = 300;
   // read at most this number of events before switching to extending some other
   // trace
   size_t read_max_num_events_at_once = 1000000;
