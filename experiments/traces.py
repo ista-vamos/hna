@@ -160,3 +160,87 @@ def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
                 f.write("\n")
 
 
+
+def ha_gen_traces_almost_same(alphabet, outdir, num, length, violating=0):
+    """
+    Generate traces that are OD. The input is in the first event
+    and then stutters, if two traces share the same input,
+    then one trace's outputs are a prefix of the other
+    """
+    makedirs(outdir, exist_ok=True)
+
+    stages = ["Clear", "ShareLoc", "EraseLoc"]
+
+    all_traces = []
+    #bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
+    for i in range(1, num + 1):
+        trace = []
+        stage = 0
+
+        a_i = alphabet[randrange(0, len(alphabet))]
+        a_o = alphabet[randrange(0, len(alphabet))]
+        for n in range(length):
+            if stage % len(stages) == 2:
+                a_o = alphabet[0]
+
+            trace.append(f"{a_i},{a_o}")
+
+            if randrange(0, 100) <= 1:
+                a_i = alphabet[randrange(0, len(alphabet))]
+            if randrange(0, 100) <= 1:
+                a_o = alphabet[randrange(0, len(alphabet))]
+ 
+            if randrange(0, 100) <= 1:
+                stage += 1
+                trace.append(stages[stage % len(stages)])
+               
+
+        all_traces.append(trace)
+
+    for n, t in enumerate(all_traces):
+        with open(f"{outdir}/{n}.csv", "w") as f:
+            f.write("loc,out\n")
+            for e in t:
+                f.write(e)
+                f.write("\n")
+
+
+def ha_gen_traces_same(alphabet, outdir, num, length, violating=0):
+    """
+    Generate traces that are OD. The input is in the first event
+    and then stutters, if two traces share the same input,
+    then one trace's outputs are a prefix of the other
+    """
+    makedirs(outdir, exist_ok=True)
+
+    stages = ["Clear", "ShareLoc", "EraseLoc"]
+
+    all_traces = []
+    #bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
+    for i in range(1, num + 1):
+        trace = []
+        stage = 0
+
+        a_i = alphabet[0]
+        a_o = alphabet[0]
+        for n in range(length):
+            if stage % len(stages) == 2:
+                a_o = alphabet[0]
+
+            trace.append(f"{a_i},{a_o}")
+
+            if randrange(0, 100) <= 0:
+                stage += 1
+                trace.append(stages[stage % len(stages)])
+               
+
+        all_traces.append(trace)
+
+    for n, t in enumerate(all_traces):
+        with open(f"{outdir}/{n}.csv", "w") as f:
+            f.write("loc,out\n")
+            for e in t:
+                f.write(e)
+                f.write("\n")
+
+
