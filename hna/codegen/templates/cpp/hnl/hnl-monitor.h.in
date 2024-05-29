@@ -44,7 +44,8 @@ protected:
   std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
 #ifdef CACHE_ATOMS_RESULTS
-  std::map<AtomIdentifier, Verdict> _verdicts_cache;
+  std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _cached_atoms;
+  std::map<AtomIdentifier, @namespace@::AtomMonitor *> _known_atoms;
 #endif
 
   #include "function-instances.h"
@@ -73,6 +74,13 @@ public:
     size_t num_instances{0};
     // number of atom monitors
     size_t num_atoms{0};
+#ifdef CACHE_ATOMS_RESULTS
+    // number of atom verdics cache hits
+    size_t atoms_cache_hit{0};
+    // how many monitors we tried to create
+    // multiple times (without cache)
+    size_t reused_monitors{0};
+#endif
 
     // CPU time taken by running the HNL monitor
     #ifdef MEASURE_CPUTIME

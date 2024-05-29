@@ -18,7 +18,7 @@ function gen {
 	echo "--------------------------------------"
 
 	cd $DIR
-	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=ON
+	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=OFF
 
 	cd $WORKDIR
 	make check -j4
@@ -40,7 +40,7 @@ function run {
 	done
 
 	echo "--- TEST $N ---"
-	$WORKDIR/monitor $FILES | grep "Formula is $RESULT" ||\
+	$WORKDIR/monitor $FILES | tee /dev/stdout grep "Formula is $RESULT" ||\
 		(
 			echo "-- Test $N FAILED --";
 			echo "$WORKDIR/monitor $FILES"

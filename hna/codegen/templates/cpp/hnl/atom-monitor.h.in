@@ -21,6 +21,22 @@ public:
   virtual Verdict step(unsigned = 1) = 0;
 };
 
+
+///
+// This is a monitor that has a cached verdict
+// and returns only that from the step function
+class AtomMonitorVerdict : public AtomMonitor {
+  const Verdict _verdict;
+
+public:
+
+  AtomMonitorVerdict(const AtomIdentifier& identifier, Verdict v) : AtomMonitor(identifier), _verdict(v) {}
+
+  Verdict step(unsigned) override { return _verdict; }
+};
+
+
+
 @namespace_end@
 
 #endif // ATOM_MONITOR__@MONITOR_NAME@

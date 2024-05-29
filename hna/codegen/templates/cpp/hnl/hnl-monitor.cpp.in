@@ -58,6 +58,9 @@ Verdict HNLMonitor::step() {
 
       if ((verdict = atom_monitor->step()) != Verdict::UNKNOWN) {
           #ifdef CACHE_ATOMS_RESULTS
+         //assert(_verdicts_cache.count(atom_monitor->id()) == 0
+         //       && "Already cached this atom");
+         //_verdicts_cache[atom_monitor->id()] = verdict;
           #endif // !CACHE_ATOMS_RESULTS
 
           for (auto it = atom_monitor->used_by_begin(),
@@ -83,6 +86,38 @@ Verdict HNLMonitor::step() {
               assert(action > 0 && "Invalid next atom");
               instance->state = action;
               instance->monitor = createAtomMonitor(action, *instance);
+
+              // FIXME: do not create the monitor if we have the cached result
+              // FIXME: we leak the monitors
+              #ifdef CACHE_ATOMS_RESULTS
+             //auto cache_it = _verdicts_cache.find(instance->monitor->id());
+             //while (cache_it != _verdicts_cache.end()) {
+             //  ++stats.atoms_cache_hit;
+
+             //  // free the monitor that we created and will not use
+             //  _atom_monitors.back().reset();
+             //  erased = true;
+
+             //  action = BDD[action][cache_it->second == Verdict::TRUE ? 1 : 2];
+
+             //  if (action == RESULT_FALSE) {
+             //      // The whole HNL formula evaluated to FALSE for the traces in `instance`.
+             //      return Verdict::FALSE;
+             //  }
+
+             //  if (action == RESULT_TRUE) {
+             //      // The whole HNL formula is satisfied for the traces in `instance`,
+             //      removeInstance(instance);
+             //      continue;
+             //  }
+
+             //  assert(action > 0 && "Invalid next atom");
+             //  instance->state = action;
+             //  instance->monitor = createAtomMonitor(action, *instance);
+
+             //  cache_it = _verdicts_cache.find(instance->monitor->id());
+             //}
+              #endif // !CACHE_ATOMS_RESULTS
           }
 
           _atom_monitors[n].reset();
@@ -134,13 +169,20 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
 
     AtomMonitor *monitor;
 
-    /* GENERATED */
-    #include "create-atom-monitor.h"
+    auto &id = instance.createId();
+    auto it = _known_atoms.find(id);
+
+    if (it == _known_atoms.end()) {
+      /* GENERATED */
+      #include "create-atom-monitor.h"
+      _atom_monitors.emplace_back(monitor);
+      ++stats.num_atoms;
+    } else {
+      monitor = *it;
+    }
 
     monitor->setUsedBy(instance);
-    _atom_monitors.emplace_back(monitor);
 
-    ++stats.num_atoms;
 
     return monitor;
 }
