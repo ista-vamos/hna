@@ -1,0 +1,13 @@
+automaton:
+  init: q0
+  nodes:
+    q0: 'forall t: [out(t)] <= [out(testP(t))]'
+    q1: 'forall t1, t2: ([loc(t1)] <= [loc(t2)]) || !(out(t1) <= out(t2))'
+    q2: 'forall t: [loc(t)] <= 0'
+  edges:
+    - edge: q0 -> q1
+      action: ShareLoc
+    - edge: q1 -> q2
+      action: EraseLoc
+    - edge: q2 -> q0
+      action: Clear

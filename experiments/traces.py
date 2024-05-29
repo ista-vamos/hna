@@ -145,7 +145,7 @@ def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
                 a_o = alphabet[randrange(0, len(alphabet))]
             trace.append(f"{a_i},{a_o}")
  
-            if randrange(0, 100) <= 10:
+            if randrange(0, 100) <= 1:
                 stage += 1
                 trace.append(stages[stage % len(stages)])
                
