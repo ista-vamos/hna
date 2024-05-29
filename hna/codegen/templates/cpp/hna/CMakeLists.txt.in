@@ -39,6 +39,16 @@ option(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
 option(NO_RTTI "Compile with -fno-rtti (ON by default)" ON)
 option(SANITIZE "Compile with -fsanitize (OFF by default)" OFF)
 option(BUILD_HNL_EXE "Compile executables for HNL monitors (OFF by default)" OFF)
+option(MEASURE_CPUTIME "Measure and print CPU time of running monitors (ON by default)" ON)
+option(DEBUG_PRINTS "Print debugging messages on stderr (OFF by default)" OFF)
+
+if (MEASURE_CPUTIME)
+    add_compile_definitions(MEASURE_CPUTIME)
+endif()
+
+if (DEBUG_PRINTS)
+    add_compile_definitions(DEBUG_PRINTS)
+endif()
 
 if(NO_EXCEPTIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
@@ -69,7 +79,7 @@ add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp)
 
 add_library(hnamonitor STATIC hna-monitor.cpp)
 target_include_directories(hnamonitor PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(hnamonitor PUBLIC hnamonitor traceset trace events)
+target_link_libraries(hnamonitor PUBLIC traceset trace events)
 
 add_executable(monitor main.cpp cmd.cpp @additional_sources@)
 target_link_libraries(monitor PUBLIC hnamonitor)

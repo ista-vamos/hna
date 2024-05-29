@@ -60,6 +60,13 @@ int main(int argc, char *argv[]) {
   std::cout << " -- stats --\n";
   std::cout << "  Number of HNL monitors: " << monitor.stats.num_hnl_monitors
             << "\n";
+#ifdef MEASURE_CPUTIME
+  std::cout << "  CPU time in milliseconds: "
+            << monitor.stats.cputime.tv_sec*1e3 + monitor.stats.cputime.tv_nsec*1e-6
+            << " ms\n";
+#endif
+
+
 
   return static_cast<int>(verdict);
 }

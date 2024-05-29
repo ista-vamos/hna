@@ -118,7 +118,7 @@ def _run_measurement(NUM, LEN, method):
         gen_traces_two_inputs(alphabet, traces_dir, num=NUM, length=LEN)
     elif method == "rand-inputs":
         traces_dir = f"{mondir}/traces-{method}"
-        gen_traces_two_inputs(alphabet, traces_dir, num=NUM, length=LEN)
+        gen_traces_rand_inputs(alphabet, traces_dir, num=NUM, length=LEN)
     else:
         raise RuntimeError("Invalid config")
 

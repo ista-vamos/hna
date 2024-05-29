@@ -24,6 +24,7 @@
 #include "traceset.h"
 #include "sharedtraceset.h"
 #include "tracesetview.h"
+#include "cmd.h"
 
 #include "hnl-monitor-base.h"
 
@@ -50,8 +51,10 @@ protected:
 
   void condenseAtomsVector();
 
+  CmdArgs *_cmd;
+
 public:
-  HNLMonitor() {
+  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {
     #include "functions-initialize.h"
   }
 
@@ -85,7 +88,10 @@ class FunctionHNLMonitor : public HNLMonitor {
   TraceSetView _traces_r;
 
   bool addNewTraces() override;
+
 public:
+    FunctionHNLMonitor(CmdArgs *cmd = nullptr) : HNLMonitor(cmd) {}
+    
     FunctionHNLMonitor(SharedTraceSet& traces_l, Trace *tr) : _traces_l(traces_l), _traces_r(tr) {}
     // the `bool` here is just a dummy argument so that we can overload
     FunctionHNLMonitor(Trace *tl, SharedTraceSet& traces_r) : _traces_l(tl), _traces_r(traces_r) {}

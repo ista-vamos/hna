@@ -1,6 +1,7 @@
-#include <chrono>
+//#include <chrono>
 #include <mutex>
 #include <thread>
+#include <cassert>
 
 #include "events.h"
 #include "trace.h"
@@ -74,4 +75,27 @@ bool Trace::finished() {
   auto f = _finished;
   unlock();
   return f;
+}
+
+void Trace::swap(Trace *rhs) {
+    assert(rhs != this);
+    lock();
+    rhs->lock();
+
+    _events.swap(rhs->_events);
+
+    rhs->unlock();
+    unlock();
+}
+
+void Trace::copyTo(Trace *rhs) {
+    assert(rhs != this);
+    lock();
+    rhs->lock();
+
+    rhs->_events = _events;
+    rhs->_finished = _finished;
+
+    rhs->unlock();
+    unlock();
 }

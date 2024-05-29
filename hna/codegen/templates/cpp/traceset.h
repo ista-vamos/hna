@@ -64,6 +64,8 @@ public:
 
   bool hasTrace(unsigned trace_id);
 
+  size_t size();
+
   auto begin() const -> auto { return _traces.begin(); }
   auto end() const -> auto { return _traces.end(); }
 };

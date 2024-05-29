@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <vector>
+#include <mutex>
 
 #include "hnl-monitor-base.h"
 #include "trace.h"
@@ -53,9 +54,15 @@ class SlicesTree {
   // is faster (and easier) than iterating over _edges + root.
   // std::vector<Monitor *> _monitors;
   std::vector<SliceTreeNode *> _nodes;
+  std::vector<SliceTreeNode *> _new_nodes;
 
   // map hnl monitors (they are nodes) to (action, hnlmonitor) pairs
   std::map<SliceTreeNode *, std::map<ActionEventType, SliceTreeNode>> _edges;
+
+  std::mutex _mtx;
+
+  void lock() { _mtx.lock(); }
+  void unlock() { _mtx.unlock(); }
 
 public:
 #include "create-hnl-monitor.h"
@@ -87,15 +94,28 @@ public:
       return nullptr;
     }
 
+    auto *hnl_monitor = createHNLMonitor(next_node);
+
+    lock();
     auto &slice =
         _edges[node]
             .emplace(ev.type,
-                     SliceTreeNode{createHNLMonitor(next_node), next_node})
+                     SliceTreeNode{hnl_monitor, next_node})
             .first->second;
     // _monitors.push_back(slice.monitor.get());
-    _nodes.push_back(&slice);
+    _new_nodes.push_back(&slice);
+    unlock();
 
     return &slice;
+  }
+
+  void ensureNodes() {
+      lock();
+      if (!_new_nodes.empty()) {
+          _nodes.insert(_nodes.begin(), _new_nodes.begin(), _new_nodes.end());
+          _new_nodes.clear();
+      }
+      unlock();
   }
 
   // auto monitors_begin() -> auto { return _monitors.begin(); }
@@ -138,6 +158,11 @@ public:
   struct {
     // number of HNL monitors
     size_t num_hnl_monitors{1};
+
+    // CPU time taken by running the HNL monitor
+    #ifdef MEASURE_CPUTIME
+    struct timespec cputime{0, 0};
+    #endif
   } stats;
 };
 
