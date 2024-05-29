@@ -1058,7 +1058,7 @@ class CodeGenCpp(CodeGen):
                 if prio > 0:
                     # if this was not the least priority, continue with the next priority transitions
                     wrcpp(
-                        "else { "
+                        "else {\n"
                         "#ifdef DEBUG_PRINTS\n"
                         f'std::cerr << "    => no transition in priority {prio} matched\\n";\n'
                         "#endif /* !DEBUG_PRINTS */\n"
@@ -1128,7 +1128,7 @@ class CodeGenCpp(CodeGen):
                 f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
                 "#endif /* !DEBUG_PRINTS */\n"
             )
-            wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{")
+            wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{\n")
             wrcpp(
                 f"   matched = true;\n "
                 f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
@@ -1344,13 +1344,13 @@ class CodeGenCpp(CodeGen):
             f.write("#include <memory>\n")
             f.write('#include "function.h"\n\n')
             for fun in formula.functions():
-                f.write(f"std::unique_ptr<Function> createFunction_{fun.name}();\n")
+                f.write(f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n")
             f.write(f'#endif // !HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
 
         with self.new_file("functions-initialize.h") as f:
             dump_codegen_position(f)
             for fun in formula.functions():
-                f.write(f"function_{fun.name} = createFunction_{fun.name}();\n")
+                f.write(f"function_{fun.name} = createFunction_{fun.name}(_cmd);\n")
 
         with self.new_file("function-instances.h") as f:
             dump_codegen_position(f)

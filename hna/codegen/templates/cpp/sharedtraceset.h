@@ -24,6 +24,9 @@ class SharedTraceSet {
   bool _traces_finished{false};
 
 public:
+  SharedTraceSet() = default;
+  SharedTraceSet(SharedTraceSet&&) = default;
+  SharedTraceSet& operator=(SharedTraceSet&&) = default;
   ~SharedTraceSet();
 
   // get the trace with the given ID

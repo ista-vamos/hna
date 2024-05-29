@@ -74,6 +74,15 @@ bool TraceSet::hasTrace(unsigned trace_id) {
   return ret;
 }
 
+size_t TraceSet::size() {
+  size_t ret;
+  lock();
+  ret = _traces.size() + _new_traces.size();
+  unlock();
+
+  return ret;
+}
+
 bool TraceSet::allTracesFinished() {
   lock();
   if (_new_traces.size() > 0) {

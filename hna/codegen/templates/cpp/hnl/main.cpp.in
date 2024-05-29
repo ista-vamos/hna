@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   // set this to false to stop the inputs thread
   std::atomic<bool> running = true;
 
-  HNLMonitor monitor{};
+  HNLMonitor monitor{&cmd};
 
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {

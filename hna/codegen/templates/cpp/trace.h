@@ -43,6 +43,14 @@ public:
   size_t size();
   void setFinished();
   bool finished();
+
+  void swap(Trace *);
+  void copyTo(Trace *);
+ 
+  // FIXME: remove
+  std::vector<Event>& events() { return _events; }
+  const std::vector<Event>& events() const { return _events; }
+  
 };
 
 #endif
