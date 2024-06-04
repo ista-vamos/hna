@@ -147,7 +147,7 @@ class CodeGenCpp(CodeGen):
 
     def copy_files(self, files):
         for f in files:
-            if f not in self.args.overwrite_default:
+            if f not in self.args.overwrite_file:
                 self.copy_file(f)
 
         for f in self.args.cpp_files:
@@ -1344,7 +1344,9 @@ class CodeGenCpp(CodeGen):
             f.write("#include <memory>\n")
             f.write('#include "function.h"\n\n')
             for fun in formula.functions():
-                f.write(f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n")
+                f.write(
+                    f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n"
+                )
             f.write(f'#endif // !HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
 
         with self.new_file("functions-initialize.h") as f:
