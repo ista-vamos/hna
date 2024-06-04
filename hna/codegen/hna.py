@@ -52,6 +52,7 @@ class CodeGenCpp(CodeGen):
             "../atom-evaluation-state.h",
             "../hnl-monitor-base.h",
             "../function.h",
+            "../stream.h",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
