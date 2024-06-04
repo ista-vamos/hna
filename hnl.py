@@ -158,7 +158,7 @@ def parse_arguments():
         help="Comma-separated list of letter to use as the alphabet",
     )
     parser.add_argument(
-        "--overwrite-default",
+        "--overwrite-file",
         action="append",
         default=[],
         help="Do not generate the default version of the given file, its replacement is assumed to be "
@@ -194,7 +194,7 @@ def parse_arguments():
     args.add_gen_files = []
     args.sources_def = None
     args.cmake_defs = args.D
-    for fl in args.inputs:
+    for fl in args.inputs + args.overwrite_file:
         if not isfile(fl):
             if args.input_formula:
                 raise RuntimeError(
@@ -220,6 +220,7 @@ def parse_arguments():
                 raise RuntimeError("Multiple .vsrc files given")
             args.sources_def = fl
 
+    args.overwrite_file = [basename(f) for f in args.overwrite_file]
     if args.alphabet:
         args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
 
