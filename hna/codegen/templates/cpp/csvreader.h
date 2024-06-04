@@ -33,6 +33,7 @@ public:
   template <typename EventTy> bool try_read(EventTy &ev) {
     assert(!finished() && "Reading finished file");
 
+    assert(!_stream.bad());
     _stream >> std::ws;
     if (_stream.eof()) {
       _finished = true;
