@@ -64,6 +64,10 @@ int main(int argc, char *argv[]) {
   std::cout << " -- stats --\n";
   std::cout << "  Total formula instances: " << monitor.stats.num_instances << "\n";
   std::cout << "  Total atom monitors: " << monitor.stats.num_atoms << "\n";
+#ifdef CACHE_ATOMS_RESULTS
+  std::cout << "  Reused monitors: " << monitor.stats.reused_monitors << "\n";
+  std::cout << "  Reused verdicts: " << monitor.stats.reused_verdict << "\n";
+#endif
 #ifdef MEASURE_CPUTIME
   std::cout << "  CPU time in milliseconds: "
             << monitor.stats.cputime.tv_sec*1e3 + monitor.stats.cputime.tv_nsec*1e-6
