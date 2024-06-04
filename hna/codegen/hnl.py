@@ -159,6 +159,7 @@ class CodeGenCpp(CodeGen):
             "../hnl-monitor-base.h",
             "../cmd.h",
             "../cmd.cpp",
+            "../stream.h",
             "../trace.h",
             "../trace.cpp",
             "../traceset.h",
