@@ -459,6 +459,25 @@ class CodeGenCpp(CodeGen):
             for q in formula.quantifier_prefix:
                 wr(f"{q.var}({q.var}), ")
             wr("state(init_state) { assert(state != INVALID); }\n\n")
+
+            wr("AtomIdentifier createMonitorID(int monitor_type) {")
+            wr("switch (monitor_type) {")
+            for F, tmp in self._formula_to_automaton.items():
+                num, _ = tmp
+                identifier = f"AtomIdentifier{{ATOM_{num}"
+                trace_variables = [t.name for t in F.trace_variables()]
+                print(trace_variables)
+                for q in formula.quantifiers():
+                    if q.var.name in [trace_variables]:
+                        identifier += f", {q.var.name}->id()"
+                    else:
+                        identifier += ",0"
+                identifier += "}"
+                wr(f"case ATOM_{num}: return {identifier};")
+            wr(f"default: abort();")
+            wr("};\n")
+            wr("}\n\n")
+
             wr("};\n\n")
             if self._namespace:
                 wr(f" }} // namespace {self._namespace}\n")
@@ -635,7 +654,8 @@ class CodeGenCpp(CodeGen):
                 f.write(f"namespace {ns} {{\n\n")
             f.write("\n"
                     "// An object that can uniquely identify an atom monitor\n"
-                    "// by its type and ids of traces\n")
+                    "// by its type and ids of the instantiated traces (or 0 if the trace variable"
+                    "// is not used by the atom).\n")
             f.write("using AtomIdentifier = std::tuple<unsigned")
             f.write(", unsigned"*len(formula.quantifiers()))
             f.write("> ;\n");
