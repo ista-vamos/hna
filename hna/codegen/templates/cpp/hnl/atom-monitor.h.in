@@ -3,14 +3,19 @@
 
 #include "atom-base.h"
 #include "hnl-instance.h"
+#include "atom-identifier.h"
 
 @namespace_start@
 
 class AtomMonitor : public AtomBase<HNLInstance> {
+  const AtomIdentifier _id;
+
 public:
   virtual ~AtomMonitor() {}
 
-  AtomMonitor(int ty) : AtomBase(ty) {}
+  AtomMonitor(const AtomIdentifier& identifier) : AtomBase(std::get<0>(identifier)), _id(identifier) {}
+
+  const AtomIdentifier& id() const { return _id; }
 };
 
 @namespace_end@

@@ -31,6 +31,7 @@
 /* generated */
 #include "hnl-instance.h"
 #include "functions.h"
+#include "atom-identifier.h"
 
 @namespace_start@
 

@@ -597,10 +597,11 @@ class CodeGenCpp(CodeGen):
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
         self._generate_create_instances_function_mon(embedding_data)
-        self._generate_automata_code(alphabet)
+        self._generate_automata_code(formula, alphabet)
         self._generate_atom_monitor()
 
-    def _generate_automata_code(self, alphabet):
+
+    def _generate_automata_code(self, formula, alphabet):
         # NOTE: this must preced generating the `atom-*` files,
         # because it initializes the `self._submonitors_dirs`
         self._generate_submonitors(alphabet)
@@ -615,10 +616,32 @@ class CodeGenCpp(CodeGen):
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 if F.functions():
-                    self._generate_atom_with_funs(fcpp.write, F, num)
+                    self._generate_atom_with_funs(fcpp.write, formula, F, num)
                 else:
-                    self._generate_atom(fcpp.write, F, num, A)
+                    self._generate_atom(fcpp.write, formula, F, num, A)
             self._atoms_files.append(f"atom-{num}.cpp")
+
+
+        with self.new_file("atom-identifier.h") as f:
+            ns = self._namespace or ""
+            f.write(
+                f"""
+            #ifndef _ATOM_IDENTIFIER_H__{ns}
+            #define _ATOM_IDENTIFIER_H__{ns}
+            """
+            )
+            dump_codegen_position(f)
+            if ns:
+                f.write(f"namespace {ns} {{\n\n")
+            f.write("\n"
+                    "// An object that can uniquely identify an atom monitor\n"
+                    "// by its type and ids of traces\n")
+            f.write("using AtomIdentifier = std::tuple<unsigned")
+            f.write(", unsigned"*len(formula.quantifiers()))
+            f.write("> ;\n");
+            if ns:
+                f.write(f"}} // namespace {ns}\n\n")
+            f.write("#endif\n")
 
         with self.new_file("atoms.h") as f:
             ns = self._namespace or ""
@@ -687,7 +710,7 @@ class CodeGenCpp(CodeGen):
             formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], Not(F.substitute(subs)))
             nested_mon.generate_embedded(formula, alphabet, embedding_data)
 
-    def _generate_atom(self, wrcpp, atom_formula: IsPrefix, num, automaton):
+    def _generate_atom(self, wrcpp, formula, atom_formula: IsPrefix, num, automaton):
 
         p1 = atom_formula.children[0].program_variables()
         p2 = atom_formula.children[1].program_variables()
@@ -706,8 +729,15 @@ class CodeGenCpp(CodeGen):
         dump_codegen_position(wrcpp)
         t1_instance = f"instance.{t1}" if t1 else "nullptr"
         t2_instance = f"instance.{t2}" if t2 else "nullptr"
+        identifier = f"AtomIdentifier{{ATOM_{num}" 
+        for q in formula.quantifiers():
+            if q.var.name in (t1, t2):
+                identifier += f",instance.{q.var.name}->id()"
+            else:
+                identifier += ",0"
+        identifier += "}"
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : RegularAtomMonitor(ATOM_{num}, {t1_instance}, {t2_instance}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
         )
         # create the initial configuration
         priorities = list(set(t.priority for t in automaton.transitions()))
@@ -919,7 +949,7 @@ class CodeGenCpp(CodeGen):
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
 
-    def _generate_atom_with_funs(self, wrcpp, atom_formula: IsPrefix, num):
+    def _generate_atom_with_funs(self, wrcpp, formula, atom_formula: IsPrefix, num):
         lf, rf = (
             atom_formula.children[0].functions(),
             atom_formula.children[1].functions(),
@@ -937,8 +967,17 @@ class CodeGenCpp(CodeGen):
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
+        identifier = f"AtomIdentifier{{ATOM_{num}" 
+        traces = [t.name for t in atom_formula.trace_variables()]
+        for q in formula.quantifiers():
+            if q.var.name in traces:
+                identifier += f",instance.{q.var.name}->id()"
+            else:
+                identifier += ",0"
+        identifier += "}"
+
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor(ATOM_{num}), "
+            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor({identifier}), "
         )
         monitor_init = []
         if lf:

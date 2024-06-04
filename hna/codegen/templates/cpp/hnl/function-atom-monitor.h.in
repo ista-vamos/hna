@@ -6,6 +6,7 @@
 
 #include "verdict.h"
 #include "atom-monitor.h"
+#include "atom-identifier.h"
 
 @namespace_start@
 
@@ -15,7 +16,7 @@
  **/
 class FunctionAtomMonitor : public AtomMonitor {
 public:
-  FunctionAtomMonitor(int ty) : AtomMonitor(ty) {}
+  FunctionAtomMonitor(const AtomIdentifier &id) : AtomMonitor(id) {}
 
   Verdict step(const unsigned step_num);
 };
