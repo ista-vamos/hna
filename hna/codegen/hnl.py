@@ -221,7 +221,8 @@ class CodeGenCpp(CodeGen):
         with self.new_file("events.h") as f:
             wr = f.write
             wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
-            wr("#include <iostream>\n\n")
+            wr("#include <iostream>\n")
+            wr("#include <cstdint>\n\n")
             # wr("#include <cassert>\n\n")
 
             dump_codegen_position(wr)
