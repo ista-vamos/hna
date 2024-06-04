@@ -383,7 +383,7 @@ class CodeGenCpp(CodeGen):
                 f.write(f"namespace {self._namespace} {{\n\n")
             dump_codegen_position(f)
             f.write("enum HNLEvaluationState {\n")
-            f.write("  INVALID      = 0,\n")
+            f.write("  INVALID      =  0,\n")
             f.write("  RESULT_TRUE  = -1,\n")
             f.write("  RESULT_FALSE = -2,\n")
             for num, A in self._formula_to_automaton.values():
@@ -458,7 +458,7 @@ class CodeGenCpp(CodeGen):
             wr("HNLEvaluationState init_state)\n  : ")
             for q in formula.quantifier_prefix:
                 wr(f"{q.var}({q.var}), ")
-            wr("state(init_state) { assert(state != INVALID); }\n")
+            wr("state(init_state) { assert(state != INVALID); }\n\n")
             wr("};\n\n")
             if self._namespace:
                 wr(f" }} // namespace {self._namespace}\n")
