@@ -44,6 +44,13 @@ protected:
   // (Or we do it entirely event driven -- update the atoms for which the traces were updated)
   std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
 
+#ifdef CACHE_ATOMS_RESULTS
+  // this map stores existing atom monitors by their identifier so that we can re-use them
+  // if they should be created again.
+  std::map<AtomIdentifier, AtomMonitor *> _known_atoms;
+  std::map<AtomIdentifier, Verdict> _atoms_verdicts;
+#endif
+
   #include "function-instances.h"
 
   // check for new traces and create HNLInstances for them
@@ -51,6 +58,17 @@ protected:
   virtual bool addNewTraces();
 
   void condenseAtomsVector();
+
+  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
+  Verdict getFinishedVerdict(const AtomIdentifier& id) {
+    auto it = _atoms_verdicts.find(id);
+    if (it == _atoms_verdicts.end()) {
+        return Verdict::UNKNOWN;
+    }
+
+    assert (it->second != Verdict::UNKNOWN);
+    return it->second;
+  }
 
   CmdArgs *_cmd;
 
@@ -77,6 +95,11 @@ public:
     #ifdef MEASURE_CPUTIME
     struct timespec cputime{0, 0};
     struct timespec cputime_adding_instances{0, 0};
+    #endif
+    #ifdef CACHE_ATOMS_RESULTS
+    // how many times we avoided creating a new redundant monitor
+    size_t reused_monitors{0};
+    size_t reused_verdict{0};
     #endif
   } stats;
 };

@@ -47,6 +47,38 @@ bool FunctionHNLMonitor::addNewTraces() {
   return _traces_l.finished() && _traces_r.finished();
 }
 
+Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
+    // FIXME: generate the code that branches on instance->state and verdict
+    // instead of having statically compiled BDD in the data segment.
+    // (less reads from memory)
+    auto action = BDD[instance->state][verdict == Verdict::TRUE ? 1 : 2 ];
+    if (action == RESULT_FALSE) {
+        // The whole HNL formula evaluated to FALSE for the traces in `instance`.
+        return Verdict::FALSE;
+    }
+
+    if (action == RESULT_TRUE) {
+        // The whole HNL formula is satisfied for the traces in `instance`,
+        removeInstance(instance);
+    } else {
+#ifdef CACHE_ATOMS_RESULTS
+        auto next_verdict = getFinishedVerdict(instance->createMonitorID(action));
+        if (next_verdict != Verdict::UNKNOWN) {
+            ++stats.reused_verdict;
+            return updateInstance(instance, next_verdict);
+        } else
+#endif
+        {
+            // switch to new atom monitor
+            assert(action > 0 && "Invalid next atom");
+            instance->state = action;
+            instance->monitor = createAtomMonitor(action, *instance);
+        }
+    }
+
+    return Verdict::UNKNOWN;
+}
+
 Verdict HNLMonitor::step() {
 #ifdef MEASURE_CPUTIME
     struct timespec start, end;
@@ -61,32 +93,17 @@ Verdict HNLMonitor::step() {
       auto *atom_monitor = _atom_monitors[n].get();
 
       if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
-          // std::cerr << "CACHE THE RESULT\n";
-          // _verdicts[atom_monitor->kind()][{atom_monitor->t1(), atom_monitor->t2()}] = verdict;
+          #ifdef CACHE_ATOMS_RESULTS
+          assert(_atoms_verdicts.count(atom_monitor->id()) == 0);
+          _atoms_verdicts[atom_monitor->id()] = verdict;
+          #endif
 
           for (auto it = atom_monitor->used_by_begin(),
                     et = atom_monitor->used_by_end(); it != et; ++it) {
               auto *instance = *it;
-
-                // FIXME: generate the code that branches on instance->state and verdict
-                // instead of having statically compiled BDD in the data segment.
-                // (less reads from memory)
-              auto action = BDD[instance->state][verdict == Verdict::TRUE ? 1 : 2 ];
-              if (action == RESULT_FALSE) {
-                  // The whole HNL formula evaluated to FALSE for the traces in `instance`.
+              if (updateInstance(*it, verdict) == Verdict::FALSE) {
                   return Verdict::FALSE;
               }
-
-              if (action == RESULT_TRUE) {
-                  // The whole HNL formula is satisfied for the traces in `instance`,
-                  removeInstance(instance);
-                  continue;
-              }
-
-              // switch to new atom monitor
-              assert(action > 0 && "Invalid next atom");
-              instance->state = action;
-              instance->monitor = createAtomMonitor(action, *instance);
           }
 
           _atom_monitors[n].reset();
@@ -138,13 +155,31 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
 
     AtomMonitor *monitor;
 
+#ifdef CACHE_ATOMS_RESULTS
+    // here we should get only if the monitor is still running or have not been created yet
+    assert(_atoms_verdicts.find(instance.createMonitorID(monitor_type)) == _atoms_verdicts.end());
+
+    auto mit = _known_atoms.find(instance.createMonitorID(monitor_type));
+    if (mit != _known_atoms.end()) {
+        monitor = mit->second;
+        std::cerr << "Reused monitor\n";
+        ++stats.reused_monitors;
+    } else
+#endif // !CACHE_ATOMS_RESULTS
+    {
     /* GENERATED */
     #include "create-atom-monitor.h"
 
-    monitor->setUsedBy(instance);
+    assert(monitor && "Monitor not found/created");
     _atom_monitors.emplace_back(monitor);
-
+#ifdef CACHE_ATOMS_RESULTS
+    _known_atoms[monitor->id()] = monitor;
+#endif
     ++stats.num_atoms;
+    }
+
+    assert(monitor && "Monitor not found/created");
+    monitor->setUsedBy(instance);
 
     return monitor;
 }

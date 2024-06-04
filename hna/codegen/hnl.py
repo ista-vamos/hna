@@ -466,15 +466,14 @@ class CodeGenCpp(CodeGen):
                 num, _ = tmp
                 identifier = f"AtomIdentifier{{ATOM_{num}"
                 trace_variables = [t.name for t in F.trace_variables()]
-                print(trace_variables)
                 for q in formula.quantifiers():
-                    if q.var.name in [trace_variables]:
+                    if q.var.name in trace_variables:
                         identifier += f", {q.var.name}->id()"
                     else:
                         identifier += ",0"
                 identifier += "}"
-                wr(f"case ATOM_{num}: return {identifier};")
-            wr(f"default: abort();")
+                wr(f"case ATOM_{num}: return {identifier};\n")
+            wr(f"default: abort();\n")
             wr("};\n")
             wr("}\n\n")
 
@@ -619,7 +618,6 @@ class CodeGenCpp(CodeGen):
         self._generate_automata_code(formula, alphabet)
         self._generate_atom_monitor()
 
-
     def _generate_automata_code(self, formula, alphabet):
         # NOTE: this must preced generating the `atom-*` files,
         # because it initializes the `self._submonitors_dirs`
@@ -640,7 +638,6 @@ class CodeGenCpp(CodeGen):
                     self._generate_atom(fcpp.write, formula, F, num, A)
             self._atoms_files.append(f"atom-{num}.cpp")
 
-
         with self.new_file("atom-identifier.h") as f:
             ns = self._namespace or ""
             f.write(
@@ -652,13 +649,15 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(f)
             if ns:
                 f.write(f"namespace {ns} {{\n\n")
-            f.write("\n"
-                    "// An object that can uniquely identify an atom monitor\n"
-                    "// by its type and ids of the instantiated traces (or 0 if the trace variable"
-                    "// is not used by the atom).\n")
+            f.write(
+                "\n"
+                "// An object that can uniquely identify an atom monitor\n"
+                "// by its type and ids of the instantiated traces (or 0 if the trace variable"
+                "// is not used by the atom).\n"
+            )
             f.write("using AtomIdentifier = std::tuple<unsigned")
-            f.write(", unsigned"*len(formula.quantifiers()))
-            f.write("> ;\n");
+            f.write(", unsigned" * len(formula.quantifiers()))
+            f.write("> ;\n")
             if ns:
                 f.write(f"}} // namespace {ns}\n\n")
             f.write("#endif\n")
@@ -749,7 +748,7 @@ class CodeGenCpp(CodeGen):
         dump_codegen_position(wrcpp)
         t1_instance = f"instance.{t1}" if t1 else "nullptr"
         t2_instance = f"instance.{t2}" if t2 else "nullptr"
-        identifier = f"AtomIdentifier{{ATOM_{num}" 
+        identifier = f"AtomIdentifier{{ATOM_{num}"
         for q in formula.quantifiers():
             if q.var.name in (t1, t2):
                 identifier += f",instance.{q.var.name}->id()"
@@ -987,7 +986,7 @@ class CodeGenCpp(CodeGen):
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
-        identifier = f"AtomIdentifier{{ATOM_{num}" 
+        identifier = f"AtomIdentifier{{ATOM_{num}"
         traces = [t.name for t in atom_formula.trace_variables()]
         for q in formula.quantifiers():
             if q.var.name in traces:
