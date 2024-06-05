@@ -92,6 +92,8 @@ Verdict HNLMonitor::step() {
           if (atom_monitor->type() != FINISHED) {
               assert(_finished_atoms.count(atom_monitor->id()) == 0);
               _finished_atoms.emplace(atom_monitor->id(), FinishedAtomMonitor{atom_monitor->id(), verdict});
+              assert(_running_atoms.count(atom_monitor->id()) > 0);
+              _running_atoms.erase(atom_monitor->id());
           }
           #endif
 
@@ -147,7 +149,7 @@ Verdict HNLMonitor::step() {
   #include "gen-function-traces.h"
 
   if (finished) {
-      assert(_atom_monitors.empty());
+      //assert(_atom_monitors.empty());
       assert(_monitors_wbg.empty());
       return Verdict::TRUE;
   }
@@ -176,6 +178,7 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
         if (mit != _running_atoms.end()) {
             monitor = mit->second;
             ++stats.reused_monitors;
+            // do not push it into _monitors_wbg, it is already there
         }
     }
 #endif // !CACHE_ATOMS_RESULTS
@@ -185,7 +188,7 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
         #include "create-atom-monitor.h"
 
         assert(monitor && "Monitor not found/created");
-        _atom_monitors.emplace_back(monitor);
+        //_atom_monitors.emplace_back(monitor);
         _monitors_wbg.push_back(monitor);
 #ifdef CACHE_ATOMS_RESULTS
         _running_atoms[monitor->id()] = monitor;
@@ -203,6 +206,7 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     delete instance;
 }
 
+/*
 Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
   auto it = _finished_atoms.find(id);
   if (it == _finished_atoms.end()) {
@@ -212,14 +216,18 @@ Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
   assert (it->second.verdict() != Verdict::UNKNOWN);
   return it->second.verdict();
 }
+*/
 
 void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
+    delete m;
+    /*
     assert(!_atom_monitors.empty());
 
     auto it = std::find_if(_atom_monitors.begin(), _atom_monitors.end(), [m](auto& ptr) { return ptr.get() == m; });
     assert (it != _atom_monitors.end());
     *it = std::move(_atom_monitors[_atom_monitors.size() - 1]);
     _atom_monitors.pop_back();
+    */
 }
 
 void HNLMonitor::condenseWbg() {
