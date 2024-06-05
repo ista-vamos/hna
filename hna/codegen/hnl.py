@@ -529,14 +529,12 @@ class CodeGenCpp(CodeGen):
             cond = "&&".join(conds) if conds else "true"
             wr(f"if ({cond}) {{")
             dump_codegen_position(wr)
-            wr("\n  _instances.emplace_back(new HNLInstance{")
+            wr("\n  auto *instance = new HNLInstance{")
             for i in traces_positions(t1_pos, N):
                 wr(f"t{i}, ")
-            wr("INITIAL_ATOM});\n")
+            wr("INITIAL_ATOM};\n")
             wr("++stats.num_instances;\n\n")
-            wr(
-                "_instances.back()->monitor = createAtomMonitor(INITIAL_ATOM, *_instances.back().get());\n"
-            )
+            wr("instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);\n")
             dump_codegen_position(wr)
             ns = f"{self._namespace}::" if self._namespace else ""
             wr("#ifdef DEBUG_PRINTS\n")
