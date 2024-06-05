@@ -39,7 +39,6 @@
 
 class HNLMonitor : public HNLMonitorBase {
 protected:
-  std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
   // here we store the running atoms
   std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
   // the workbag of monitors to `step` -- they are either running or finished monitors

@@ -140,7 +140,7 @@ Verdict HNLMonitor::step() {
   stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
 #endif // !MEASURE_CPUTIME
 
-  bool finished = traces_finished && _instances.empty();
+  bool finished = traces_finished && _monitors_wbg.empty();//_instances.empty();
 
   /* GENERATED */
   /* It can modify the `finished` variable */
@@ -200,14 +200,7 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
 }
 
 void HNLMonitor::removeInstance(HNLInstance *instance) {
-    // FIXME: make this efficient
-    auto it = std::find_if(_instances.begin(), _instances.end(), [&instance](auto& ptr) { return ptr.get() == instance; });
-    assert (it != _instances.end());
-    // Each HNLInstance waits exactly for one monitor, so it is safe to just remove
-    // it as this monitor has finished and no other monitor can have a
-    // reference to the configuration.
-    *it = std::move(_instances[_instances.size() - 1]);
-    _instances.pop_back();
+    delete instance;
 }
 
 Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
