@@ -225,7 +225,10 @@ def parse_arguments():
 
     args.overwrite_file = [basename(f) for f in args.overwrite_file]
     if args.alphabet:
-        args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
+        if args.alphabet[-1] =='b' and args.alphabet[:-1].isnumeric():
+            args.alphabet = [str(n) for n in range(0, 2**int(args.alphabet[:-1]))]
+        else:
+            args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
     if args.reduction:
         args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
 
