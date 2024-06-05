@@ -71,6 +71,7 @@ void read_csv(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
       streams.emplace_back(
           std::make_unique<StreamTy>(args.inputs[next_input], next_input + 1));
       ++next_input;
+      ++num_open_files;
     }
 
     // check if we can read from some of those files
@@ -86,15 +87,18 @@ void read_csv(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
           M.traceFinished(stream->id());
           streams[i].reset();
           removed = true;
+      	  --num_open_files;
         }
       }
     }
 
+    // FIXME: do this more efficiently
     if (removed) {
       tmp_streams.reserve(streams.size() - 1);
       for (auto &stream : streams) {
-        if (stream)
+        if (stream) {
           tmp_streams.push_back(std::move(stream));
+	}
       }
       streams.swap(tmp_streams);
       tmp_streams.clear();
