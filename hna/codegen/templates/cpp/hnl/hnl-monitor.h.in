@@ -48,6 +48,7 @@ protected:
 #ifdef CACHE_ATOMS_RESULTS
   // this map stores existing atom monitors by their identifier so that we can re-use them
   // if they should be created again.
+  // FIXME: use better maps (some kind of a hash map)
   std::map<AtomIdentifier, @namespace@::AtomMonitor *> _running_atoms;
   std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
 #endif

@@ -33,14 +33,9 @@ public:
 
   template <typename Arg> void push_new(Arg a) { _new_cfgs.push_back(a); }
 
-  void new_to_this() {
-    insert(begin(), _new_cfgs.begin(), _new_cfgs.end());
-    _new_cfgs.clear();
-  }
-
   void rotate() {
-    clear();
-    new_to_this();
+    swap(_new_cfgs);
+    _new_cfgs.clear();
   }
 };
 
