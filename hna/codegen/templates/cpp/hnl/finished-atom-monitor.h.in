@@ -1,0 +1,29 @@
+#ifndef FINISHED_ATOM_MONITOR__@MONITOR_NAME@
+#define FINISHED_ATOM_MONITOR__@MONITOR_NAME@
+
+#include "atom-monitor.h"
+#include "atom-identifier.h"
+#include "verdict.h"
+
+@namespace_start@
+
+/**
+* A wrapper around verdict that we can use to cache results and it is also suitable to be used
+* in an HNLInstance, which avoids more complicated code.
+*/
+class FinishedAtomMonitor : public AtomMonitor {
+  Verdict _verdict;
+
+public:
+  // The type of this monitor is going to be `FINISHED`. The number of atom can be obtained from the ID if necessary.
+  FinishedAtomMonitor(const AtomIdentifier& id, Verdict verdict) : AtomMonitor(id, FINISHED), _verdict(verdict) {
+    assert(verdict != Verdict::UNKNOWN);
+  }
+
+  Verdict verdict() const { return _verdict; }
+  Verdict step(unsigned n = 0) { return _verdict; }
+};
+
+@namespace_end@
+
+#endif // FINISHED_ATOM_MONITOR__@MONITOR_NAME@

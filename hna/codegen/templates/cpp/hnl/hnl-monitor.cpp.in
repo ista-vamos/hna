@@ -61,19 +61,10 @@ Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
         // The whole HNL formula is satisfied for the traces in `instance`,
         removeInstance(instance);
     } else {
-#ifdef CACHE_ATOMS_RESULTS
-        auto next_verdict = getFinishedVerdict(instance->createMonitorID(action));
-        if (next_verdict != Verdict::UNKNOWN) {
-            ++stats.reused_verdict;
-            return updateInstance(instance, next_verdict);
-        } else
-#endif
-        {
-            // switch to new atom monitor
-            assert(action > 0 && "Invalid next atom");
-            instance->state = action;
-            instance->monitor = createAtomMonitor(action, *instance);
-        }
+        // switch to new atom monitor
+        assert(action > 0 && "Invalid next atom");
+        instance->state = action;
+        instance->monitor = createAtomMonitor(action, *instance);
     }
 
     return Verdict::UNKNOWN;
@@ -87,32 +78,46 @@ Verdict HNLMonitor::step() {
 
   Verdict verdict;
 
-  bool erased{false};
-  const unsigned n_atoms = _atom_monitors.size();
-  for (unsigned n = 0; n < n_atoms; ++n) {
-      auto *atom_monitor = _atom_monitors[n].get();
-
+  unsigned empty_slots{0};
+  const auto n_monitors = _monitors_wbg.size();
+  for (unsigned n = 0; n < n_monitors; ++n) {
+      auto *atom_monitor = _monitors_wbg[n];
+      if (!atom_monitor) {
+          ++empty_slots;
+          continue;
+      }
       if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
+
           #ifdef CACHE_ATOMS_RESULTS
-          assert(_atoms_verdicts.count(atom_monitor->id()) == 0);
-          _atoms_verdicts[atom_monitor->id()] = verdict;
+          if (atom_monitor->type() != FINISHED) {
+              assert(_finished_atoms.count(atom_monitor->id()) == 0);
+              _finished_atoms.emplace(atom_monitor->id(), FinishedAtomMonitor{atom_monitor->id(), verdict});
+          }
           #endif
 
           for (auto it = atom_monitor->used_by_begin(),
                     et = atom_monitor->used_by_end(); it != et; ++it) {
-              auto *instance = *it;
               if (updateInstance(*it, verdict) == Verdict::FALSE) {
                   return Verdict::FALSE;
               }
           }
 
-          _atom_monitors[n].reset();
-          erased = true;
+          if (atom_monitor->type() != FINISHED) {
+            deleteAtomMonitor(atom_monitor);
+          } else {
+            // clear the `used_by` in this monitor as now it may contain invalid pointers
+            // that we cannot use in the future
+            atom_monitor->clear();
+          }
+
+          // this monitor is done
+          _monitors_wbg[n] = nullptr;
+          ++empty_slots;
       }
   }
 
-  if (erased) {
-      condenseAtomsVector();
+  if (static_cast<float>(empty_slots) / n_monitors > 0.3) {
+      condenseWbg();
   }
 
 #ifdef MEASURE_CPUTIME
@@ -135,7 +140,6 @@ Verdict HNLMonitor::step() {
   stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
 #endif // !MEASURE_CPUTIME
 
-
   bool finished = traces_finished && _instances.empty();
 
   /* GENERATED */
@@ -144,6 +148,7 @@ Verdict HNLMonitor::step() {
 
   if (finished) {
       assert(_atom_monitors.empty());
+      assert(_monitors_wbg.empty());
       return Verdict::TRUE;
   }
 
@@ -153,29 +158,39 @@ Verdict HNLMonitor::step() {
 AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance& instance) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
-    AtomMonitor *monitor;
+    AtomMonitor *monitor{nullptr};
 
 #ifdef CACHE_ATOMS_RESULTS
-    // here we should get only if the monitor is still running or have not been created yet
-    assert(_atoms_verdicts.find(instance.createMonitorID(monitor_type)) == _atoms_verdicts.end());
+    // check if we already decided this atom
+    auto id = instance.createMonitorID(monitor_type);
+    auto vit = _finished_atoms.find(id);
+    if (vit != _finished_atoms.end()) {
+        monitor = &vit->second;
+        _monitors_wbg.push_back(monitor);
+        ++stats.reused_verdict;
+    }
 
-    auto mit = _known_atoms.find(instance.createMonitorID(monitor_type));
-    if (mit != _known_atoms.end()) {
-        monitor = mit->second;
-        std::cerr << "Reused monitor\n";
-        ++stats.reused_monitors;
-    } else
+    // check if we are already deciding this atom
+    if (!monitor) {
+        auto mit = _running_atoms.find(id);
+        if (mit != _running_atoms.end()) {
+            monitor = mit->second;
+            ++stats.reused_monitors;
+        }
+    }
 #endif // !CACHE_ATOMS_RESULTS
-    {
-    /* GENERATED */
-    #include "create-atom-monitor.h"
 
-    assert(monitor && "Monitor not found/created");
-    _atom_monitors.emplace_back(monitor);
+    if (!monitor) {
+        /* GENERATED */
+        #include "create-atom-monitor.h"
+
+        assert(monitor && "Monitor not found/created");
+        _atom_monitors.emplace_back(monitor);
+        _monitors_wbg.push_back(monitor);
 #ifdef CACHE_ATOMS_RESULTS
-    _known_atoms[monitor->id()] = monitor;
+        _running_atoms[monitor->id()] = monitor;
 #endif
-    ++stats.num_atoms;
+        ++stats.num_atoms;
     }
 
     assert(monitor && "Monitor not found/created");
@@ -195,37 +210,39 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     _instances.pop_back();
 }
 
-void HNLMonitor::condenseAtomsVector() {
-    if (_atom_monitors.empty())
+Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
+  auto it = _finished_atoms.find(id);
+  if (it == _finished_atoms.end()) {
+      return Verdict::UNKNOWN;
+  }
+
+  assert (it->second.verdict() != Verdict::UNKNOWN);
+  return it->second.verdict();
+}
+
+void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
+    assert(!_atom_monitors.empty());
+
+    auto it = std::find_if(_atom_monitors.begin(), _atom_monitors.end(), [m](auto& ptr) { return ptr.get() == m; });
+    assert (it != _atom_monitors.end());
+    *it = std::move(_atom_monitors[_atom_monitors.size() - 1]);
+    _atom_monitors.pop_back();
+}
+
+void HNLMonitor::condenseWbg() {
+    if (_monitors_wbg.empty())
         return;
 
     // FIXME: do it in place without creating a new vector
-    decltype(_atom_monitors) tmp;
-    tmp.reserve(_atom_monitors.size());
+    decltype(_monitors_wbg) tmp;
+    tmp.reserve(_monitors_wbg.size());
 
-    for (auto& ptr : _atom_monitors) {
+    for (auto *ptr : _monitors_wbg) {
         if (ptr) {
-            tmp.push_back(std::move(ptr));
+            tmp.push_back(ptr);
         }
     }
-    _atom_monitors.swap(tmp);
-
-#if 0
-    // swap valid unique_ptr's from back of the vector to the
-    // cleared places at the front
-    size_t l = 0, r = _atom_monitors.size() - 1;
-    while (true) {
-        // clear the vector from the back and find first valid ptr
-        while (l <= r && !_atom_monitors[r]) {
-            _atom_monitors.pop_back();
-            --r;
-        }
-
-        // find the first clear space from the left
-        while (l < r && _atom_monitors[l])
-            ++l;
-    }
-#endif
+    _monitors_wbg.swap(tmp);
 }
 
 @namespace_end@

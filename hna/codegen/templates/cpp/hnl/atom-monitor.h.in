@@ -10,6 +10,9 @@
 class AtomMonitor : public AtomBase<HNLInstance> {
   const AtomIdentifier _id;
 
+protected:
+  AtomMonitor(const AtomIdentifier& identifier, int ty) : AtomBase(ty), _id(identifier) {}
+
 public:
   virtual ~AtomMonitor() {}
 

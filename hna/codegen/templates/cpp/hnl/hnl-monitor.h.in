@@ -19,6 +19,7 @@
 #include "verdict.h"
 #include "monitor.h"
 #include "atom-monitor.h"
+#include "finished-atom-monitor.h"
 #include "function.h"
 #include "trace.h"
 #include "traceset.h"
@@ -39,16 +40,16 @@
 class HNLMonitor : public HNLMonitorBase {
 protected:
   std::vector<std::unique_ptr<@namespace@::HNLInstance>> _instances;
-  // XXX: based on profiling, we could keep a vector of raw pointers
-  //  (additionally to this vector) that we would you for iterating over the atoms.
-  // (Or we do it entirely event driven -- update the atoms for which the traces were updated)
+  // here we store the running atoms
   std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
+  // the workbag of monitors to `step` -- they are either running or finished monitors
+  std::vector<@namespace@::AtomMonitor *> _monitors_wbg;
 
 #ifdef CACHE_ATOMS_RESULTS
   // this map stores existing atom monitors by their identifier so that we can re-use them
   // if they should be created again.
-  std::map<AtomIdentifier, AtomMonitor *> _known_atoms;
-  std::map<AtomIdentifier, Verdict> _atoms_verdicts;
+  std::map<AtomIdentifier, @namespace@::AtomMonitor *> _running_atoms;
+  std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
 #endif
 
   #include "function-instances.h"
@@ -57,18 +58,11 @@ protected:
   // if there are some
   virtual bool addNewTraces();
 
-  void condenseAtomsVector();
+  void deleteAtomMonitor(AtomMonitor *);
+  void condenseWbg();
 
   Verdict updateInstance(HNLInstance *instance, Verdict verdict);
-  Verdict getFinishedVerdict(const AtomIdentifier& id) {
-    auto it = _atoms_verdicts.find(id);
-    if (it == _atoms_verdicts.end()) {
-        return Verdict::UNKNOWN;
-    }
-
-    assert (it->second != Verdict::UNKNOWN);
-    return it->second;
-  }
+  Verdict getFinishedVerdict(const AtomIdentifier& id);
 
   CmdArgs *_cmd;
 
