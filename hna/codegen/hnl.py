@@ -382,12 +382,16 @@ class CodeGenCpp(CodeGen):
             if self._namespace:
                 f.write(f"namespace {self._namespace} {{\n\n")
             dump_codegen_position(f)
+            f.write(
+                "// FIXME: rename (or create a new enum with atom types that will coincide with this one) \n"
+            )
             f.write("enum HNLEvaluationState {\n")
             f.write("  INVALID      =  0,\n")
-            f.write("  RESULT_TRUE  = -1,\n")
-            f.write("  RESULT_FALSE = -2,\n")
+            f.write("  FINISHED     = -1, // the atom finished \n")
+            f.write("  RESULT_TRUE  = -2, // the atom got result TRUE\n")
+            f.write("  RESULT_FALSE = -3, // the atom got result FALSE \n")
             for num, A in self._formula_to_automaton.values():
-                f.write(f"  ATOM_{num} = {num},\n")
+                f.write(f"  ATOM_{num} = {num}, // the atom is atom {num} \n")
             f.write("};\n")
             if self._namespace:
                 f.write(f"}} // namespace {self._namespace}\n\n")
@@ -682,9 +686,12 @@ class CodeGenCpp(CodeGen):
             for F, tmp in self._formula_to_automaton.items():
                 num, A = tmp
                 f.write(
-                    f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();"
+                    f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();\n"
                 )
-            f.write("  default: abort(); ")
+            f.write(
+                f"  case FINISHED: return static_cast<FinishedAtomMonitor*>(M)->step();\n"
+            )
+            f.write("  default: abort();\n")
             f.write("}")
 
     def _generate_submonitors(self, alphabet):
@@ -1558,6 +1565,7 @@ class CodeGenCpp(CodeGen):
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
         self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
+        self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         def gen_automaton(F):

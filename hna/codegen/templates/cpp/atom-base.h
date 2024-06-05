@@ -30,6 +30,8 @@ public:
 
   auto used_by_begin() const -> auto { return _used_by.begin(); }
   auto used_by_end() const -> auto { return _used_by.end(); }
+
+  void clear() { _used_by.clear(); }
 };
 
 #endif // ATOM_BASE_H_
