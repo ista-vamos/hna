@@ -149,7 +149,7 @@ Verdict HNLMonitor::step() {
   #include "gen-function-traces.h"
 
   if (finished) {
-      //assert(_atom_monitors.empty());
+      assert(_running_atoms.empty());
       assert(_monitors_wbg.empty());
       return Verdict::TRUE;
   }
