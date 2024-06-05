@@ -492,22 +492,85 @@ class CodeGenCpp(CodeGen):
             wr = f.write
             dump_codegen_position(wr)
             wr("/* the code that precedes this defines a variable `t1` */\n\n")
-            for i in range(2, N + 1):
-                wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
-                wr(f"  auto *t{i} = t{i}_ptr.get();\n")
+            wr(
+                """
+            /* Create the instances
+            
+               XXX: Maybe it could be more efficient to just have a hash map 
+               XXX: and check if we have generated the combination (instead of checking
+               XXX: those conditions) */
+            """
+            )
 
-            self._gen_create_instance(N, formula, wr)
+            if self.args.reduction:
+                self._gen_create_instance_reduced(formula, wr)
+            else:
+                self._gen_create_instance(N, formula, wr)
 
-    def _gen_create_instance(self, N, formula, wr):
+    def _gen_create_instance_reduced(self, formula, wr):
+        if len(formula.quantifier_prefix) > 2:
+            raise NotImplementedError(
+                "Reductions work now only with at most 2 quantifiers"
+            )
+
+        reduction_cond_1 = "true"
+        reduction_cond_2 = "true"
+        if "reflexive" in self.args.reduction:
+            reduction_cond_1 = "t1->id() != t2->id()"
+
+        if "symmetric" in self.args.reduction:
+            reduction_cond_1 = "t1->id() < t2->id()"
+            reduction_cond_2 = "t1->id() < t2->id()"
+
+        dump_codegen_position(wr)
         wr(
             """
-        /* Create the instances
-        
-           XXX: Maybe it could be more efficient to just have a hash map 
-           XXX: and check if we have generated the combination (instead of checking
-           XXX: those conditions) */
+        for (auto &[t2_id, t2_ptr] : _traces) {
+            auto *t2 = t2_ptr.get();
         """
         )
+
+        if "reflexive" in self.args.reduction:
+            wr("if (t1 == t2) { continue;}")
+
+        wr(
+            """
+           auto *instance = new HNLInstance{t1, t2, INITIAL_ATOM};
+           ++stats.num_instances;
+
+           instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+
+           #ifdef DEBUG_PRINTS
+           std::cerr << "HNLInstance[init"
+                     << ", " << t1->id() << ", " << t2->id() << "]\\n";
+           #endif /* !DEBUG_PRINTS */
+        """
+        )
+
+        if "symmetric" in self.args.reduction:
+            wr("}\n")
+        else:
+            wr(
+                """
+               if (t1 != t2)  {
+                  auto *instance = new HNLInstance{t2, t1, INITIAL_ATOM};
+                  ++stats.num_instances;
+
+                  instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+                  #ifdef DEBUG_PRINTS
+                    std::cerr << "HNLInstance[init"
+                              << ", " << t2->id() << ", " << t1->id() << "]\\n";
+                  #endif /* !DEBUG_PRINTS */
+               }
+            }
+            """
+            )
+
+    def _gen_create_instance(self, N, formula, wr):
+        dump_codegen_position(wr)
+        for i in range(2, N + 1):
+            wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
+            wr(f"  auto *t{i} = t{i}_ptr.get();\n")
 
         dump_codegen_position(wr)
         for t1_pos in range(1, N + 1):

@@ -13,8 +13,6 @@ sys.path.append(vamos_common_PYTHONPATH)
 
 from hna.codegen.hnl import CodeGenCpp
 
-# from vamos_mpt.parser import Parser
-
 script_name = basename(sys.argv[0])
 
 
@@ -158,6 +156,11 @@ def parse_arguments():
         help="Comma-separated list of letter to use as the alphabet",
     )
     parser.add_argument(
+        "--reduction",
+        action="store",
+        help="Comma-separated list of 'reflexive','symmetric'",
+    )
+    parser.add_argument(
         "--overwrite-file",
         action="append",
         default=[],
@@ -223,6 +226,8 @@ def parse_arguments():
     args.overwrite_file = [basename(f) for f in args.overwrite_file]
     if args.alphabet:
         args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
+    if args.reduction:
+        args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
 
     print(args)
 
