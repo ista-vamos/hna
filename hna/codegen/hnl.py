@@ -1017,6 +1017,7 @@ class CodeGenCpp(CodeGen):
         )
         dump_codegen_position(wrh)
         wrh('#include "regular-atom-monitor.h"\n\n')
+        wrh('#include "atom-identifier.h"\n\n')
         if self._namespace:
             wrh(f"namespace {self._namespace} {{\n\n")
         dump_codegen_position(wrh)
