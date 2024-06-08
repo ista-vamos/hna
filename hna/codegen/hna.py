@@ -67,7 +67,7 @@ class CodeGenCpp(CodeGen):
             "../csv.hpp",
         ]
         for f in files:
-            if f not in self.args.overwrite_default:
+            if f not in self.args.overwrite_file:
                 self.copy_file(f)
 
         for f in self.args.cpp_files:
