@@ -117,7 +117,6 @@ def to_priority_automaton(A: Automaton) -> Automaton:
     O = Automaton(origin=A)
 
     for t in A.transitions():
-        print(t)
         for s in (t.source, t.target):
             if s not in states:
                 O.add_state(s)
