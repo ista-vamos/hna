@@ -444,6 +444,7 @@ class CodeGenCpp(CodeGen):
             wr("#include <cassert>\n\n")
             wr('#include "hnl-state.h"\n')
             wr('#include "trace.h"\n\n')
+            wr('#include "atom-identifier.h"\n\n')
             if self._namespace:
                 wr(f"namespace {self._namespace} {{\n\n")
             wr("class AtomMonitor;\n\n")
