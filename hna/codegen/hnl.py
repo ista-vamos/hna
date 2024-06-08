@@ -1337,6 +1337,10 @@ class CodeGenCpp(CodeGen):
             self.input_file(f, "../../partials/html/graph-view-end.html")
 
     def generate_atomic_comparison_automaton(self, formula, alphabet):
+        if formula in self._formula_to_automaton:
+            print("Duplicate atom, re-using the automaton: ", formula)
+            return 
+
         num = len(self._formula_to_automaton) + 1
 
         A1 = formula_to_automaton(formula.children[0], alphabet)
@@ -1359,6 +1363,7 @@ class CodeGenCpp(CodeGen):
             self._aut_to_html(f"aut-{num}.html", A)
             self._aut_to_html(f"aut-{num}-prio.html", Ap)
 
+        assert formula not in self._formula_to_automaton, formula
         self._formula_to_automaton[formula] = (num, Ap)
         self._automaton_to_formula[Ap] = (num, formula)
 
