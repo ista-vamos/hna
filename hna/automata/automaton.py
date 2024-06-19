@@ -216,6 +216,10 @@ class Automaton:
         print("}", file=output)
 
         # dump stats
+        self.dump_stats(output)
+
+    # dump stats
+    def dump_stats(self, output=stdout):
         print("\n/* -- statistics -- */", file=output)
         print(f"//  # states: {len(self._states)}", file=output)
         print(f"//  # transitions: {len(self._transitions)}", file=output)

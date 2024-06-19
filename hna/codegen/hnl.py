@@ -685,12 +685,21 @@ class CodeGenCpp(CodeGen):
         self._generate_atom_monitor()
 
     def _generate_automata_code(self, formula, alphabet):
-        # NOTE: this must preced generating the `atom-*` files,
+        # NOTE: this must preceed generating the `atom-*` files,
         # because it initializes the `self._submonitors_dirs`
         self._generate_submonitors(alphabet)
 
+        generated_automata = {}
         for F, tmp in self._formula_to_automaton.items():
+            print("Generating code for ", F)
+
             num, A = tmp
+            duplicate_num = generated_automata.get(A)
+            if duplicate_num is not None:
+                with self.new_file(f"atom-{num}.h") as fh:
+                    self._generate_duplicate_atom(F, num, duplicate_num, fh.write)
+                continue
+
             with self.new_file(f"atom-{num}.h") as fh:
                 if F.functions():
                     self._generate_atom_with_funs_header(F, num, fh.write)
@@ -703,6 +712,7 @@ class CodeGenCpp(CodeGen):
                 else:
                     self._generate_atom(fcpp.write, formula, F, num, A)
             self._atoms_files.append(f"atom-{num}.cpp")
+            generated_automata[A] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self._namespace or ""
@@ -1038,6 +1048,27 @@ class CodeGenCpp(CodeGen):
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
 
+    def _generate_duplicate_atom(self, atom_formula, num, duplicate_of, wrh):
+        ns = self._namespace or ""
+        wrh(
+            f"""
+        #ifndef _ATOM_{num}_H__{ns}
+        #define _ATOM_{num}_H__{ns}
+        """
+        )
+        dump_codegen_position(wrh)
+        wrh(f'#include "atom-{duplicate_of}.h"\n\n')
+        if self._namespace:
+            wrh(f"namespace {self._namespace} {{\n\n")
+        dump_codegen_position(wrh)
+        wrh(f"/* {atom_formula}*/\n\n")
+        wrh(f"/* This atom is a duplicate of AtomMonitor{duplicate_of}*/\n")
+        # wrh(f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{ }};\n")
+        wrh(f"using AtomMonitor{num} = AtomMonitor{duplicate_of};\n")
+        if self._namespace:
+            wrh(f"}} // namespace {self._namespace}\n")
+        wrh("#endif\n")
+
     def _generate_atom_with_funs(self, wrcpp, formula, atom_formula: IsPrefix, num):
         lf, rf = (
             atom_formula.children[0].functions(),
@@ -1166,6 +1197,7 @@ class CodeGenCpp(CodeGen):
 
             wrcpp(" bool matched = false;\n")
             grouped_transitions = {}
+            # FIXME: use itertools.groupby
             for t in transitions:
                 grouped_transitions.setdefault(t.priority, []).append(t)
 
