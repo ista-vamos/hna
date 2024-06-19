@@ -209,6 +209,13 @@ class Automaton:
             )
         print("}", file=output)
 
+        # dump stats
+        print("\n/* -- statistics -- */", file=output)
+        print(f"//  # states: {len(self._states)}", file=output)
+        print(f"//  # transitions: {len(self._transitions)}", file=output)
+        print(f"//  # init. states: {len(self._initial_states)}", file=output)
+        print(f"//  # acc. states: {len(self._accepting_states)}", file=output)
+
     def to_json(self, output=stdout):
         print("{", file=output)
         print("  nodes: [", file=output)
