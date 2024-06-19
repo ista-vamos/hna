@@ -1,6 +1,7 @@
-# hna
+# HNA
 
 Library for the construction, manipulation and runtime verification of hypernode automata
+and (extended) hypernode logic.
 
 ## Setup
 
