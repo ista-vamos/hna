@@ -100,3 +100,8 @@ The output of the script is similar to the output of `hnl.py`: a C++ code with c
 that is stored into `/tmp/hna` (if not specified otherwise with `--out-dir`).
 Similarly to `hnl.py`, you migh (need to) use the parameters `--csv-header`, `--alphabet`,
 and `--debug`.
+
+### Generting code is slow
+
+The code generator is filled with different assertions, some of them are pretty expensive. If you experience a problem with speed generation, try running the
+generators with `python -OO` or using PyPy.
