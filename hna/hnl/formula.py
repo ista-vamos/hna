@@ -1,6 +1,7 @@
 from copy import copy
-from lark.lexer import Token
 from typing import Any, Callable, List, Optional, Set, Union
+
+from lark.lexer import Token
 
 """
 formula.py defines a formula of HNL logic and
@@ -134,6 +135,17 @@ class Formula:
         """
         return self
 
+    def copy(self):
+        """
+        Create a copy of this formula that can be modified.
+
+        IMPORTANT: do not print the formula before the modifications are done,
+        or clean the str cache after that.
+        """
+        s = copy(self)
+        s._cached_str = None
+        return s
+
     def remove_stutter_reductions(self) -> "Formula":
         """
         Create a formula from this one that is the same expect that every
@@ -142,7 +154,7 @@ class Formula:
         # XXX: we use only a shallow copy because the sub-formulas
         # should not be modified in-place anywhere.
         # If this assumption is violated, we must use a deep copy
-        new_self = copy(self)
+        new_self = self.copy()
 
         children = []
         for c in self.children:
@@ -157,9 +169,9 @@ class Formula:
 
     def substitute(self, S):
         if self in S:
-            return copy(S[self])
+            return S[self].copy()
 
-        new_self = copy(self)
+        new_self = self.copy()
         new_self.children = [c.substitute(S) for c in self.children]
 
         # Special cases
@@ -315,7 +327,7 @@ class TraceFormula(Formula):
 
 
 class TraceVariable(TraceFormula):
-    def __init__(self, name: Token) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__()
         self.name = name
 
@@ -850,7 +862,26 @@ class IsPrefix(Formula):
         super().__init__([formula1, formula2])
 
     def is_simple(self) -> bool:
+        # FIXME: we must check if the variables are not inside iteration
         return all((len(c.program_variable_occurrences()) <= 1 for c in self.children))
 
+    def normalize(self) -> Formula:
+        """
+        Rename the left variable to `x` and the right variable to `y`.
+        """
+        lhs = self.children[0]
+        rhs = self.children[1]
+        lpv = lhs.program_variables()
+        rpv = rhs.program_variables()
+        assert len(lpv) <= 1, lpv
+        assert len(rpv) <= 1, rpv
+        if lpv:
+            lhs = lhs.substitute({lpv[0]: ProgramVariable("x", TraceVariable("t"))})
+        if rpv:
+            rhs = rhs.substitute({rpv[0]: ProgramVariable("y", TraceVariable("t"))})
+
+        return IsPrefix(lhs, rhs)
+
+    @cached_str
     def __str__(self) -> str:
         return f"({self.children[0]} ≤ {self.children[1]})"

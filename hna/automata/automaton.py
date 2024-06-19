@@ -36,6 +36,11 @@ class Transition:
         self._target = target
         self._label = label
         self._priority = priority
+        # the transition does not change, precompute its str and hash,
+        # because these are used a lot and we want them to be fast
+        prio = f":{priority}" if self._priority != 0 else ""
+        self._str = f"({source} -[{label}{prio}]-> {target})"
+        self._hash = hash((source, target, label, priority))
 
     @property
     def source(self):
@@ -54,19 +59,20 @@ class Transition:
         return self._priority
 
     def __eq__(self, other):
-        return (
-            self._source == other._source
-            and self._label == other._label
-            and self._target == other._target
-            and self._priority == other._priority
-        )
+        return self._str == other._str
+
+    # return (
+    #    self._source == other._source
+    #    and self._label == other._label
+    #    and self._target == other._target
+    #    and self._priority == other._priority
+    # )
 
     def __str__(self):
-        prio = f":{self._priority}" if self._priority != 0 else ""
-        return f"({self._source} -[{self._label}{prio}]-> {self._target})"
+        return self._str
 
     def __hash__(self):
-        return hash((self._source, self._target, self._label, self._priority))
+        return self._hash
 
     def dot_label(self):
         return str(self._label)

@@ -22,7 +22,6 @@ from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,
-    TupleLabel,
 )
 from vamos_common.codegen.codegen import CodeGen
 
@@ -132,6 +131,7 @@ class CodeGenCpp(CodeGen):
         self._namespace = namespace
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
+        self._normalized_formulas = {}
         self._add_gen_files = []
         self._atoms_files = []
         self._submonitors_dirs = {}
@@ -1155,16 +1155,25 @@ class CodeGenCpp(CodeGen):
             raise NotImplementedError("This case is unsupported yet")
 
         for state in automaton.states():
-            transitions = [t for t in automaton.transitions() if t.source == state]
+            # transitions = [t for t in automaton.transitions() if t.source == state]
+            transitions = [
+                t for ts in automaton.transitions(state).values() for t in ts
+            ]
             dump_codegen_position(wrcpp)
             wrcpp(
                 f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
             )
 
             wrcpp(" bool matched = false;\n")
+            grouped_transitions = {}
+            for t in transitions:
+                grouped_transitions.setdefault(t.priority, []).append(t)
+
             for prio in priorities:
                 wrcpp(f"/* --------------- priority {prio} --------------- */\n")
-                ptransitions = [t for t in transitions if t.priority == prio]
+                ptransitions = grouped_transitions.get(
+                    prio
+                )  # [t for t in transitions if t.priority == prio]
                 if not ptransitions:
                     continue
                 ### Handle epsilon steps
@@ -1338,15 +1347,29 @@ class CodeGenCpp(CodeGen):
             f.write(",")
             self.input_file(f, "../../partials/html/graph-view-end.html")
 
-    def generate_atomic_comparison_automaton(self, formula, alphabet):
-        if formula in self._formula_to_automaton:
-            print("Duplicate atom, re-using the automaton: ", formula)
-            return 
+    def generate_atomic_comparison_automaton(self, formula: IsPrefix, alphabet):
+        # we rename the variables to `x` and `y` so that when we have another atom
+        # that is the same but names of the variables, we do not rebuild it
+        nformula = formula.normalize()
+        Ap = self._normalized_formulas.get(nformula)
+        if Ap:
+            print(
+                f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
+            )
+            num = len(self._formula_to_automaton) + 1
+            assert formula not in self._formula_to_automaton, formula
+            self._formula_to_automaton[formula] = (num, Ap)
+            self._automaton_to_formula[Ap] = (num, formula)
+
+            if self.args.debug:
+                with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
+                    Ap.to_dot(f)
+            return
 
         num = len(self._formula_to_automaton) + 1
 
-        A1 = formula_to_automaton(formula.children[0], alphabet)
-        A2 = formula_to_automaton(formula.children[1], alphabet)
+        A1 = formula_to_automaton(nformula.children[0], alphabet)
+        A2 = formula_to_automaton(nformula.children[1], alphabet)
         A = compose_automata(A1, A2, alphabet)
         Ap = to_priority_automaton(A)
 
@@ -1360,14 +1383,15 @@ class CodeGenCpp(CodeGen):
             with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
                 Ap.to_dot(f)
 
-            self._aut_to_html(f"aut-{num}-lhs.html", A1)
-            self._aut_to_html(f"aut-{num}-rhs.html", A2)
-            self._aut_to_html(f"aut-{num}.html", A)
-            self._aut_to_html(f"aut-{num}-prio.html", Ap)
+        # self._aut_to_html(f"aut-{num}-lhs.html", A1)
+        # self._aut_to_html(f"aut-{num}-rhs.html", A2)
+        # self._aut_to_html(f"aut-{num}.html", A)
+        # self._aut_to_html(f"aut-{num}-prio.html", Ap)
 
         assert formula not in self._formula_to_automaton, formula
         self._formula_to_automaton[formula] = (num, Ap)
         self._automaton_to_formula[Ap] = (num, formula)
+        self._normalized_formulas[nformula] = Ap
 
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
