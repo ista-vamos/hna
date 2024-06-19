@@ -11,9 +11,19 @@ but so far they haven't been a bottle-neck.
 """
 
 
+def cached_str(m):
+    def new_str(self):
+        if not self._cached_str:
+            self._cached_str = m(self)
+        return self._cached_str
+
+    return new_str
+
+
 class DerivativesSet(set):
     def __init__(self, *args) -> None:
         super().__init__((x.simplify() for x in args))
+        self._cached_str = None
 
     def __add__(self, other: "DerivativesSet") -> "DerivativesSet":
         return DerivativesSet(*self, *other)
@@ -24,6 +34,7 @@ class DerivativesSet(set):
     def is_empty(self) -> bool:
         return len(self) == 0
 
+    @cached_str
     def __str__(self) -> str:
         return f"{{{','.join(map(str, self))}}}"
 
@@ -36,6 +47,9 @@ class Formula:
     def __init__(self, children: Optional[List["Formula"]] = None) -> None:
         self.children = children or []
         all(map(lambda x: isinstance(x, Formula), self.children)), children
+        # the __str__() often calls __str__() of subformulas recursively, which is expensive.
+        # Since it should always return the same, just cache the result here
+        self._cached_str = None
 
     def __hash__(self) -> int:
         return str(self).__hash__()
@@ -214,6 +228,7 @@ class FormulaWithLookahead(Formula):
     def nullable(self) -> bool:
         return self.non_empty() and self.formula.nullable()
 
+    @cached_str
     def __str__(self) -> str:
         return f"({self.formula} | {self.lookahead})"
 
@@ -267,6 +282,7 @@ class PrenexFormula(Formula):
             [t.substitute(S) for t in self.quantifiers()], self.formula.substitute(S)
         )
 
+    @cached_str
     def __str__(self) -> str:
         return f"{' '.join(map(str, self.quantifier_prefix))}: {self.formula}"
 
@@ -326,6 +342,7 @@ class Function(TraceFormula):
         assert all((map(lambda x: isinstance(x, TraceVariable), traces))), traces
         self.traces = traces
 
+    @cached_str
     def __str__(self) -> str:
         return f"@{self.name}({', '.join(map(str, self.traces))})"
 
@@ -408,6 +425,7 @@ class ProgramVariable(TraceFormula):
     def nullable(self) -> bool:
         return True
 
+    @cached_str
     def __str__(self) -> str:
         return f"{self.name}({self.trace})"
 
@@ -504,6 +522,7 @@ class Constant(TraceFormula):
             return DerivativesSet(EPSILON)
         return DerivativesSet()
 
+    @cached_str
     def __str__(self) -> str:
         return f"{self.value}{'⊕' if self.is_rep() else ''}{'ₓ' if self.is_x() else ''}"
 
@@ -594,6 +613,7 @@ class Concat(TraceFormula):
         assert isinstance(formula2, TraceFormula), formula1
         super().__init__([formula1, formula2])
 
+    @cached_str
     def __str__(self) -> str:
         # if all(map(lambda c: isinstance(c, Constant), self.children)):
         #    return f"{self.children[0]}.{self.children[1]}"
@@ -644,6 +664,7 @@ class Plus(TraceFormula):
         assert isinstance(formula2, TraceFormula), formula1
         super().__init__([formula1, formula2])
 
+    @cached_str
     def __str__(self) -> str:
         return f"({self.children[0]} + {self.children[1]})"
 
@@ -671,6 +692,7 @@ class Iter(TraceFormula):
         assert isinstance(formula, TraceFormula), formula
         super().__init__([formula])
 
+    @cached_str
     def __str__(self) -> str:
         if isinstance(self.children[0], Constant):
             return f"{self.children[0]}*"
@@ -696,6 +718,7 @@ class StutterReduce(TraceFormula):
         assert isinstance(formula, TraceFormula), formula
         super().__init__([formula])
 
+    @cached_str
     def __str__(self) -> str:
         return f"⌊{self.children[0]}⌋"
 
@@ -775,6 +798,7 @@ class ForAll(Quantifier):
     def __init__(self, var: TraceVariable, formula: Formula = None) -> None:
         super().__init__(var, formula)
 
+    @cached_str
     def __str__(self) -> str:
         if self.children:
             return f"∀{self.var}({self.children[0]})"
@@ -785,6 +809,7 @@ class Exists(Quantifier):
     def __init__(self, var: TraceVariable, formula: Formula = None):
         super().__init__(var, formula)
 
+    @cached_str
     def __str__(self):
         if self.children:
             return f"∃{self.var}({self.children[0]})"
@@ -795,6 +820,7 @@ class Not(Formula):
     def __init__(self, formula: Formula) -> None:
         super().__init__([formula])
 
+    @cached_str
     def __str__(self) -> str:
         return f"¬({self.children[0]})"
 
@@ -803,6 +829,7 @@ class And(Formula):
     def __init__(self, formula1: Formula, formula2: Formula):
         super().__init__([formula1, formula2])
 
+    @cached_str
     def __str__(self):
         return f"({self.children[0]}) ∧ ({self.children[1]})"
 
@@ -811,6 +838,7 @@ class Or(Formula):
     def __init__(self, formula1: Formula, formula2: Formula):
         super().__init__([formula1, formula2])
 
+    @cached_str
     def __str__(self):
         return f"({self.children[0]}) ∨ ({self.children[1]})"
 
