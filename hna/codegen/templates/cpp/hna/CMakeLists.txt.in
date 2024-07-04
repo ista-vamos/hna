@@ -41,6 +41,7 @@ option(SANITIZE "Compile with -fsanitize (OFF by default)" OFF)
 option(BUILD_HNL_EXE "Compile executables for HNL monitors (OFF by default)" OFF)
 option(MEASURE_CPUTIME "Measure and print CPU time of running monitors (ON by default)" ON)
 option(DEBUG_PRINTS "Print debugging messages on stderr (OFF by default)" OFF)
+option(CACHE_ATOMS_RESULTS "Do not create atoms for the same traces multiple times (ON by default)" ON)
 
 if (MEASURE_CPUTIME)
     add_compile_definitions(MEASURE_CPUTIME)

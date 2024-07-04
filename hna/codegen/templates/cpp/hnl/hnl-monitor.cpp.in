@@ -91,7 +91,8 @@ Verdict HNLMonitor::step() {
           #ifdef CACHE_ATOMS_RESULTS
           if (atom_monitor->type() != FINISHED) {
               assert(_finished_atoms.count(atom_monitor->id()) == 0);
-              _finished_atoms.emplace(atom_monitor->id(), FinishedAtomMonitor{atom_monitor->id(), verdict});
+              _finished_atoms.emplace(atom_monitor->id(),
+                                      FinishedAtomMonitor{atom_monitor->id(), verdict});
               assert(_running_atoms.count(atom_monitor->id()) > 0);
               _running_atoms.erase(atom_monitor->id());
           }
@@ -149,7 +150,9 @@ Verdict HNLMonitor::step() {
   #include "gen-function-traces.h"
 
   if (finished) {
+#ifdef CACHE_ATOMS_RESULTS
       assert(_running_atoms.empty());
+#endif
       assert(_monitors_wbg.empty());
       return Verdict::TRUE;
   }

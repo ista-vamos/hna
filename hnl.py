@@ -132,8 +132,16 @@ def parse_arguments():
     parser.add_argument(
         "--sanitize", action="store", help="Compile the monitor with sanitizers"
     )
-    parser.add_argument("--debug", action="store_true", help="Compile in debugging mode and produce debugging files")
-    parser.add_argument("--debug-prints", action="store_true", help="--debug + print debugging messages to stderr")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Compile in debugging mode and produce debugging files",
+    )
+    parser.add_argument(
+        "--debug-prints",
+        action="store_true",
+        help="--debug + print debugging messages to stderr",
+    )
     parser.add_argument(
         "--exit-on-error", action="store_true", help="Stop when a violation is found"
     )
@@ -201,7 +209,7 @@ def parse_arguments():
         if not isfile(fl):
             if args.input_formula:
                 raise RuntimeError(
-                        f"Multiple formulas given (previous: {args.input_formula}, now: {fl})"
+                    f"Multiple formulas given (previous: {args.input_formula}, now: {fl})"
                 )
             args.input_formula = fl
             continue
@@ -225,8 +233,8 @@ def parse_arguments():
 
     args.overwrite_file = [basename(f) for f in args.overwrite_file]
     if args.alphabet:
-        if args.alphabet[-1] =='b' and args.alphabet[:-1].isnumeric():
-            args.alphabet = [str(n) for n in range(0, 2**int(args.alphabet[:-1]))]
+        if args.alphabet[-1] == "b" and args.alphabet[:-1].isnumeric():
+            args.alphabet = [str(n) for n in range(0, 2 ** int(args.alphabet[:-1]))]
         else:
             args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
     if args.reduction:

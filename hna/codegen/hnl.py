@@ -496,8 +496,8 @@ class CodeGenCpp(CodeGen):
             wr(
                 """
             /* Create the instances
-            
-               XXX: Maybe it could be more efficient to just have a hash map 
+
+               XXX: Maybe it could be more efficient to just have a hash map
                XXX: and check if we have generated the combination (instead of checking
                XXX: those conditions) */
             """
@@ -1187,9 +1187,8 @@ class CodeGenCpp(CodeGen):
 
         for state in automaton.states():
             # transitions = [t for t in automaton.transitions() if t.source == state]
-            transitions = [
-                t for ts in automaton.transitions(state).values() for t in ts
-            ]
+            T = automaton.transitions(state)
+            transitions = [t for ts in (T.values() if T else ()) for t in ts]
             dump_codegen_position(wrcpp)
             wrcpp(
                 f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"

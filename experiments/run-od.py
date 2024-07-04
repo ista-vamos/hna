@@ -13,9 +13,10 @@ from statistics import mean, stdev
 
 from traces import *
 
-SRCDIR=f"{dirname(sys.argv[0])}/../"
-HNL_SCRIPT=f"{SRCDIR}/hnl.py"
-TRIALS=10 # how many times run the monitor on a given input
+SRCDIR = f"{dirname(sys.argv[0])}/../"
+HNL_SCRIPT = f"{SRCDIR}/hnl.py"
+TRIALS = 10  # how many times run the monitor on a given input
+
 
 def err(msg):
     print(msg, file=sys.stderr)
@@ -34,18 +35,19 @@ def runcmd(cmd, timeout=None, no_capture=False):
     except TimeoutExpired:
         is_timeout = True
         proc.kill()
-        outs, errs = proc.communicate() 
+        outs, errs = proc.communicate()
 
     return proc.returncode, is_timeout, outs, errs
+
 
 def gen(formula, alphabet, csv_header, args=None):
     args = args or []
     workdir = mkdtemp(prefix="hnl", dir="/tmp")
-    cmd = [HNL_SCRIPT, '--out-dir', workdir, formula] +\
-          args +\
-          ['--csv-header', csv_header,
-           '--alphabet', alphabet,
-           "--build-type=Release"]
+    cmd = (
+        [HNL_SCRIPT, "--out-dir", workdir, formula]
+        + args
+        + ["--csv-header", csv_header, "--alphabet", alphabet, "--build-type=Release"]
+    )
     print(f"Generating monitor for '{formula}'")
     print(">", " ".join(cmd))
 
@@ -54,6 +56,7 @@ def gen(formula, alphabet, csv_header, args=None):
         err(f"Generating monitor for {formula} failed")
 
     return workdir
+
 
 def parse(retval, to, outs, errs):
     """
@@ -73,10 +76,10 @@ def parse(retval, to, outs, errs):
     verdict = None
     cputime = None
     for line in outs:
-        if b'CPU time' in line:
+        if b"CPU time" in line:
             assert cputime is None
             cputime = float(line.split()[4])
-        elif b'Formula is' in line:
+        elif b"Formula is" in line:
             assert verdict is None
             verdict = line.split()[2].strip()
 
@@ -86,28 +89,32 @@ def parse(retval, to, outs, errs):
 def measure(inputs, timeout=30):
     values = []
     for n in range(TRIALS):
-        retval, is_timeout, outs, errs = runcmd([f'{mondir}/monitor'] + inputs)
+        retval, is_timeout, outs, errs = runcmd([f"{mondir}/monitor"] + inputs)
         values.append(parse(retval, is_timeout, outs.splitlines(), errs.splitlines()))
 
     return values
 
 
 # numbers on 3 bits
-alphabet=[str(i) for i in range(0, 2**3)]
-alphabet=[str(i) for i in range(0, 2**4)]
-alphabet=[str(i) for i in range(0, 2)]
+alphabet = [str(i) for i in range(0, 2**3)]
+alphabet = [str(i) for i in range(0, 2**4)]
+alphabet = [str(i) for i in range(0, 2)]
 csv_header = "in: int, out: int"
 
 if len(sys.argv) > 1:
     mondir = dirname(sys.argv[1])
 else:
-    mondir = gen("forall t1, t2: !(in(t1) <= in(t2)) || (out(t1) <= out(t2))",
-                 ",".join(alphabet), csv_header)
+    mondir = gen(
+        "forall t1, t2: !(in(t1) <= in(t2)) || (out(t1) <= out(t2))",
+        ",".join(alphabet),
+        csv_header,
+    )
 
 # chdir(mondir)
 # r = runcmd(['make', 'check', '-j4'], no_capture=True)
 # if r[0] != 0:
 #     err("Failed tests")
+
 
 def _run_measurement(NUM, LEN, method):
     if method == "single-input":
@@ -122,7 +129,11 @@ def _run_measurement(NUM, LEN, method):
     else:
         raise RuntimeError("Invalid config")
 
-    inputs = [f"{abspath(pathjoin(traces_dir, f))}" for f in listdir(traces_dir) if f.endswith(".csv")]
+    inputs = [
+        f"{abspath(pathjoin(traces_dir, f))}"
+        for f in listdir(traces_dir)
+        if f.endswith(".csv")
+    ]
 
     verdict = None
     times = []
@@ -139,6 +150,7 @@ def _run_measurement(NUM, LEN, method):
         times.append(values[2])
     return times
 
+
 with open("output.csv", "a") as f:
     W = csv.writer(f)
 
@@ -147,9 +159,10 @@ with open("output.csv", "a") as f:
         for NUM in (100, 200, 300, 400, 500):
             for LEN in (500, 1000, 1500, 2000):
                 times = _run_measurement(NUM, LEN, method)
-                print(f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3} ms")
+                print(
+                    f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3} ms"
+                )
 
 
 chdir("/tmp")
 rmtree(mondir)
-

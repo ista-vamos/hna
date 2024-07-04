@@ -13,9 +13,10 @@ from statistics import mean, stdev
 
 from traces import *
 
-SRCDIR=f"{dirname(sys.argv[0])}/../"
-HNA_SCRIPT=f"{SRCDIR}/hna.py"
-TRIALS=10 # how many times run the monitor on a given input
+SRCDIR = f"{dirname(sys.argv[0])}/../"
+HNA_SCRIPT = f"{SRCDIR}/hna.py"
+TRIALS = 10  # how many times run the monitor on a given input
+
 
 def err(msg):
     print(msg, file=sys.stderr)
@@ -35,18 +36,19 @@ def runcmd(cmd, timeout=None, no_capture=False):
     except TimeoutExpired:
         is_timeout = True
         proc.kill()
-        outs, errs = proc.communicate() 
+        outs, errs = proc.communicate()
 
     return proc.returncode, is_timeout, outs, errs
+
 
 def gen(aut, alphabet, csv_header, args=None):
     args = args or []
     workdir = mkdtemp(prefix="hnl", dir="/tmp")
-    cmd = [HNA_SCRIPT, '--out-dir', workdir, aut] +\
-          args +\
-          ['--csv-header', csv_header,
-           '--alphabet', alphabet,
-           "--build-type=Release"]
+    cmd = (
+        [HNA_SCRIPT, "--out-dir", workdir, aut]
+        + args
+        + ["--csv-header", csv_header, "--alphabet", alphabet, "--build-type=Release"]
+    )
     print(f"Generating monitor for '{aut}'")
     print(">", " ".join(cmd))
 
@@ -55,6 +57,7 @@ def gen(aut, alphabet, csv_header, args=None):
         err(f"Generating monitor for {aut} failed")
 
     return workdir
+
 
 def parse(retval, to, outs, errs):
     """
@@ -65,7 +68,7 @@ def parse(retval, to, outs, errs):
     CPU time in milliseconds: 0.076709 ms
 
     """
-    if (retval < 0):
+    if retval < 0:
         print(outs)
         print(errs)
 
@@ -75,46 +78,46 @@ def parse(retval, to, outs, errs):
     verdict = None
     cputime = None
     for line in outs:
-        if b'CPU time' in line:
+        if b"CPU time" in line:
             assert cputime is None
             cputime = float(line.split()[4])
-        elif b'HNA ' in line:
+        elif b"HNA " in line:
             assert verdict is None
             verdict = line.split()[1].strip()
 
-    return retval, verdict.decode('ascii') if verdict else None, cputime
+    return retval, verdict.decode("ascii") if verdict else None, cputime
 
 
 def measure(inputs, timeout=30):
     values = []
     for n in range(TRIALS):
-        retval, is_timeout, outs, errs = runcmd([f'{mondir}/monitor'] + inputs)
+        retval, is_timeout, outs, errs = runcmd([f"{mondir}/monitor"] + inputs)
         values.append(parse(retval, is_timeout, outs.splitlines(), errs.splitlines()))
 
     return values
 
 
 # numbers on 3 bits
-#alphabet=[str(i) for i in range(0, 2)]
-#alphabet=[str(i) for i in range(0, 2**4)]
-#alphabet=[str(i) for i in range(0, 2)]
-#alphabet=[str(i) for i in range(0, 2**2)]
-#alphabet=[str(i) for i in range(0, 2**3)]
-#alphabet=[str(i) for i in range(0, 2**2)]
+# alphabet=[str(i) for i in range(0, 2)]
+# alphabet=[str(i) for i in range(0, 2**4)]
+# alphabet=[str(i) for i in range(0, 2)]
+# alphabet=[str(i) for i in range(0, 2**2)]
+# alphabet=[str(i) for i in range(0, 2**3)]
+# alphabet=[str(i) for i in range(0, 2**2)]
 BITS = 4
-alphabet=[str(i) for i in range(0, 2**BITS)]
+alphabet = [str(i) for i in range(0, 2**BITS)]
 csv_header = "loc: int, out: int"
 
 if len(sys.argv) > 1:
     mondir = sys.argv[1]
 else:
-    mondir = gen("mot.yml",
-                 ",".join(alphabet), csv_header, args=["test.cpp"])
+    mondir = gen("mot.yml", ",".join(alphabet), csv_header, args=["test.cpp"])
 
 # chdir(mondir)
 # r = runcmd(['make', 'check', '-j4'], no_capture=True)
 # if r[0] != 0:
 #     err("Failed tests")
+
 
 def _run_measurement(NUM, LEN, method):
     if method == "rand-inputs":
@@ -129,7 +132,11 @@ def _run_measurement(NUM, LEN, method):
     else:
         raise RuntimeError("Invalid config")
 
-    inputs = [f"{abspath(pathjoin(traces_dir, f))}" for f in listdir(traces_dir) if f.endswith(".csv")]
+    inputs = [
+        f"{abspath(pathjoin(traces_dir, f))}"
+        for f in listdir(traces_dir)
+        if f.endswith(".csv")
+    ]
 
     verdict = None
     times = []
@@ -149,25 +156,27 @@ def _run_measurement(NUM, LEN, method):
         times.append(values[2])
     return times
 
+
 with open(f"output-mot-{BITS}.csv", "a") as f:
     W = csv.writer(f)
 
-    #for method in ("same", "almost-same", "rand-inputs"):
-    #for method in ("almost-same", "rand-inputs"):
-    for method in ("same", ):
+    # for method in ("same", "almost-same", "rand-inputs"):
+    # for method in ("almost-same", "rand-inputs"):
+    for method in ("same",):
         print(f"--- Starting measurements for {method} ---")
-       #for NUM in (100, 200, 300, 400, 500):
-       #    for LEN in (500, 1000, 1500, 2000):
+        # for NUM in (100, 200, 300, 400, 500):
+        #    for LEN in (500, 1000, 1500, 2000):
         for NUM in (50, 100, 200, 500):
             for LEN in (500, 1000, 2000):
                 times = _run_measurement(NUM, LEN, method)
                 times = [t for t in times if t]
                 if times:
-                    print(f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3 if len(times) > 1 else None} ms")
+                    print(
+                        f"Avg cputime {method}, {NUM}, {LEN}: {mean(times)*1e-3}s +- {stdev(times)*1e-3 if len(times) > 1 else None} ms"
+                    )
                 else:
                     print(f"Failed measuring times")
 
 
 chdir("/tmp")
-#rmtree(mondir)
-
+# rmtree(mondir)

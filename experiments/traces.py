@@ -3,6 +3,7 @@
 from os import makedirs
 from random import randrange
 
+
 def gen_traces_single_input(alphabet, outdir, num, length, violating=0):
     """
     Generate traces that are OD. The input is in the first event
@@ -29,7 +30,9 @@ def gen_traces_single_input(alphabet, outdir, num, length, violating=0):
             traces[str(trace_in)] = trace_out
 
         if i in bad_traces:
-            trace_out.extend([alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))])
+            trace_out.extend(
+                [alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))]
+            )
 
         all_traces.append((trace_in, trace_out))
 
@@ -69,7 +72,9 @@ def gen_traces_two_inputs(alphabet, outdir, num, length, violating=0):
             traces[str(trace_in)] = trace_out
 
         if i in bad_traces:
-            trace_out.extend([alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))])
+            trace_out.extend(
+                [alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))]
+            )
 
         all_traces.append((trace_in, trace_out))
 
@@ -80,6 +85,7 @@ def gen_traces_two_inputs(alphabet, outdir, num, length, violating=0):
                 i1 = i if i < len(t[0]) else len(t[0]) - 1
                 i2 = i if i < len(t[1]) else len(t[1]) - 1
                 f.write(f"{t[0][i1]}, {t[1][i2]}\n")
+
 
 def gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
     """
@@ -109,7 +115,9 @@ def gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
             traces[str(trace_in)] = trace_out
 
         if i in bad_traces:
-            trace_out.extend([alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))])
+            trace_out.extend(
+                [alphabet[randrange(0, len(alphabet))] for _ in range(randrange(1, 11))]
+            )
 
         all_traces.append((trace_in, trace_out))
 
@@ -120,6 +128,7 @@ def gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
                 i1 = i if i < len(t[0]) else len(t[0]) - 1
                 i2 = i if i < len(t[1]) else len(t[1]) - 1
                 f.write(f"{t[0][i1]}, {t[1][i2]}\n")
+
 
 def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
     """
@@ -132,7 +141,7 @@ def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
     stages = ["Clear", "ShareLoc", "EraseLoc"]
 
     all_traces = []
-    #bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
+    # bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
     for i in range(1, num + 1):
         trace = []
         stage = 0
@@ -144,11 +153,10 @@ def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
             else:
                 a_o = alphabet[randrange(0, len(alphabet))]
             trace.append(f"{a_i},{a_o}")
- 
+
             if randrange(0, 100) <= 1:
                 stage += 1
                 trace.append(stages[stage % len(stages)])
-               
 
         all_traces.append(trace)
 
@@ -158,7 +166,6 @@ def ha_gen_traces_rand_inputs(alphabet, outdir, num, length, violating=0):
             for e in t:
                 f.write(e)
                 f.write("\n")
-
 
 
 def ha_gen_traces_almost_same(alphabet, outdir, num, length, violating=0):
@@ -172,7 +179,7 @@ def ha_gen_traces_almost_same(alphabet, outdir, num, length, violating=0):
     stages = ["Clear", "ShareLoc", "EraseLoc"]
 
     all_traces = []
-    #bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
+    # bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
     for i in range(1, num + 1):
         trace = []
         stage = 0
@@ -189,11 +196,10 @@ def ha_gen_traces_almost_same(alphabet, outdir, num, length, violating=0):
                 a_i = alphabet[randrange(0, len(alphabet))]
             if randrange(0, 100) <= 1:
                 a_o = alphabet[randrange(0, len(alphabet))]
- 
+
             if randrange(0, 100) <= 1:
                 stage += 1
                 trace.append(stages[stage % len(stages)])
-               
 
         all_traces.append(trace)
 
@@ -216,7 +222,7 @@ def ha_gen_traces_same(alphabet, outdir, num, length, violating=0):
     stages = ["Clear", "ShareLoc", "EraseLoc"]
 
     all_traces = []
-    #bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
+    # bad_traces = [randrange(1, num + 1) for _ in range(0, violating)]
     for i in range(1, num + 1):
         trace = []
         stage = 0
@@ -232,7 +238,6 @@ def ha_gen_traces_same(alphabet, outdir, num, length, violating=0):
             if randrange(0, 100) <= 0:
                 stage += 1
                 trace.append(stages[stage % len(stages)])
-               
 
         all_traces.append(trace)
 
@@ -242,5 +247,3 @@ def ha_gen_traces_same(alphabet, outdir, num, length, violating=0):
             for e in t:
                 f.write(e)
                 f.write("\n")
-
-
