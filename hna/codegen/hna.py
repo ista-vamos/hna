@@ -78,7 +78,7 @@ class CodeGenCpp(CodeGen):
 
         build_type = self.args.build_type
         if not build_type:
-            build_type = '"Debug"' if self.args.debug else ""
+            build_type = '"Debug"' if self.args.debug else "Release"
 
         self.gen_config(
             "CMakeLists.txt.in",
@@ -416,6 +416,10 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code
         """
+
+        if self.args.debug:
+            with self.new_dbg_file(f"hna.dot") as f:
+                hna.to_dot(f)
 
         if not hna.is_deterministic():
             raise RuntimeError("The HNA is not deterministic")
