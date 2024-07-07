@@ -465,6 +465,11 @@ class CodeGenCpp(CodeGen):
                 wr(f"{q.var}({q.var}), ")
             wr("state(init_state) { assert(state != INVALID); }\n\n")
 
+           #wr(f"  HNLInstance(const HNLInstance& other, HNLEvaluationState init_state)\n  : ")
+           #for q in formula.quantifier_prefix:
+           #    wr(f"{q.var}(other.{q.var}), ")
+           #wr("state(init_state) { assert(state != INVALID); }\n\n")
+
             wr("AtomIdentifier createMonitorID(int monitor_type) {")
             wr("switch (monitor_type) {")
             for F, tmp in self._formula_to_automaton.items():
@@ -696,8 +701,9 @@ class CodeGenCpp(CodeGen):
             num, A = tmp
             duplicate_num = generated_automata.get(A)
             if duplicate_num is not None:
-                with self.new_file(f"atom-{num}.h") as fh:
-                    self._generate_duplicate_atom(F, num, duplicate_num, fh.write)
+                with self.new_file(f"atom-{num}.h") as fh, self.new_file(f"atom-{num}.cpp") as fcpp:
+                    self._generate_duplicate_atom(F, num, duplicate_num, fh.write, fcpp.write)
+                    self._atoms_files.append(f"atom-{num}.cpp")
                 continue
 
             with self.new_file(f"atom-{num}.h") as fh:
@@ -835,12 +841,8 @@ class CodeGenCpp(CodeGen):
                 identifier += ",0"
         identifier += "}"
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
         )
-        # create the initial configuration
-        priorities = list(set(t.priority for t in automaton.transitions()))
-        priorities.sort(reverse=True)
-
         assert (
             len(automaton.initial_states()) == 1
         ), f"Automaton {num} has multiple initial states"
@@ -848,6 +850,29 @@ class CodeGenCpp(CodeGen):
             f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
         )
         wrcpp("}\n\n")
+
+        identifier = "AtomIdentifier{st"
+        for q in formula.quantifiers():
+            if q.var.name in (t1, t2):
+                identifier += f",instance.{q.var.name}->id()"
+            else:
+                identifier += ",0"
+        identifier += "}"
+        wrcpp(
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
+        )
+        assert (
+            len(automaton.initial_states()) == 1
+        ), f"Automaton {num} has multiple initial states"
+        wrcpp(
+            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
+        )
+        wrcpp("}\n\n")
+
+
+        # create the initial configuration
+        priorities = list(set(t.priority for t in automaton.transitions()))
+        priorities.sort(reverse=True)
 
         wrcpp(f"/* THE AUTOMATON FOR THE ATOM */\n")
         for state in automaton.states():
@@ -1041,14 +1066,15 @@ class CodeGenCpp(CodeGen):
             )
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
         wrh("public:\n")
-        wrh(f"AtomMonitor{num}(HNLInstance& instance);\n\n")
+        wrh(f"AtomMonitor{num}(const HNLInstance& instance);\n\n")
+        wrh(f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st);\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
         if self._namespace:
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
 
-    def _generate_duplicate_atom(self, atom_formula, num, duplicate_of, wrh):
+    def _generate_duplicate_atom(self, atom_formula, num, duplicate_of, wrh, wrcpp):
         ns = self._namespace or ""
         wrh(
             f"""
@@ -1061,13 +1087,23 @@ class CodeGenCpp(CodeGen):
         if self._namespace:
             wrh(f"namespace {self._namespace} {{\n\n")
         dump_codegen_position(wrh)
-        wrh(f"/* {atom_formula}*/\n\n")
-        wrh(f"/* This atom is a duplicate of AtomMonitor{duplicate_of}*/\n")
-        # wrh(f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{ }};\n")
-        wrh(f"using AtomMonitor{num} = AtomMonitor{duplicate_of};\n")
+        wrh(f"/* {atom_formula} */\n\n")
+        wrh(f"/* This atom is a duplicate of AtomMonitor{duplicate_of} */\n")
+        wrh(f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
+             "public:\n"
+            f"  AtomMonitor{num}(const HNLInstance&);\n"
+            f"}};\n")
         if self._namespace:
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
+
+        wrcpp(f'#include "atom-{num}.h"\n\n')
+        if self._namespace:
+            wrcpp(f"using namespace {self._namespace};\n\n")
+        dump_codegen_position(wrcpp)
+        wrcpp(
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}) {{}}\n\n"
+        )
 
     def _generate_atom_with_funs(self, wrcpp, formula, atom_formula: IsPrefix, num):
         lf, rf = (
@@ -1097,7 +1133,7 @@ class CodeGenCpp(CodeGen):
         identifier += "}"
 
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor({identifier}), "
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor({identifier}), "
         )
         monitor_init = []
         if lf:
@@ -1165,7 +1201,7 @@ class CodeGenCpp(CodeGen):
         wrh(f"class AtomMonitor{num} : public FunctionAtomMonitor {{\n\n")
         wrh(f"  atom{num}::FunctionHNLMonitor monitor;\n")
         wrh("public:\n")
-        wrh(f"AtomMonitor{num}(HNLInstance& instance{lf}{rf});\n\n")
+        wrh(f"AtomMonitor{num}(const HNLInstance& instance{lf}{rf});\n\n")
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
         if self._namespace:
