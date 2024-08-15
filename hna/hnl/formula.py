@@ -865,9 +865,9 @@ class IsPrefix(Formula):
         # FIXME: we must check if the variables are not inside iteration
         return all((len(c.program_variable_occurrences()) <= 1 for c in self.children))
 
-    def normalize(self) -> Formula:
+    def rename_traces(self, t1, t2) -> Formula:
         """
-        Rename the left variable to `x` and the right variable to `y`.
+        Rename trace variables to "t"
         """
         lhs = self.children[0]
         rhs = self.children[1]
@@ -876,9 +876,9 @@ class IsPrefix(Formula):
         assert len(lpv) <= 1, lpv
         assert len(rpv) <= 1, rpv
         if lpv:
-            lhs = lhs.substitute({lpv[0]: ProgramVariable("x", TraceVariable("t"))})
+            lhs = lhs.substitute({lpv[0]: ProgramVariable(lpv[0].name, TraceVariable(t1))})
         if rpv:
-            rhs = rhs.substitute({rpv[0]: ProgramVariable("y", TraceVariable("t"))})
+            rhs = rhs.substitute({rpv[0]: ProgramVariable(rpv[0].name, TraceVariable(t2))})
 
         return IsPrefix(lhs, rhs)
 

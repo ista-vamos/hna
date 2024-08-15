@@ -4,7 +4,7 @@ set -e
 
 source prelude.sh
 
-# x in inpu, y is output
+# x in input, y is output
 #
 gen "forall t1,t2: !(x(t1) <= x(t2)) || (y(t1) <= y(t2))"
 

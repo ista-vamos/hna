@@ -131,7 +131,7 @@ class CodeGenCpp(CodeGen):
         self._namespace = namespace
         self._formula_to_automaton = {}
         self._automaton_to_formula = {}
-        self._normalized_formulas = {}
+        self._renamed_formulas = {}
         self._add_gen_files = []
         self._atoms_files = []
         self._submonitors_dirs = {}
@@ -1415,10 +1415,10 @@ class CodeGenCpp(CodeGen):
             self.input_file(f, "../../partials/html/graph-view-end.html")
 
     def generate_atomic_comparison_automaton(self, formula: IsPrefix, alphabet):
-        # we rename the variables to `x` and `y` so that when we have another atom
-        # that is the same but names of the variables, we do not rebuild it
-        nformula = formula.normalize()
-        Ap = self._normalized_formulas.get(nformula)
+        # we rename both traces  to `t` so that when we have another atom
+        # that is the same but names of the trace variables, we do not rebuild it
+        nformula = formula.rename_traces("t", "t")
+        Ap = self._renamed_formulas.get(nformula)
         if Ap:
             print(
                 f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
@@ -1458,7 +1458,7 @@ class CodeGenCpp(CodeGen):
         assert formula not in self._formula_to_automaton, formula
         self._formula_to_automaton[formula] = (num, Ap)
         self._automaton_to_formula[Ap] = (num, formula)
-        self._normalized_formulas[nformula] = Ap
+        self._renamed_formulas[nformula] = Ap
 
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
