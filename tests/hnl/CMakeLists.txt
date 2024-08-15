@@ -9,7 +9,7 @@ add_test(NAME test3 COMMAND ./test3.sh)
 add_test(NAME test-trace-1 COMMAND ./test-trace-1.sh)
 
 add_test(NAME test-od-1 COMMAND ./test-od-1.sh)
-add_test(NAME test-od-1 COMMAND ./test-od-1.sh)
+add_test(NAME test-od-2 COMMAND ./test-od-2.sh)
 add_test(NAME test-od-1-red COMMAND ./test-od-1-red.sh)
 add_test(NAME test-od-2-red COMMAND ./test-od-2-red.sh)
 
