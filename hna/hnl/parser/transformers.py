@@ -81,6 +81,6 @@ def prnode(lvl, node, *args):
 
 
 def transform_ast(lark_ast, ctx=None):
-    print(lark_ast.pretty())
+    #print(lark_ast.pretty())
     T = ProcessAST(lark_ast)
     return T.transform(lark_ast)
