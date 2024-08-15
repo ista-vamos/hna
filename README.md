@@ -4,12 +4,14 @@ This tools generates monitors for hypernode logic and hypernode automata specifi
 
 ## Setup
 
-#### Setup python virtual environment (required on newer systems).
+#### Setup python virtual environment (required on newer systems)
+
 ```
 python3 -mvenv venv
 ```
 
 #### Install python dependencies
+
 ```
 # If you use Python virtual environment, this command
 # must be run in every terminal in which you work with this project.
@@ -44,13 +46,17 @@ And its done! If you want to run the tests, use `make test`.
 
 ### Hypernode logic
 
-Example of using the main script for HNL
+This project builds on the _extended hypernode logic (eHL)_ and extends it further,
+so we call it only _hypernode logic_ and abbreviate it as _HNL_.
+
+The `./hnl.py` script generates a C++ monitor for the given formula
+and automatically compiles it. An example:
+
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
 ```
-The `./hnl.py` script generates a C++ monitor for the given formula
-and automatically compiles it. If you want to browse the generated files,
-the output is generated to `/tmp/hnl`.
+
+If you want to browse the generated files, the output is generated to `/tmp/hnl`.
 The generated code comes with CMake configuration and you can manually
 change the configuration and recompile the monitor with
 
@@ -70,6 +76,7 @@ If the traces are read from CSV files (the default and now the only option),
 we assume one trace per file. Also, you need to specify the type of events
 through `--data` and possibly the alphabet (values that can appear in the
 events):
+
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --data='x: char, y: char'
 ```
@@ -82,6 +89,7 @@ events):
 ### Hypernode automata
 
 The automata are given in the YAML format, an example automaton could be:
+
 ```yaml
 automaton:
   init: q0
@@ -101,6 +109,7 @@ automaton:
 ```
 
 Run the script `./hna.py` to generate the monitor.
+
 ```
 ./hna.py automaton.yml
 ```
@@ -115,8 +124,7 @@ and `--debug`.
 - Bartocci, Ezio and Henzinger, Thomas A. and Nickovic, Dejan and Oliveira da Costa, Ana (2023).
  [Hypernode Automata](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CONCUR.2023.21). ArXiv.
 
-
 ### Generting code is slow
 
-The code generator is filled with different assertions, some of them are pretty expensive. If you experience a problem with speed generation, try running the
-generators with `python -OO` or using PyPy.
+The code generator is filled with different assertions, some of them are pretty expensive.
+If you experience a problem with speed generation, try running the generators with `python -OO` or using PyPy.
