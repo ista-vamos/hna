@@ -1,7 +1,6 @@
-# HNA
+# HNA - Hypernode automata
 
-Library for the construction, manipulation and runtime verification of hypernode automata
-and (extended) hypernode logic.
+Runtime verification of hypernode automata and (extended) hypernode logic.
 
 ## Setup
 
@@ -41,13 +40,17 @@ And its done! If you want to run the tests, use `make test`.
 
 ### Hypernode logic
 
-Example of using the main script for HNL
+This project builds on the _extended hypernode logic (eHL)_ and extends it further,
+so we call it only _hypernode logic_ and abbreviate it as _HNL_.
+
+The `./hnl.py` script generates a C++ monitor for the given formula
+and automatically compiles it. An example:
+
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
 ```
-The `./hnl.py` script generates a C++ monitor for the given formula
-and automatically compiles it. If you want to browse the generated files,
-the output is generated to `/tmp/hnl`.
+
+If you want to browse the generated files, the output is generated to `/tmp/hnl`.
 The generated code comes with CMake configuration and you can manually
 change the configuration and recompile the monitor with
 
@@ -67,6 +70,7 @@ If the traces are read from CSV (the default and now the only option),
 we assume one trace per file. Also, you need to specify the type of events
 through `--csv-header` and possibly the alphabet (values that can appear in the
 events):
+
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --csv-header='x: char, y: char'
 ```
@@ -104,5 +108,5 @@ and `--debug`.
 
 ### Generting code is slow
 
-The code generator is filled with different assertions, some of them are pretty expensive. If you experience a problem with speed generation, try running the
-generators with `python -OO` or using PyPy.
+The code generator is filled with different assertions, some of them are pretty expensive.
+If you experience a problem with speed generation, try running the generators with `python -OO` or using PyPy.
