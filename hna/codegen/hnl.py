@@ -439,6 +439,7 @@ class CodeGenCpp(CodeGen):
             seen = set()
             wbg = set()
             wbg.add(self.BDD)
+            rows = {}
             while wbg:
                 bdd = wbg.pop()
                 if bdd in seen or bdd.is_one() or bdd.is_zero():
@@ -450,9 +451,15 @@ class CodeGenCpp(CodeGen):
                 wbg.add(hi)
                 wbg.add(lo)
 
-                f.write(
+                nd = self._bdd_vars_to_nodes[bdd.top]
+                assert nd.get_id() not in rows, rows
+                rows[nd.get_id()] = (
                     f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n"
                 )
+
+            idxs = sorted(rows)
+            for idx in idxs:
+                f.write(rows[idx])
 
             f.write("};\n\n")
 
@@ -729,13 +736,13 @@ class CodeGenCpp(CodeGen):
             assert nd.automaton
 
             num, F = nd.get_id(), nd.formula
-            duplicate_num = generated_automata.get(nd.automaton)
+            duplicate_num = generated_automata.get((nd.lvar, nd.rvar, nd.automaton))
             if duplicate_num is not None:
                 with self.new_file(f"atom-{num}.h") as fh, self.new_file(
                     f"atom-{num}.cpp"
                 ) as fcpp:
                     self._generate_duplicate_atom(
-                        F, num, duplicate_num, fh.write, fcpp.write
+                        nd, duplicate_num, fh.write, fcpp.write
                     )
                     self._atoms_files.append(f"atom-{num}.cpp")
                 continue
@@ -750,9 +757,9 @@ class CodeGenCpp(CodeGen):
                 if F.functions():
                     self._generate_atom_with_funs(fcpp.write, formula, F, num)
                 else:
-                    self._generate_atom(fcpp.write, formula, F, num, nd.automaton)
+                    self._generate_atom(fcpp.write, formula, nd)
             self._atoms_files.append(f"atom-{num}.cpp")
-            generated_automata[nd.automaton] = num
+            generated_automata[(nd.lvar, nd.rvar, nd.automaton)] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self._namespace or ""
@@ -848,14 +855,15 @@ class CodeGenCpp(CodeGen):
             formula = PrenexFormula([ForAll(tr1), ForAll(tr2)], Not(F.substitute(subs)))
             nested_mon.generate_embedded(formula, alphabet, embedding_data)
 
-    def _generate_atom(self, wrcpp, formula, atom_formula: IsPrefix, num, automaton):
+    def _generate_atom(self, wrcpp, formula, nd):
+        atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
 
-        p1 = atom_formula.children[0].program_variables()
-        p2 = atom_formula.children[1].program_variables()
-        assert len(p1) <= 1, str(p1)
-        assert len(p2) <= 1, str(p2)
-        t1 = p1[0].trace.name if p1 else None
-        t2 = p2[0].trace.name if p2 else None
+        # p1 = atom_formula.children[0].program_variables()
+        # p2 = atom_formula.children[1].program_variables()
+        # assert len(p1) <= 1, str(p1)
+        # assert len(p2) <= 1, str(p2)
+        t1 = nd.ltrace.name  # if p1 else None
+        t2 = nd.rtrace.name  # if p2 else None
         if not (t1 or t2):
             raise NotImplementedError("This case is unsupported yet")
         if not t1:
@@ -865,25 +873,6 @@ class CodeGenCpp(CodeGen):
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
-        t1_instance = f"instance.{t1}" if t1 else "nullptr"
-        t2_instance = f"instance.{t2}" if t2 else "nullptr"
-        identifier = f"AtomIdentifier{{ATOM_{num}"
-        for q in formula.quantifiers():
-            if q.var.name in (t1, t2):
-                identifier += f",instance.{q.var.name}->id()"
-            else:
-                identifier += ",0"
-        identifier += "}"
-        wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
-        )
-        assert (
-            len(automaton.initial_states()) == 1
-        ), f"Automaton {num} has multiple initial states"
-        wrcpp(
-            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
-        )
-        wrcpp("}\n\n")
 
         identifier = "AtomIdentifier{st"
         for q in formula.quantifiers():
@@ -893,7 +882,8 @@ class CodeGenCpp(CodeGen):
                 identifier += ",0"
         identifier += "}"
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st) \n  : RegularAtomMonitor({identifier}, {t1_instance}, {t2_instance}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st, Trace *lt, Trace *rt) \n  :"
+            f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
         )
         assert (
             len(automaton.initial_states()) == 1
@@ -901,6 +891,24 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
         )
+        wrcpp("}\n\n")
+
+        t1_instance = f"instance.{t1}" if t1 else "nullptr"
+        t2_instance = f"instance.{t2}" if t2 else "nullptr"
+        identifier = f"AtomIdentifier{{ATOM_{num}"
+        for q in formula.quantifiers():
+            if q.var.name in (t1, t2):
+                identifier += f",instance.{q.var.name}->id()"
+            else:
+                identifier += ",0"
+        identifier += "}"
+        dump_codegen_position(wrcpp)
+        wrcpp(
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{\n\n"
+        )
+        assert (
+            len(automaton.initial_states()) == 1
+        ), f"Automaton {num} has multiple initial states"
         wrcpp("}\n\n")
 
         # create the initial configuration
@@ -1012,7 +1020,7 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             f"""
                 #ifdef DEBUG_PRINTS
-                std::cerr << "{ns}Atom {num} [" << {t1id} << ", " << {t2id} << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
+                std::cerr << "{ns}Atom " << type() << " [" << {t1id} << ", " << {t2id} << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
             """
         )
         if t1:
@@ -1101,7 +1109,7 @@ class CodeGenCpp(CodeGen):
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(const HNLInstance& instance);\n\n")
         wrh(
-            f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st);\n\n"
+            f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st, Trace *lt, Trace *rt);\n\n"
         )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
@@ -1109,8 +1117,10 @@ class CodeGenCpp(CodeGen):
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
 
-    def _generate_duplicate_atom(self, atom_formula, num, duplicate_of, wrh, wrcpp):
+    def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         ns = self._namespace or ""
+        num, atom_formula = nd.get_id(), nd.formula
+
         wrh(
             f"""
         #ifndef _ATOM_{num}_H__{ns}
@@ -1123,7 +1133,9 @@ class CodeGenCpp(CodeGen):
             wrh(f"namespace {self._namespace} {{\n\n")
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula} */\n\n")
-        wrh(f"/* This atom is a duplicate of AtomMonitor{duplicate_of} */\n")
+        wrh(
+            f"/* This atom is a duplicate of AtomMonitor{duplicate_of} (but possibly trace inputs) */\n"
+        )
         wrh(
             f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
             "public:\n"
@@ -1139,7 +1151,7 @@ class CodeGenCpp(CodeGen):
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}) {{}}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
         )
 
     def _generate_atom_with_funs(self, wrcpp, formula, atom_formula: IsPrefix, num):
