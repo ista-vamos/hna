@@ -62,7 +62,7 @@ def create_cmdargs_parser():
         action="append",
         default=[],
         help="Do not generate the default version of the given file, its replacement is assumed to be "
-             "provided as an additional source.",
+        "provided as an additional source.",
     )
     parser.add_argument(
         "--gen-only",
@@ -75,9 +75,9 @@ def create_cmdargs_parser():
         action="store_true",
         default=True,
         help="Generate code that can read CSV files as input. "
-             "It is enabled by default even for monitors with other "
-             "inputs (for testing). See --help of the monitor binary "
-             "for instructions on how to use the CSV reader if the monitor has also other inputs.",
+        "It is enabled by default even for monitors with other "
+        "inputs (for testing). See --help of the monitor binary "
+        "for instructions on how to use the CSV reader if the monitor has also other inputs.",
     )
     parser.add_argument(
         "--csv-header",

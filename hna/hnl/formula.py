@@ -867,7 +867,7 @@ class IsPrefix(Formula):
 
     def rename_traces(self, t1, t2) -> Formula:
         """
-        Rename trace variables to "t"
+        Rename trace variables to "t1" and "t2"
         """
         lhs = self.children[0]
         rhs = self.children[1]
@@ -876,9 +876,34 @@ class IsPrefix(Formula):
         assert len(lpv) <= 1, lpv
         assert len(rpv) <= 1, rpv
         if lpv:
-            lhs = lhs.substitute({lpv[0]: ProgramVariable(lpv[0].name, TraceVariable(t1))})
+            lhs = lhs.substitute(
+                {lpv[0]: ProgramVariable(lpv[0].name, TraceVariable(t1))}
+            )
         if rpv:
-            rhs = rhs.substitute({rpv[0]: ProgramVariable(rpv[0].name, TraceVariable(t2))})
+            rhs = rhs.substitute(
+                {rpv[0]: ProgramVariable(rpv[0].name, TraceVariable(t2))}
+            )
+
+        return IsPrefix(lhs, rhs)
+
+    def rename_variables(self, v1, v2, t1=None, t2=None) -> Formula:
+        """
+        Rename program variables to "v1" and "v2". If given, rename also traces inside the variables.
+        """
+        lhs = self.children[0]
+        rhs = self.children[1]
+        lpv = lhs.program_variables()
+        rpv = rhs.program_variables()
+        assert len(lpv) <= 1, lpv
+        assert len(rpv) <= 1, rpv
+        if lpv:
+            lhs = lhs.substitute(
+                {lpv[0]: ProgramVariable(v1, TraceVariable(t1) if t1 else lpv[0].trace)}
+            )
+        if rpv:
+            rhs = rhs.substitute(
+                {rpv[0]: ProgramVariable(v2, TraceVariable(t2) if t2 else rpv[0].trace)}
+            )
 
         return IsPrefix(lhs, rhs)
 

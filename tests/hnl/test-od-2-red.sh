@@ -4,9 +4,9 @@ set -e
 
 source prelude.sh
 
-# x in inpu, y is output
+# x in input, y is output
 #
-gen "forall t1,t2: (!(x(t1) <= x(t2)) || y(t1) <= y(t2)) && (!(x(t2) <= x(t1)) || y(t2) <= y(t1)) " --reduction reflexive,symmetric
+gen "forall t1,t2: (!(x(t1) <= x(t2)) || y(t1) <= y(t2)) && (!(x(t2) <= x(t1)) || y(t2) <= y(t1)) " # --reduction reflexive,symmetric
 
 echo "x,y"  > /tmp/1.csv
 echo "1,1" >> /tmp/1.csv
