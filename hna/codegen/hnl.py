@@ -115,6 +115,34 @@ def traces_positions(t1_pos, N):
         yield 1
 
 
+class BDDNode:
+    _id_cnt = 0
+
+    def __init__(self, formula: IsPrefix, bddvar):
+        BDDNode._id_cnt += 1
+        self._id = BDDNode._id_cnt
+
+        assert isinstance(formula, IsPrefix), formula
+        self.formula = formula
+        assert len(formula.children) == 2, formula.children
+        l, r = formula.children
+        l, r = l.program_variables(), r.program_variables()
+        assert len(l) == 1
+        assert len(r) == 1
+        l, r = l[0], r[0]
+        self.ltrace = l.trace
+        self.rtrace = r.trace
+        self.lvar = l.name
+        self.rvar = r.name
+        self.bddvar = bddvar
+        # this automaton may be shared between multiple BDD nodes
+        # if the automata for the nodes are isomorphic
+        self.automaton = None
+
+    def get_id(self):
+        return self._id
+
+
 class CodeGenCpp(CodeGen):
     """
     Class for generating monitors in C++.
@@ -129,9 +157,10 @@ class CodeGenCpp(CodeGen):
         )
         self.templates_path = pathjoin(self_path, "templates/cpp/hnl")
         self._namespace = namespace
-        self._formula_to_automaton = {}
-        self._automaton_to_formula = {}
-        self._renamed_formulas = {}
+        self.BDD = None
+        self._bdd_nodes = []
+        self._bdd_vars_to_nodes = {}
+        self._automata = {}
         self._add_gen_files = []
         self._atoms_files = []
         self._submonitors_dirs = {}
@@ -333,8 +362,6 @@ class CodeGenCpp(CodeGen):
         of atoms
         """
 
-        atoms = {}
-
         def gen_bdd(F):
             """
             Recursively build BDD from the formula and create the mapping
@@ -342,7 +369,9 @@ class CodeGenCpp(CodeGen):
             """
             if isinstance(F, IsPrefix):
                 v = bddvar(str(F))
-                atoms[v] = F
+                nd = BDDNode(F, v)
+                self._bdd_nodes.append(nd)
+                self._bdd_vars_to_nodes[v] = nd
                 return v
             if isinstance(F, And):
                 return gen_bdd(F.children[0]) & gen_bdd(F.children[1])
@@ -357,10 +386,9 @@ class CodeGenCpp(CodeGen):
             with self.new_dbg_file("BDD.dot") as f:
                 f.write(BDD.to_dot())
 
-        return BDD, atoms
+        self.BDD = BDD
 
     def _generate_bdd_code(self, formula):
-        BDD, atoms_map = self._gen_bdd_from_formula(formula)
 
         def bdd_to_action(bdd):
             if bdd.is_one():
@@ -368,8 +396,8 @@ class CodeGenCpp(CodeGen):
             elif bdd.is_zero():
                 return "RESULT_FALSE"
 
-            F = atoms_map[bdd.top]
-            return f"ATOM_{self._formula_to_automaton[F][0]}"
+            nd = self._bdd_vars_to_nodes[bdd.top]
+            return f"ATOM_{nd.get_id()}"
 
         with self.new_file("hnl-state.h") as f:
             ns = self._namespace or ""
@@ -390,8 +418,10 @@ class CodeGenCpp(CodeGen):
             f.write("  FINISHED     = -1, // the atom finished \n")
             f.write("  RESULT_TRUE  = -2, // the atom got result TRUE\n")
             f.write("  RESULT_FALSE = -3, // the atom got result FALSE \n")
-            for num, A in self._formula_to_automaton.values():
-                f.write(f"  ATOM_{num} = {num}, // the atom is atom {num} \n")
+            for nd in self._bdd_nodes:
+                f.write(
+                    f"  ATOM_{nd.get_id()} = {nd.get_id()}, // the atom is atom {nd.get_id()} \n"
+                )
             f.write("};\n")
             if self._namespace:
                 f.write(f"}} // namespace {self._namespace}\n\n")
@@ -408,7 +438,7 @@ class CodeGenCpp(CodeGen):
             f.write("  {INVALID, INVALID, INVALID},\n")
             seen = set()
             wbg = set()
-            wbg.add(BDD)
+            wbg.add(self.BDD)
             while wbg:
                 bdd = wbg.pop()
                 if bdd in seen or bdd.is_one() or bdd.is_zero():
@@ -428,7 +458,7 @@ class CodeGenCpp(CodeGen):
 
             dump_codegen_position(f)
             f.write(
-                f"static constexpr HNLEvaluationState INITIAL_ATOM = {bdd_to_action(BDD.top)};\n"
+                f"static constexpr HNLEvaluationState INITIAL_ATOM = {bdd_to_action(self.BDD.top)};\n"
             )
 
     def _generate_hnlinstances(self, formula):
@@ -465,24 +495,23 @@ class CodeGenCpp(CodeGen):
                 wr(f"{q.var}({q.var}), ")
             wr("state(init_state) { assert(state != INVALID); }\n\n")
 
-           #wr(f"  HNLInstance(const HNLInstance& other, HNLEvaluationState init_state)\n  : ")
-           #for q in formula.quantifier_prefix:
-           #    wr(f"{q.var}(other.{q.var}), ")
-           #wr("state(init_state) { assert(state != INVALID); }\n\n")
+            # wr(f"  HNLInstance(const HNLInstance& other, HNLEvaluationState init_state)\n  : ")
+            # for q in formula.quantifier_prefix:
+            #    wr(f"{q.var}(other.{q.var}), ")
+            # wr("state(init_state) { assert(state != INVALID); }\n\n")
 
             wr("AtomIdentifier createMonitorID(int monitor_type) {")
             wr("switch (monitor_type) {")
-            for F, tmp in self._formula_to_automaton.items():
-                num, _ = tmp
-                identifier = f"AtomIdentifier{{ATOM_{num}"
-                trace_variables = [t.name for t in F.trace_variables()]
+            for nd in self._bdd_nodes:
+                identifier = f"AtomIdentifier{{ATOM_{nd.get_id()}"
+                trace_variables = [t.name for t in nd.formula.trace_variables()]
                 for q in formula.quantifiers():
                     if q.var.name in trace_variables:
                         identifier += f", {q.var.name}->id()"
                     else:
                         identifier += ",0"
                 identifier += "}"
-                wr(f"case ATOM_{num}: return {identifier};\n")
+                wr(f"case ATOM_{nd.get_id()}: return {identifier};\n")
             wr(f"default: abort();\n")
             wr("};\n")
             wr("}\n\n")
@@ -670,8 +699,8 @@ class CodeGenCpp(CodeGen):
         with self.new_file("create-atom-monitor.h") as f:
             dump_codegen_position(f)
             f.write("switch(monitor_type) {\n")
-            for F, tmp in self._formula_to_automaton.items():
-                num, A = tmp
+            for nd in self._bdd_nodes:
+                num, F = nd.get_id(), nd.formula
                 lf, rf = F.children[0].functions(), F.children[1].functions()
                 lf = f", function_{lf[0].name}.get()" if lf else ""
                 rf = f", function_{rf[0].name}.get()" if rf else ""
@@ -695,14 +724,19 @@ class CodeGenCpp(CodeGen):
         self._generate_submonitors(alphabet)
 
         generated_automata = {}
-        for F, tmp in self._formula_to_automaton.items():
-            print("Generating code for ", F)
+        for nd in self._bdd_nodes:
+            print("Generating code for", nd.get_id(), ":", nd.formula)
+            assert nd.automaton
 
-            num, A = tmp
-            duplicate_num = generated_automata.get(A)
+            num, F = nd.get_id(), nd.formula
+            duplicate_num = generated_automata.get(nd.automaton)
             if duplicate_num is not None:
-                with self.new_file(f"atom-{num}.h") as fh, self.new_file(f"atom-{num}.cpp") as fcpp:
-                    self._generate_duplicate_atom(F, num, duplicate_num, fh.write, fcpp.write)
+                with self.new_file(f"atom-{num}.h") as fh, self.new_file(
+                    f"atom-{num}.cpp"
+                ) as fcpp:
+                    self._generate_duplicate_atom(
+                        F, num, duplicate_num, fh.write, fcpp.write
+                    )
                     self._atoms_files.append(f"atom-{num}.cpp")
                 continue
 
@@ -710,15 +744,15 @@ class CodeGenCpp(CodeGen):
                 if F.functions():
                     self._generate_atom_with_funs_header(F, num, fh.write)
                 else:
-                    self._generate_atom_header(F, A, num, fh.write)
+                    self._generate_atom_header(F, nd.automaton, num, fh.write)
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 if F.functions():
                     self._generate_atom_with_funs(fcpp.write, formula, F, num)
                 else:
-                    self._generate_atom(fcpp.write, formula, F, num, A)
+                    self._generate_atom(fcpp.write, formula, F, num, nd.automaton)
             self._atoms_files.append(f"atom-{num}.cpp")
-            generated_automata[A] = num
+            generated_automata[nd.automaton] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self._namespace or ""
@@ -753,16 +787,15 @@ class CodeGenCpp(CodeGen):
             """
             )
             dump_codegen_position(f)
-            for F, tmp in self._formula_to_automaton.items():
-                num, A = tmp
-                f.write(f'#include "atom-{num}.h"\n')
+            for nd in self._bdd_nodes:
+                f.write(f'#include "atom-{nd.get_id()}.h"\n')
             f.write("#endif\n")
 
         with self.new_file("do_step.h") as f:
             dump_codegen_position(f)
             f.write("switch (M->type()) {")
-            for F, tmp in self._formula_to_automaton.items():
-                num, A = tmp
+            for nd in self._bdd_nodes:
+                num = nd.get_id()
                 f.write(
                     f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();\n"
                 )
@@ -773,11 +806,12 @@ class CodeGenCpp(CodeGen):
             f.write("}")
 
     def _generate_submonitors(self, alphabet):
-        assert self._formula_to_automaton, "Formulas not translated to automata"
-        for F, tmp in self._formula_to_automaton.items():
-            num, A = tmp
+        assert self._bdd_nodes, "Formulas not translated to BDD and automata"
+        for nd in self._bdd_nodes:
+            F = nd.formula
             if not F.functions():
                 continue
+            num = nd.get_id()
             submon_dir = f"mon-atom-{num}"
             assert num not in self._submonitors_dirs
             self._submonitors_dirs[num] = submon_dir
@@ -868,7 +902,6 @@ class CodeGenCpp(CodeGen):
             f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0);\n"
         )
         wrcpp("}\n\n")
-
 
         # create the initial configuration
         priorities = list(set(t.priority for t in automaton.transitions()))
@@ -1067,7 +1100,9 @@ class CodeGenCpp(CodeGen):
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(const HNLInstance& instance);\n\n")
-        wrh(f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st);\n\n")
+        wrh(
+            f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st);\n\n"
+        )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
         if self._namespace:
@@ -1089,10 +1124,12 @@ class CodeGenCpp(CodeGen):
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula} */\n\n")
         wrh(f"/* This atom is a duplicate of AtomMonitor{duplicate_of} */\n")
-        wrh(f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
-             "public:\n"
+        wrh(
+            f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
+            "public:\n"
             f"  AtomMonitor{num}(const HNLInstance&);\n"
-            f"}};\n")
+            f"}};\n"
+        )
         if self._namespace:
             wrh(f"}} // namespace {self._namespace}\n")
         wrh("#endif\n")
@@ -1414,29 +1451,41 @@ class CodeGenCpp(CodeGen):
             f.write(",")
             self.input_file(f, "../../partials/html/graph-view-end.html")
 
-    def generate_atomic_comparison_automaton(self, formula: IsPrefix, alphabet):
-        # we rename both traces  to `t` so that when we have another atom
+    def generate_atomic_comparison_automaton(self, bddnode: BDDNode, alphabet):
+        assert isinstance(bddnode, BDDNode), bddnode
+        assert bddnode.automaton is None
+
+        # we rename both projections to `v(t)` so that when we have another atom
         # that is the same but names of the trace variables, we do not rebuild it
-        nformula = formula.rename_traces("t", "t")
-        Ap = self._renamed_formulas.get(nformula)
+        formula = bddnode.formula
+        num = bddnode.get_id()
+        nformula = formula.rename_variables("v", "v", "t", "t")
+        Ap = self._automata.get(nformula)
         if Ap:
             print(
                 f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
             )
-            num = len(self._formula_to_automaton) + 1
-            assert formula not in self._formula_to_automaton, formula
-            self._formula_to_automaton[formula] = (num, Ap)
-            self._automaton_to_formula[Ap] = (num, formula)
+            bddnode.automaton = Ap
 
             if self.args.debug:
                 with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
                     Ap.to_dot(f)
-            return
+            return Ap
 
-        num = len(self._formula_to_automaton) + 1
+        A1 = self._automata.get(nformula.children[0])
+        if A1 is None:
+            A1 = formula_to_automaton(nformula.children[0], alphabet)
+            self._automata[nformula.children[0]] = A1
+        else:
+            print(f"Hit cache for {nformula.children[0]}")
+        A2 = self._automata.get(nformula.children[1])
+        if A2 is None:
+            A2 = formula_to_automaton(nformula.children[1], alphabet)
+            self._automata[nformula.children[1]] = A2
+        else:
+            print(f"Hit cache for {nformula.children[1]}")
 
-        A1 = formula_to_automaton(nformula.children[0], alphabet)
-        A2 = formula_to_automaton(nformula.children[1], alphabet)
+        # NOTE: we do not cache this one
         A = compose_automata(A1, A2, alphabet)
         Ap = to_priority_automaton(A)
 
@@ -1455,13 +1504,12 @@ class CodeGenCpp(CodeGen):
         # self._aut_to_html(f"aut-{num}.html", A)
         # self._aut_to_html(f"aut-{num}-prio.html", Ap)
 
-        assert formula not in self._formula_to_automaton, formula
-        self._formula_to_automaton[formula] = (num, Ap)
-        self._automaton_to_formula[Ap] = (num, formula)
-        self._renamed_formulas[nformula] = Ap
+        self._automata[nformula] = Ap
 
         assert len(Ap.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(Ap.initial_states()) > 0, f"Automaton has no initial states"
+
+        return Ap
 
     def generate_tests(self, alphabet):
         print("-- Generating tests --")
@@ -1475,8 +1523,8 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-        for F, tmp in self._formula_to_automaton.items():
-            num, A = tmp
+        for nd in self._bdd_nodes:
+            num = nd.get_id()
             for test_num in range(0, 20):
                 if test_num < 10:
                     # make sure to generate some short tests
@@ -1484,8 +1532,8 @@ class CodeGenCpp(CodeGen):
                 else:
                     path_len = random.randrange(5, 100)
 
-                path = random_path(A, path_len)
-                self.gen_test(A, F, num, path, test_num)
+                path = random_path(nd.automaton, path_len)
+                self.gen_test(nd.automaton, nd.formula, num, path, test_num)
 
     def gen_test(self, A, F, num, path, test_num):
         assert A.is_initial(path[0].source), "Path starts with non-initial state"
@@ -1727,10 +1775,14 @@ class CodeGenCpp(CodeGen):
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
+        self._gen_bdd_from_formula(formula)
+
+        for nd in self._bdd_nodes:
+            nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
+
         def gen_automaton(F):
             if not isinstance(F, IsPrefix):
                 return
-            self.generate_atomic_comparison_automaton(F, alphabet)
 
         formula.visit(gen_automaton)
         self._generate_monitor(formula, alphabet, embedding_data)
