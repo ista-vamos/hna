@@ -99,7 +99,7 @@ def path_is_accepting(A: Automaton, path):
 
 
 def get_max_out_priority(automaton, state):
-    return max(t.priority for t in automaton.transitions() if t.source == state)
+    return max(t.priority for t in automaton.transitions(state).values())
 
 
 def traces_positions(t1_pos, N):
@@ -736,7 +736,7 @@ class CodeGenCpp(CodeGen):
             assert nd.automaton
 
             num, F = nd.get_id(), nd.formula
-            duplicate_num = generated_automata.get((nd.lvar, nd.rvar, nd.automaton))
+            duplicate_num = generated_automata.get((nd.lvar, nd.rvar, nd.automaton.get_id()))
             if duplicate_num is not None:
                 with self.new_file(f"atom-{num}.h") as fh, self.new_file(
                     f"atom-{num}.cpp"
@@ -759,7 +759,7 @@ class CodeGenCpp(CodeGen):
                 else:
                     self._generate_atom(fcpp.write, formula, nd)
             self._atoms_files.append(f"atom-{num}.cpp")
-            generated_automata[(nd.lvar, nd.rvar, nd.automaton)] = num
+            generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self._namespace or ""
@@ -767,6 +767,8 @@ class CodeGenCpp(CodeGen):
                 f"""
             #ifndef _ATOM_IDENTIFIER_H__{ns}
             #define _ATOM_IDENTIFIER_H__{ns}
+
+            #include <tuple>
             """
             )
             dump_codegen_position(f)
@@ -957,7 +959,8 @@ class CodeGenCpp(CodeGen):
             wrcpp("/* FIXME: do not generate the switch for a single state */\n")
         wrcpp(f"  switch (cfg.state) {{\n")
         for state in automaton.states():
-            transitions = [t for t in automaton.transitions() if t.source == state]
+            transitions = list(automaton.transitions(state).values())
+            #assert transitions == [t for t in automaton.transitions() if t.source == state]
             wrcpp(f" /* {state} */\n ")
             wrcpp(f" case {automaton.get_state_id(state)}:\n ")
             if not transitions:

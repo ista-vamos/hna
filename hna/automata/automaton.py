@@ -83,6 +83,8 @@ class Automaton:
     Class representing an automaton
     """
 
+    _id_cnt = 0
+
     def __init__(
         self,
         states: list = None,
@@ -91,6 +93,8 @@ class Automaton:
         acc_states: list = None,
         origin=None,
     ):
+        Automaton._id_cnt += 1
+        self._id = Automaton._id_cnt
         self._states = {}
         # use `add_state` so that the states are assigned the ID
         for s in states or ():
@@ -109,6 +113,12 @@ class Automaton:
 
     def __getitem__(self, item):
         return self._states[item]
+
+    def get_id(self):
+        return self._id
+
+    def __eq__(self, other):
+        raise RuntimeError("Automata have no __eq__, you can try use get_id() where suitable")
 
     def get(self, item) -> State:
         """

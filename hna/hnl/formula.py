@@ -14,7 +14,7 @@ but so far they haven't been a bottle-neck.
 
 def cached_str(m):
     def new_str(self):
-        if not self._cached_str:
+        if self._cached_str is None:
             self._cached_str = m(self)
         return self._cached_str
 
