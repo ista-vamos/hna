@@ -41,6 +41,19 @@ void Trace::append(const Event &e) {
 }
 
 TraceQuery Trace::get(size_t idx, Event &e) {
+  // do not lock the trace if it is finished.
+  // This will save a lot of locking.
+  // Also, use only the relaxed memory order -- in the worst case,
+  // we'll go to the slow code with locking once, but in the future
+  // we'll save time by the relaxed reading.
+  if (_finished.load(std::memory_order_relaxed)) {
+    if (idx < _events.size()) {
+        e = _events[idx];
+        return TraceQuery::AVAILABLE;
+    }
+    return TraceQuery::END;
+  }
+
   lock();
   if (idx < _events.size()) {
     e = _events[idx];
@@ -58,23 +71,21 @@ TraceQuery Trace::get(size_t idx, Event &e) {
 }
 
 size_t Trace::size() {
+  if (_finished.load(std::memory_order_relaxed)) {
+    return _events.size();
+  }
+
   lock();
   auto s = _events.size();
   unlock();
   return s;
 }
 
-// FIXME: make _finished atomic and avoid locking
 void Trace::setFinished() {
-  lock();
   _finished = true;
-  unlock();
 }
 bool Trace::finished() {
-  lock();
-  auto f = _finished;
-  unlock();
-  return f;
+  return _finished.load(std::memory_order_acquire);
 }
 
 void Trace::swap(Trace *rhs) {
@@ -94,7 +105,7 @@ void Trace::copyTo(Trace *rhs) {
     rhs->lock();
 
     rhs->_events = _events;
-    rhs->_finished = _finished;
+    rhs->_finished.store(_finished);
 
     rhs->unlock();
     unlock();

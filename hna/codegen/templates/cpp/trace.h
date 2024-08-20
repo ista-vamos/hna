@@ -19,7 +19,7 @@ enum class TraceQuery {
 
 class Trace {
   const size_t _id;
-  bool _finished{false};
+  std::atomic<bool> _finished{false};
   std::vector<Event> _events;
   // the trace is being read and allocated at the same time,
   // so we must lock it
