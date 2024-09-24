@@ -1,4 +1,5 @@
 import argparse
+from os.path import basename, abspath
 
 
 def create_cmdargs_parser():
@@ -84,4 +85,51 @@ def create_cmdargs_parser():
         action="store",
         help="The header for CSV with types, a comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type",
     )
+
+    parser.add_argument(
+        "--reduction",
+        action="store",
+        help="Comma-separated list of 'reflexive','symmetric'",
+        default=None,
+    )
+
     return parser
+
+
+def process_args(args):
+
+    if args.debug_prints:
+        args.debug = True
+
+    args.input_file = None
+    args.cpp_files = []
+    args.add_gen_files = []
+    args.sources_def = None
+    args.cmake_defs = args.D
+
+    args.overwrite_file = [basename(f) for f in args.overwrite_file]
+    if args.alphabet:
+        if args.alphabet[-1] == "b" and args.alphabet[:-1].isnumeric():
+            args.alphabet = [str(n) for n in range(0, 2 ** int(args.alphabet[:-1]))]
+        else:
+            args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
+    if args.reduction:
+        args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
+
+    for fl in args.inputs:
+        if (
+            fl.endswith(".cpp")
+            or fl.endswith(".h")
+            or fl.endswith(".hpp")
+            or fl.endswith(".cxx")
+            or fl.endswith("cc")
+        ):
+            args.cpp_files.append(abspath(fl))
+        elif fl.endswith(".vsrc"):
+            if args.sources_def:
+                raise RuntimeError("Multiple .vsrc files given")
+            args.sources_def = fl
+
+    assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
+
+    return args

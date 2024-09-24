@@ -6,7 +6,7 @@ from os.path import abspath, isfile, basename
 from subprocess import run
 
 from config import vamos_common_PYTHONPATH
-from hna.cmdargs import create_cmdargs_parser
+from hna.cmdargs import create_cmdargs_parser, process_args
 from hna.hnl.parser import Parser
 
 sys.path.append(vamos_common_PYTHONPATH)
@@ -109,24 +109,9 @@ def main(args):
 
 def parse_arguments():
     parser = create_cmdargs_parser()
+    args = process_args(parser.parse_args())
 
-    parser.add_argument(
-        "--reduction",
-        action="store",
-        help="Comma-separated list of 'reflexive','symmetric'",
-    )
-
-    args = parser.parse_args()
-
-    if args.debug_prints:
-        args.debug = True
-
-    args.input_formula = None
-    args.cpp_files = []
-    args.add_gen_files = []
-    args.sources_def = None
-    args.cmake_defs = args.D
-    for fl in args.inputs + args.overwrite_file:
+    for fl in args.inputs:
         if not isfile(fl):
             if args.input_formula:
                 raise RuntimeError(
@@ -135,35 +120,7 @@ def parse_arguments():
             args.input_formula = fl
             continue
 
-        if fl.endswith(".mpt"):
-            if args.input_formula:
-                raise RuntimeError("Multiple .mpt files given")
-            args.input_formula = fl
-        elif (
-            fl.endswith(".cpp")
-            or fl.endswith(".h")
-            or fl.endswith(".hpp")
-            or fl.endswith(".cxx")
-            or fl.endswith("cc")
-        ):
-            args.cpp_files.append(abspath(fl))
-        elif fl.endswith(".vsrc"):
-            if args.sources_def:
-                raise RuntimeError("Multiple .vsrc files given")
-            args.sources_def = fl
-
-    args.overwrite_file = [basename(f) for f in args.overwrite_file]
-    if args.alphabet:
-        if args.alphabet[-1] == "b" and args.alphabet[:-1].isnumeric():
-            args.alphabet = [str(n) for n in range(0, 2 ** int(args.alphabet[:-1]))]
-        else:
-            args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
-    if args.reduction:
-        args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
-
     print(args)
-
-    assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
 
     return args
 

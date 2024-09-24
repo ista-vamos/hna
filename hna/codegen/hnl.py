@@ -133,10 +133,16 @@ class BDDNode:
             l = l[0]
             self.ltrace = l.trace
             self.lvar = l.name
+        else:
+            self.ltrace = self.lvar = None
+
         if r:
             r = r[0]
             self.rtrace = r.trace
             self.rvar = r.name
+        else:
+            self.rtrace = self.rvar = None
+
         self.bddvar = bddvar
         # this automaton may be shared between multiple BDD nodes
         # if the automata for the nodes are isomorphic
@@ -869,8 +875,8 @@ class CodeGenCpp(CodeGen):
         # p2 = atom_formula.children[1].program_variables()
         # assert len(p1) <= 1, str(p1)
         # assert len(p2) <= 1, str(p2)
-        t1 = nd.ltrace.name  # if p1 else None
-        t2 = nd.rtrace.name  # if p2 else None
+        t1 = nd.ltrace.name if nd.ltrace else None
+        t2 = nd.rtrace.name if nd.rtrace else None
         if not (t1 or t2):
             raise NotImplementedError("This case is unsupported yet")
         if not t1:
