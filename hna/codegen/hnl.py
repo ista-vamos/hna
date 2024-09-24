@@ -127,13 +127,16 @@ class BDDNode:
         assert len(formula.children) == 2, formula.children
         l, r = formula.children
         l, r = l.program_variables(), r.program_variables()
-        assert len(l) == 1, l
-        assert len(r) == 1, r
-        l, r = l[0], r[0]
-        self.ltrace = l.trace
-        self.rtrace = r.trace
-        self.lvar = l.name
-        self.rvar = r.name
+        assert len(l) <= 1, l
+        assert len(r) <= 1, r
+        if l:
+            l = l[0]
+            self.ltrace = l.trace
+            self.lvar = l.name
+        if r:
+            r = r[0]
+            self.rtrace = r.trace
+            self.rvar = r.name
         self.bddvar = bddvar
         # this automaton may be shared between multiple BDD nodes
         # if the automata for the nodes are isomorphic
