@@ -127,8 +127,8 @@ class BDDNode:
         assert len(formula.children) == 2, formula.children
         l, r = formula.children
         l, r = l.program_variables(), r.program_variables()
-        assert len(l) == 1
-        assert len(r) == 1
+        assert len(l) == 1, l
+        assert len(r) == 1, r
         l, r = l[0], r[0]
         self.ltrace = l.trace
         self.rtrace = r.trace
@@ -736,7 +736,9 @@ class CodeGenCpp(CodeGen):
             assert nd.automaton
 
             num, F = nd.get_id(), nd.formula
-            duplicate_num = generated_automata.get((nd.lvar, nd.rvar, nd.automaton.get_id()))
+            duplicate_num = generated_automata.get(
+                (nd.lvar, nd.rvar, nd.automaton.get_id())
+            )
             if duplicate_num is not None:
                 with self.new_file(f"atom-{num}.h") as fh, self.new_file(
                     f"atom-{num}.cpp"
@@ -959,8 +961,9 @@ class CodeGenCpp(CodeGen):
             wrcpp("/* FIXME: do not generate the switch for a single state */\n")
         wrcpp(f"  switch (cfg.state) {{\n")
         for state in automaton.states():
-            transitions = list(automaton.transitions(state).values())
-            #assert transitions == [t for t in automaton.transitions() if t.source == state]
+            transitions = automaton.transitions(state)
+            transitions = list(transitions.values()) if transitions else []
+            # assert transitions == [t for t in automaton.transitions() if t.source == state]
             wrcpp(f" /* {state} */\n ")
             wrcpp(f" case {automaton.get_state_id(state)}:\n ")
             if not transitions:
