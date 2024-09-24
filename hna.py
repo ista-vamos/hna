@@ -7,6 +7,7 @@ from os.path import abspath, isfile, basename
 from subprocess import run
 
 from config import vamos_common_PYTHONPATH
+from hna.cmdargs import create_cmdargs_parser, process_args
 from hna.hna.parser.parser import YamlParser as Parser
 
 sys.path.append(vamos_common_PYTHONPATH)
@@ -69,125 +70,16 @@ def main(args):
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "inputs",
-        nargs="+",
-        help="Input files or formulas (formula string, .hnl or .vsrc files, additional C++ files",
-    )
-    parser.add_argument(
-        "--out-dir",
-        action="store",
-        default="/tmp/hna",
-        help="Output directory (default: /tmp/hna)",
-    )
-    parser.add_argument(
-        "--out-dir-overwrite",
-        action="store",
-        default=True,
-        help="Overwrite the contents of the output dir if it exists (default: True)",
-    )
-    parser.add_argument(
-        "--build-type", action="store", help="Force build _type for the CMake project"
-    )
-    parser.add_argument(
-        "--sanitize", action="store", help="Compile the monitor with sanitizers"
-    )
-    parser.add_argument("--debug", action="store_true", help="Debugging mode")
-    parser.add_argument(
-        "--debug-prints",
-        action="store_true",
-        help="--debug + print debugging messages to stderr",
-    )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Print more messages"
-    )
-    parser.add_argument("--stats", action="store_true", help="Gather statistics")
-    parser.add_argument(
-        "-D", action="append", default=[], help="Additional CMake definitions"
-    )
-    parser.add_argument(
-        "--cflags",
-        action="append",
-        default=[],
-        help="Additional C flags for the compiler",
-    )
-    parser.add_argument(
-        "--alphabet",
-        action="store",
-        help="Comma-separated list of letter to use as the alphabet",
-    )
-    parser.add_argument(
-        "--overwrite-file",
-        action="append",
-        default=[],
-        help="Do not generate the default version of the given file, its replacement is assumed to be "
-        "provided as an additional source.",
-    )
-    parser.add_argument(
-        "--gen-only",
-        action="store_true",
-        default=False,
-        help="Do not try to compile the project, just generate the sources",
-    )
-    parser.add_argument(
-        "--gen-csv-reader",
-        action="store_true",
-        default=True,
-        help="Generate code that can read CSV files as input. "
-        "It is enabled by default even for monitors with other "
-        "inputs (for testing). See --help of the monitor binary "
-        "for instructions on how to use the CSV reader if the monitor has also other inputs.",
-    )
-    parser.add_argument(
-        "--csv-header",
-        action="store",
-        help="The header for CSV with types, a comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type",
-    )
-    args = parser.parse_args()
+    parser = create_cmdargs_parser()
+    args = process_args(parser.parse_args())
 
-    args.reduction = None
-
-    if args.debug_prints:
-        args.debug = True
-
-    args.input_file = None
-    args.cpp_files = []
-    args.add_gen_files = []
-    args.sources_def = None
-    args.cmake_defs = args.D
     for fl in args.inputs:
-        if not isfile(fl):
-            if args.input_file:
-                raise RuntimeError(
-                    f"Multiple formulas given (previous: {args.input_file}"
-                )
-            args.input_file = fl
-            continue
-
         if fl.endswith(".hna") or fl.endswith(".yml"):
             if args.input_file:
                 raise RuntimeError("Multiple .hna or .yml files given")
             args.input_file = fl
-        elif (
-            fl.endswith(".cpp")
-            or fl.endswith(".h")
-            or fl.endswith(".hpp")
-            or fl.endswith(".cxx")
-            or fl.endswith("cc")
-        ):
-            args.cpp_files.append(abspath(fl))
-        elif fl.endswith(".vsrc"):
-            if args.sources_def:
-                raise RuntimeError("Multiple .vsrc files given")
-            args.sources_def = fl
-
-    if args.alphabet:
-        args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
 
     print(args)
-
-    assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
 
     return args
 
