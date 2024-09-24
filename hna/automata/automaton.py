@@ -118,7 +118,9 @@ class Automaton:
         return self._id
 
     def __eq__(self, other):
-        raise RuntimeError("Automata have no __eq__, you can try use get_id() where suitable")
+        raise RuntimeError(
+            "Automata have no __eq__, you can try use get_id() where suitable"
+        )
 
     def get(self, item) -> State:
         """
@@ -163,6 +165,16 @@ class Automaton:
         ).append(t)
 
     def transitions(self, state: State = None, a=None, default=None):
+        """
+        Return transitions from the automaton.
+
+        If no optional argumenta are provided, return the whole map `symbol: List[Transition]`
+        (the automaton might be non-deterministic).
+        If `state` is provided, return transitions that leave the given state.
+        If also `a` is provided, return the list of transitions that leave the given state under the letter `a`.
+
+        `default` parameter states what to return if no transitions that match the arguments are found.
+        """
         if state is None:
             return self._transitions
         M = self._transitions_mapping.get(state)
