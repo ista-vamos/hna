@@ -6,7 +6,8 @@ from subprocess import run
 from pyeda.inter import bddvar
 
 from hna.automata.automaton import Automaton
-from hna.codegen.common import dump_codegen_position
+from hna.codegen_common.utils import dump_codegen_position
+from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
     IsPrefix,
     And,
@@ -23,29 +24,10 @@ from hna.hnl.formula2automata import (
     compose_automata,
     to_priority_automaton,
 )
-from vamos_common.codegen.codegen import CodeGen
+from hna.codegen_common.codegen import CodeGen
 
 
-# def paths(A: Automaton):
-#     """
-#     Generate (prefixes of) paths from the automaton.
-#     Not very efficient, but we don't care that much.
-#     """
-#     P = [[t] for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
-#     print(P)
-#     while True:
-#         new_P = []
-#         for path in P:
-#             for l, ts in A.transitions(path[-1].target).items():
-#                 for t in ts:
-#                     tmp = path + [t]
-#                     yield tmp
-#                     new_P.append(tmp)
-#         P = new_P
-#
-
-
-def random_path(A: Automaton, length):
+def random_path(A: Automaton, length: int) -> list:
     T = [t for ts in A.transitions(A.initial_states()[0]).values() for t in ts]
     path = [T[random.randrange(0, len(T))]]
     l = 1
@@ -61,7 +43,7 @@ def random_path(A: Automaton, length):
     return path
 
 
-def path_is_accepting(A: Automaton, path):
+def path_is_accepting(A: Automaton, path: list) -> bool:
     """
     Return if the path is accepting -- the last state
     must be accepting or from that state an accepting state
@@ -115,56 +97,19 @@ def traces_positions(t1_pos, N):
         yield 1
 
 
-class BDDNode:
-    _id_cnt = 0
-
-    def __init__(self, formula: IsPrefix, bddvar):
-        BDDNode._id_cnt += 1
-        self._id = BDDNode._id_cnt
-
-        assert isinstance(formula, IsPrefix), formula
-        self.formula = formula
-        assert len(formula.children) == 2, formula.children
-        l, r = formula.children
-        l, r = l.program_variables(), r.program_variables()
-        assert len(l) <= 1, l
-        assert len(r) <= 1, r
-        if l:
-            l = l[0]
-            self.ltrace = l.trace
-            self.lvar = l.name
-        else:
-            self.ltrace = self.lvar = None
-
-        if r:
-            r = r[0]
-            self.rtrace = r.trace
-            self.rvar = r.name
-        else:
-            self.rtrace = self.rvar = None
-
-        self.bddvar = bddvar
-        # this automaton may be shared between multiple BDD nodes
-        # if the automata for the nodes are isomorphic
-        self.automaton = None
-
-    def get_id(self):
-        return self._id
-
-
 class CodeGenCpp(CodeGen):
     """
     Class for generating monitors in C++.
     The main function to be called is `generate`.
     """
 
-    def __init__(self, args, ctx, out_dir=None, namespace=None):
+    def __init__(self, args, ctx, out_dir: str = None, namespace: str = None):
         super().__init__(args, ctx, out_dir)
 
-        self_path = abspath(
+        self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        self.templates_path = pathjoin(self_path, "templates/cpp/hnl")
+        self.templates_path = pathjoin(self_dir, "templates/")
         self._namespace = namespace
         self.BDD = None
         self._bdd_nodes = []
@@ -183,36 +128,37 @@ class CodeGenCpp(CodeGen):
             for event in self.args.csv_header.split(",")
         ]
 
-    def copy_files(self, files):
-        for f in files:
-            if f not in self.args.overwrite_file:
-                self.copy_file(f)
-
+    def _copy_files(self):
+        # copy files from the CMD line
         for f in self.args.cpp_files:
             self.copy_file(f)
 
-    def _copy_common_files(self):
+        # copy common templates
         files = [
-            "../monitor.h",
-            "../hnl-monitor-base.h",
-            "../cmd.h",
-            "../cmd.cpp",
-            "../stream.h",
-            "../trace.h",
-            "../trace.cpp",
-            "../traceset.h",
-            "../traceset.cpp",
-            "../tracesetview.h",
-            "../tracesetview.cpp",
-            "../sharedtraceset.h",
-            "../sharedtraceset.cpp",
-            "../verdict.h",
-            "../atom-base.h",
-            "../atom-evaluation-state.h",
+            "monitor.h",
+            "hnl-monitor-base.h",
+            "cmd.h",
+            "cmd.cpp",
+            "stream.h",
+            "trace.h",
+            "trace.cpp",
+            "traceset.h",
+            "traceset.cpp",
+            "tracesetview.h",
+            "tracesetview.cpp",
+            "sharedtraceset.h",
+            "sharedtraceset.cpp",
+            "verdict.h",
+            "atom-base.h",
+            "atom-evaluation-state.h",
             # XXX: do this only when functions are used
-            "../function.h",
+            "function.h",
         ]
-        self.copy_files(files)
+
+        from_dir = self.common_templates_path
+        for f in files:
+            if f not in self.args.overwrite_file:
+                self.copy_file(f, from_dir=from_dir)
 
     def generate_cmake(self, overwrite_keys=None, embedded=False):
         """
@@ -290,8 +236,8 @@ class CodeGenCpp(CodeGen):
             wr("}\n")
 
     def _generate_csv_reader(self):
-        self.copy_file("../csvreader.h")
-        self.copy_file("../csvreader.cpp")
+        self.copy_file("csvreader.h", from_dir=self.common_templates_path)
+        self.copy_file("csvreader.cpp", from_dir=self.common_templates_path)
         self._add_gen_files.append("csvreader.cpp")
 
         with self.new_file("csvreader-aux.h") as f:
@@ -1728,7 +1674,7 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-        self._copy_common_files()
+        self._copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake()

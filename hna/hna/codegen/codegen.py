@@ -2,12 +2,12 @@ from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
 
-from hna.codegen.common import dump_codegen_position, FIXME
-from hna.codegen.hnl import CodeGenCpp as HNLCodeGenCpp
+from hna.codegen_common.codegen import CodeGen
+from hna.codegen_common.utils import dump_codegen_position, FIXME
 from hna.hna.automaton import HyperNodeAutomaton
+from hna.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
 from hna.hnl.formula import Constant
 from hna.hnl.parser import Parser as HNLParser
-from vamos_common.codegen.codegen import CodeGen
 
 
 class CodeGenCpp(CodeGen):
@@ -19,15 +19,15 @@ class CodeGenCpp(CodeGen):
     def __init__(self, args, ctx):
         super().__init__(args, ctx)
 
-        self_path = abspath(
+        self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        self.templates_path = pathjoin(self_path, "templates/cpp/hna")
-        self._add_gen_files = []
+        self.templates_path = pathjoin(self_dir, "templates/")
 
-        assert (
-            self.args.csv_header
-        ), "Give --csv-header, other methods not supported yet"
+        if not self.args.csv_header:
+            raise NotImplementedError(
+                "Give --csv-header, other methods not supported yet"
+            )
         self._event = [
             [s.strip() for s in event.split(":")]
             for event in self.args.csv_header.split(",")
@@ -41,37 +41,54 @@ class CodeGenCpp(CodeGen):
         else:
             FIXME(f, msg, only_comment=True)
 
-    def _copy_common_files(self):
+    def _copy_files(self):
+        # copy the source files given on command line
+        for f in self.args.cpp_files:
+            self.copy_file(f)
+
+        # copy the files specific for HNAs
         files = [
             "main.cpp",
             "hna-monitor.h",
             "hna-monitor.cpp",
-            #
-            "../monitor.h",
-            "../atom-base.h",
-            "../atom-evaluation-state.h",
-            "../hnl-monitor-base.h",
-            "../function.h",
-            "../stream.h",
-            "../trace.h",
-            "../trace.cpp",
-            "../traceset.h",
-            "../traceset.cpp",
-            "../tracesetview.h",
-            "../tracesetview.cpp",
-            "../sharedtraceset.h",
-            "../sharedtraceset.cpp",
-            "../cmd.h",
-            "../cmd.cpp",
-            "../verdict.h",
-            "../csv.hpp",
         ]
+
+        overwrite_file = self.args.overwrite_file
         for f in files:
-            if f not in self.args.overwrite_file:
+            if f not in overwrite_file:
                 self.copy_file(f)
 
-        for f in self.args.cpp_files:
-            self.copy_file(f)
+        # copy common templates
+        self._copy_common_templates()
+
+    def _copy_common_templates(self):
+        # copy the files shared between HNAs and HNLs
+        files = [
+            #
+            "monitor.h",
+            "atom-base.h",
+            "atom-evaluation-state.h",
+            "hnl-monitor-base.h",
+            "function.h",
+            "stream.h",
+            "trace.h",
+            "trace.cpp",
+            "traceset.h",
+            "traceset.cpp",
+            "tracesetview.h",
+            "tracesetview.cpp",
+            "sharedtraceset.h",
+            "sharedtraceset.cpp",
+            "cmd.h",
+            "cmd.cpp",
+            "verdict.h",
+            "csv.hpp",
+        ]
+
+        overwrite_file = self.args.overwrite_file
+        for f in files:
+            if f not in overwrite_file:
+                self.copy_file(f, from_dir=self.common_templates_path)
 
     def _generate_cmake(self, add_subdirs, monitor_names):
         from config import vamos_buffers_DIR
@@ -172,8 +189,8 @@ class CodeGenCpp(CodeGen):
             wr("}\n")
 
     def _generate_csv_reader(self, hna):
-        self.copy_file("../csvreader.h")
-        self.copy_file("../csvreader.cpp")
+        self.copy_file("csvreader.h", from_dir=self.common_templates_path)
+        self.copy_file("csvreader.cpp", from_dir=self.common_templates_path)
         self._add_gen_files.append("csvreader.cpp")
 
         # def first(strings):
@@ -466,7 +483,7 @@ class CodeGenCpp(CodeGen):
 
         self._generate_monitor(hna)
 
-        self._copy_common_files()
+        self._copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
         self._generate_cmake(cmake_subdirs, monitor_names)
