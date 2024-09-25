@@ -38,12 +38,18 @@ class ProcessAST(Transformer):
         name = items[0].children[0].children[0]
         return Function(name, items[1:])
 
+    def funtrace(self, items):
+        return (items[0], items[1])
+
     def quantifier(self, items):
         # our grammar assumes prenex form, so the quantifiers are just forall/exists and a name
         if items[0].data == "forall":
             return [ForAll(c) for c in items[0].children]
         elif items[0].data == "exists":
             return [Exists(c) for c in items[0].children]
+        elif items[0].data == "exists_in_fun":
+            fun = items[0].children[-1]
+            return [ExistsFromFun(c, fun) for c in items[0].children[:-1]]
         raise RuntimeError(f"Invalid quantifier: {items}")
 
     def quantified_formula(self, items):

@@ -828,6 +828,18 @@ class Exists(Quantifier):
         return f"∃{self.var}"
 
 
+class ExistsFromFun(Exists):
+    def __init__(self, var: TraceVariable, fun: Function, formula: Formula = None):
+        super().__init__(var, formula)
+        self.fun = fun
+
+    @cached_str
+    def __str__(self):
+        if self.children:
+            return f"∃{self.var}∈{self.fun}({self.children[0]})"
+        return f"∃{self.var}∈{self.fun}"
+
+
 class Not(Formula):
     def __init__(self, formula: Formula) -> None:
         super().__init__([formula])
