@@ -2,7 +2,7 @@ import argparse
 from os.path import basename, abspath
 
 
-def create_cmdargs_parser():
+def create_cmdargs_parser(out_dir):
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "inputs",
@@ -12,8 +12,8 @@ def create_cmdargs_parser():
     parser.add_argument(
         "--out-dir",
         action="store",
-        default="/tmp/hnl",
-        help="Output directory (default: /tmp/hnl)",
+        default=out_dir,
+        help=f"Output directory (default: {out_dir})",
     )
     parser.add_argument(
         "--out-dir-overwrite",

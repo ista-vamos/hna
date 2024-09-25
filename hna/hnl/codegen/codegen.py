@@ -96,6 +96,18 @@ def traces_positions(t1_pos, N):
     if t1_pos == N:
         yield 1
 
+def _check_functions(functions):
+    funs = {}
+    for fun in functions:
+        f = funs.get(fun.name)
+        if f is None:
+            funs[fun.name] = fun
+        else:
+            if len(f.traces) != len(fun.traces):
+                raise RuntimeError(
+                    f"Function '{fun.name}' is used multiple time with different number of arguments:\n{fun} and {f}"
+                )
+
 
 class CodeGenCpp(CodeGen):
     """
@@ -1573,6 +1585,12 @@ class CodeGenCpp(CodeGen):
             wr("#endif\n")
 
     def generate_functions(self, formula, embedding_data={"monitor_name": ""}):
+        functions_instances = formula.functions()
+        functions = list(set(functions_instances))
+
+        # check types of functions
+        _check_functions(functions_instances)
+
         with self.new_file("functions.h") as f:
             dump_codegen_position(f)
             f.write(f'#ifndef HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
@@ -1587,24 +1605,24 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("functions-initialize.h") as f:
             dump_codegen_position(f)
-            for fun in formula.functions():
+            for fun in functions:
                 f.write(f"function_{fun.name} = createFunction_{fun.name}(_cmd);\n")
 
         with self.new_file("function-instances.h") as f:
             dump_codegen_position(f)
-            for fun in formula.functions():
+            for fun in functions:
                 f.write(f"std::unique_ptr<Function> function_{fun.name};\n")
 
-        for fun in formula.functions():
+        for fun in functions:
             self._gen_function_files(fun)
 
         with self.new_file("gen-function-traces.h") as f:
             dump_codegen_position(f)
-            for fun in formula.functions():
+            for fun in functions:
                 f.write(f"function_{fun.name}->step();\n")
             f.write("if (finished) {")
             f.write(" // check if also the function traces generators finished\n")
-            for fun in formula.functions():
+            for fun in functions:
                 f.write(f"finished &= function_{fun.name}->noFutureUpdates();\n")
             f.write("}")
 
@@ -1627,9 +1645,6 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code
         """
-
-        if formula.functions():
-            self._have_functions = True
 
         self._generate_events()
 
