@@ -11,7 +11,7 @@ from hna.hnl.parser import Parser
 
 sys.path.append(vamos_common_PYTHONPATH)
 
-from hna.codegen.hnl import CodeGenCpp
+from hna.hnl.codegen import CodeGenCpp
 
 script_name = basename(sys.argv[0])
 
@@ -111,6 +111,7 @@ def parse_arguments():
     parser = create_cmdargs_parser()
     args = process_args(parser.parse_args())
 
+    args.input_formula = None
     for fl in args.inputs:
         if not isfile(fl):
             if args.input_formula:
@@ -119,6 +120,9 @@ def parse_arguments():
                 )
             args.input_formula = fl
             continue
+
+    if args.input_formula is None:
+        raise RuntimeError("ERROR: Got no input formula.")
 
     print(args)
 
