@@ -12,9 +12,10 @@ _after_quantifier1: _quantified_syntax1 | qf_formula
 _after_quantifier2: _quantified_syntax2 | qf_formula
 _after_quantifier3: _quantified_syntax3 | qf_formula
 
-quantifier: (forall | exists)
+quantifier: (forall | exists | exists_in_fun)
 forall: "forall" tracevar ("," tracevar)*
 exists: "exists" tracevar ("," tracevar)*
+exists_in_fun: "exists" tracevar ("," tracevar)* "in" funcall
 
 qf_formula: _qf_formula
 _qf_formula: _prio1 (_prio1)*
