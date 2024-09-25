@@ -69,7 +69,7 @@ def main(args):
 
 
 def parse_arguments():
-    parser = create_cmdargs_parser()
+    parser = create_cmdargs_parser("/tmp/hna")
     args = process_args(parser.parse_args())
 
     for fl in args.inputs:

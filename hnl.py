@@ -66,8 +66,8 @@ def main(args):
     print("Quantifiers: ", [str(q) for q in formula.quantifiers()])
     print("Trace variables: ", [str(t) for t in formula.trace_variables()])
     print("Program variables: ", [str(p) for p in formula.program_variables()])
-    constants = formula.constants()
-    print("Constants: ", [str(c) for c in constants])
+    print("Constants: ", [str(c) for c in formula.constants()])
+    print("Functions: ", formula.functions())
 
     problems = formula.problems()
     if not formula.is_simple():
@@ -108,7 +108,7 @@ def main(args):
 
 
 def parse_arguments():
-    parser = create_cmdargs_parser()
+    parser = create_cmdargs_parser("/tmp/hnl")
     args = process_args(parser.parse_args())
 
     args.input_formula = None

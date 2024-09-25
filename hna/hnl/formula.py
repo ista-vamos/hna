@@ -86,7 +86,7 @@ class Formula:
         """
         Get all functions from this formula
         """
-        return list(set((t for c in self.children for t in c.functions())))
+        return list((t for c in self.children for t in c.functions()))
 
     def constants(self) -> List["Constant"]:
         """
@@ -287,7 +287,7 @@ class PrenexFormula(Formula):
         )
 
     def functions(self) -> List["Function"]:
-        return self.formula.functions()
+        return [q.fun for q in self.quantifiers() if isinstance(q, ExistsFromFun)]
 
     def substitute(self, S):
         return PrenexFormula(
@@ -424,10 +424,6 @@ class ProgramVariable(TraceFormula):
 
     def program_variable_occurrences(self) -> List["ProgramVariable"]:
         return [self]
-
-    def functions(self) -> List["Function"]:
-        # Functions are inside the 'trace' variable
-        return self.trace.functions()
 
     def derivative(self, wrt: "Constant") -> DerivativesSet:
         if wrt.is_rep() or not wrt.is_x():
@@ -838,6 +834,9 @@ class ExistsFromFun(Exists):
         if self.children:
             return f"∃{self.var}∈{self.fun}({self.children[0]})"
         return f"∃{self.var}∈{self.fun}"
+
+    def functions(self) -> List["Function"]:
+        return [self.fun]
 
 
 class Not(Formula):
