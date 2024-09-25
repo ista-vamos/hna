@@ -510,15 +510,6 @@ class CodeGenCpp(CodeGen):
                 "Reductions work now only with at most 2 quantifiers"
             )
 
-        reduction_cond_1 = "true"
-        reduction_cond_2 = "true"
-        if "reflexive" in self.args.reduction:
-            reduction_cond_1 = "t1->id() != t2->id()"
-
-        if "symmetric" in self.args.reduction:
-            reduction_cond_1 = "t1->id() < t2->id()"
-            reduction_cond_2 = "t1->id() < t2->id()"
-
         dump_codegen_position(wr)
         wr(
             """
@@ -619,11 +610,10 @@ class CodeGenCpp(CodeGen):
                 wr(
                     f"""
                 for (auto &[tr_id, tr] : _traces_r) {{
-                    _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                    auto *instance = new HNLInstance{{tl, tr, INITIAL_ATOM}};
                     ++stats.num_instances;
                     
-                    _instances.back()->monitor =
-                        createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                    instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
                     #ifdef DEBUG_PRINTS
                     std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
                     #endif /* !DEBUG_PRINTS */
@@ -641,11 +631,10 @@ class CodeGenCpp(CodeGen):
                 wr(
                     f"""
                 for (auto &[tl_id, tl] : _traces_l) {{
-                    _instances.emplace_back(new HNLInstance{{tl, tr, INITIAL_ATOM}});
+                    auto *instance = new HNLInstance{{tl, tr, INITIAL_ATOM}};
                     ++stats.num_instances;
 
-                    _instances.back()->monitor =
-                        createAtomMonitor(INITIAL_ATOM, *_instances.back().get());
+                    instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
                         
                     #ifdef DEBUG_PRINTS
                     std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
