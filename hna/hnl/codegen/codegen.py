@@ -1194,7 +1194,7 @@ class CodeGenCpp(CodeGen):
         """
         )
         dump_codegen_position(wrh)
-        wrh('#include "function-atom-monitor.h"\n\n')
+        wrh('#include "nested-hnl-atom-monitor.h"\n\n')
         wrh(f'#include "{self._submonitors_dirs[num]}/hnl-monitor.h"\n\n')
         if self._namespace:
             wrh(f"namespace {self._namespace} {{\n\n")
@@ -1627,8 +1627,8 @@ class CodeGenCpp(CodeGen):
             f.write("}")
 
         self.gen_file(
-            "function-atom-monitor.h.in",
-            "function-atom-monitor.h",
+            "nested-hnl-atom-monitor.h.in",
+            "nested-hnl-atom-monitor.h",
             {
                 "@MONITOR_NAME@": embedding_data["monitor_name"],
                 "@namespace@": self._namespace or "",
