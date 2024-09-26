@@ -35,10 +35,11 @@ public:
   void extendTrace(unsigned trace_id, const Event &e);
   void traceFinished(unsigned trace_id);
 
-  // Get a trace created by `newTrace` if there is one.
-  // This trace is then 'marked' as not new, and therefore
-  // every trace created by `newTrace` is returned by this method
-  // exactly once.
+  // Get some trace previously created by `newTrace` (if there is one).
+  // Every trace created by `newTrace` is marked as _new_.
+  // When it is returned by this method, the trace is marked as not new,
+  // and therefore every trace created by `newTrace` is returned by this method
+  // only once.
   //
   // This method modifies both, _traces and _new_traces (under the lock).
   // Our code never iterates over traces and calls this method at the same
