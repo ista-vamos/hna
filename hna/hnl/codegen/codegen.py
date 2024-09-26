@@ -2,6 +2,7 @@ import random
 from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
+from sys import stderr
 
 from pyeda.inter import bddvar
 
@@ -1651,16 +1652,7 @@ class CodeGenCpp(CodeGen):
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
 
-        if not self.args.alphabet:
-            print(
-                "No alphabet given, using constants from the formula: ",
-                formula.constants(),
-            )
-            alphabet = formula.constants()
-        else:
-            alphabet = [Constant(a) for a in self.args.alphabet]
-
-        assert alphabet, "The alphabet is empty"
+        alphabet = self._get_alphabet(formula)
 
         self.generate_monitor(formula, alphabet)
 
@@ -1684,6 +1676,19 @@ class CodeGenCpp(CodeGen):
         self.generate_cmake()
 
         self.format_generated_code()
+
+    def _get_alphabet(self, formula):
+        if not self.args.alphabet:
+            print(
+                "No alphabet given, using constants from the formula: ",
+                formula.constants(),
+                file=stderr
+            )
+            alphabet = formula.constants()
+        else:
+            alphabet = [Constant(a) for a in self.args.alphabet]
+        assert alphabet, "The alphabet is empty"
+        return alphabet
 
     def generate_embedded(self, formula, alphabet, embedding_data: dict):
         """
