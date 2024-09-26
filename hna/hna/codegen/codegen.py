@@ -82,7 +82,6 @@ class CodeGenCpp(CodeGen):
             "cmd.h",
             "cmd.cpp",
             "verdict.h",
-            "csv.hpp",
         ]
 
         overwrite_file = self.args.overwrite_file
