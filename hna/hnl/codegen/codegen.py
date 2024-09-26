@@ -1597,7 +1597,7 @@ class CodeGenCpp(CodeGen):
             f.write(f'#define HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
             f.write("#include <memory>\n")
             f.write('#include "function.h"\n\n')
-            for fun in formula.functions():
+            for fun in functions:
                 f.write(
                     f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n"
                 )
