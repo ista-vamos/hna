@@ -1,5 +1,5 @@
-#ifndef ATOM_MONITOR__@MONITOR_NAME@
-#define ATOM_MONITOR__@MONITOR_NAME@
+#ifndef ATOM_MONITOR__@monitor_name@
+#define ATOM_MONITOR__@monitor_name@
 
 #include "atom-base.h"
 #include "hnl-instance.h"
@@ -23,4 +23,4 @@ public:
 
 @namespace_end@
 
-#endif // ATOM_MONITOR__@MONITOR_NAME@
+#endif // ATOM_MONITOR__@monitor_name@

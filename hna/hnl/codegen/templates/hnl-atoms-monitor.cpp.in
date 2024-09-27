@@ -1,0 +1,239 @@
+#ifdef MEASURE_CPUTIME
+#include <ctime>
+#endif // !MEASURE_CPUTIME
+
+#include <cassert>
+
+#include "hnl-monitor.h"
+#include "atom-monitor.h"
+#include "atoms.h"
+
+
+
+/* generated part START */
+#include "hnl-state.h"
+/* generated part END */
+
+@namespace_start@
+
+// must be inside the namespace
+#include "bdd-structure.h"
+
+static inline Verdict do_step(AtomMonitor *M) {
+  #include "do_step.h"
+}
+
+/* GENERATED */
+#include "hnl-monitor-ctors-dtors.h"
+
+
+bool HNLMonitor::addNewTraces() {
+  /* GENERATED */
+  #include "create-instances.h"
+
+  return _traces.finished();
+}
+
+Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
+    // FIXME: generate the code that branches on instance->state and verdict
+    // instead of having statically compiled BDD in the data segment.
+    // (less reads from memory)
+    auto action = BDD[instance->state][verdict == Verdict::TRUE ? 1 : 2 ];
+    if (action == RESULT_FALSE) {
+        // The whole HNL formula evaluated to FALSE for the traces in `instance`.
+        return Verdict::FALSE;
+    }
+
+    if (action == RESULT_TRUE) {
+        // The whole HNL formula is satisfied for the traces in `instance`,
+        removeInstance(instance);
+    } else {
+        // switch to new atom monitor
+        assert(action > 0 && "Invalid next atom");
+        instance->state = action;
+        instance->monitor = createAtomMonitor(action, *instance);
+    }
+
+    return Verdict::UNKNOWN;
+}
+
+Verdict HNLMonitor::step() {
+#ifdef MEASURE_CPUTIME
+    struct timespec start, end;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+#endif // !MEASURE_CPUTIME
+
+  Verdict verdict;
+
+  unsigned empty_slots{0};
+  const auto n_monitors = _monitors_wbg.size();
+  for (unsigned n = 0; n < n_monitors; ++n) {
+      auto *atom_monitor = _monitors_wbg[n];
+      if (!atom_monitor) {
+          ++empty_slots;
+          continue;
+      }
+      if ((verdict = do_step(atom_monitor)) != Verdict::UNKNOWN) {
+
+          #ifdef CACHE_ATOMS_RESULTS
+          if (atom_monitor->type() != FINISHED) {
+              assert(_finished_atoms.count(atom_monitor->id()) == 0);
+              _finished_atoms.emplace(atom_monitor->id(),
+                                      FinishedAtomMonitor{atom_monitor->id(), verdict});
+              assert(_running_atoms.count(atom_monitor->id()) > 0);
+              _running_atoms.erase(atom_monitor->id());
+          }
+          #endif
+
+          for (auto it = atom_monitor->used_by_begin(),
+                    et = atom_monitor->used_by_end(); it != et; ++it) {
+              if (updateInstance(*it, verdict) == Verdict::FALSE) {
+                  return Verdict::FALSE;
+              }
+          }
+
+          if (atom_monitor->type() != FINISHED) {
+            deleteAtomMonitor(atom_monitor);
+          } else {
+            // clear the `used_by` in this monitor as now it may contain invalid pointers
+            // that we cannot use in the future
+            atom_monitor->clear();
+          }
+
+          // this monitor is done
+          _monitors_wbg[n] = nullptr;
+          ++empty_slots;
+      }
+  }
+
+  if (static_cast<float>(empty_slots) / n_monitors > 0.3) {
+      condenseWbg();
+  }
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
+#endif // !MEASURE_CPUTIME
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+#endif // !MEASURE_CPUTIME
+
+  bool traces_finished = addNewTraces();
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
+  stats.cputime_adding_instances.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
+#endif // !MEASURE_CPUTIME
+
+  bool finished = traces_finished && _monitors_wbg.empty();//_instances.empty();
+
+  /* GENERATED */
+  /* It can modify the `finished` variable */
+  #include "gen-function-traces.h"
+
+  if (finished) {
+#ifdef CACHE_ATOMS_RESULTS
+      assert(_running_atoms.empty());
+#endif
+      assert(_monitors_wbg.empty());
+      return Verdict::TRUE;
+  }
+
+  return Verdict::UNKNOWN;
+}
+
+AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance& instance) {
+    assert(monitor_type > 0 && "Invalid monitor type");
+
+    AtomMonitor *monitor{nullptr};
+
+#ifdef CACHE_ATOMS_RESULTS
+    // check if we already decided this atom
+    auto id = instance.createMonitorID(monitor_type);
+    auto vit = _finished_atoms.find(id);
+    if (vit != _finished_atoms.end()) {
+        monitor = &vit->second;
+        _monitors_wbg.push_back(monitor);
+        ++stats.reused_verdict;
+    }
+
+    // check if we are already deciding this atom
+    if (!monitor) {
+        auto mit = _running_atoms.find(id);
+        if (mit != _running_atoms.end()) {
+            monitor = mit->second;
+            ++stats.reused_monitors;
+            // do not push it into _monitors_wbg, it is already there
+        }
+    }
+#endif // !CACHE_ATOMS_RESULTS
+
+    if (!monitor) {
+        /* GENERATED */
+        #include "create-atom-monitor.h"
+
+        assert(monitor && "Monitor not found/created");
+        //_atom_monitors.emplace_back(monitor);
+        _monitors_wbg.push_back(monitor);
+#ifdef CACHE_ATOMS_RESULTS
+        _running_atoms[monitor->id()] = monitor;
+#endif
+        ++stats.num_atoms;
+    }
+
+    assert(monitor && "Monitor not found/created");
+    monitor->setUsedBy(instance);
+
+    return monitor;
+}
+
+void HNLMonitor::removeInstance(HNLInstance *instance) {
+    delete instance;
+}
+
+/*
+Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
+  auto it = _finished_atoms.find(id);
+  if (it == _finished_atoms.end()) {
+      return Verdict::UNKNOWN;
+  }
+
+  assert (it->second.verdict() != Verdict::UNKNOWN);
+  return it->second.verdict();
+}
+*/
+
+void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
+    delete m;
+    /*
+    assert(!_atom_monitors.empty());
+
+    auto it = std::find_if(_atom_monitors.begin(), _atom_monitors.end(), [m](auto& ptr) { return ptr.get() == m; });
+    assert (it != _atom_monitors.end());
+    *it = std::move(_atom_monitors[_atom_monitors.size() - 1]);
+    _atom_monitors.pop_back();
+    */
+}
+
+void HNLMonitor::condenseWbg() {
+    if (_monitors_wbg.empty())
+        return;
+
+    // FIXME: do it in place without creating a new vector
+    decltype(_monitors_wbg) tmp;
+    tmp.reserve(_monitors_wbg.size());
+
+    for (auto *ptr : _monitors_wbg) {
+        if (ptr) {
+            tmp.push_back(ptr);
+        }
+    }
+    _monitors_wbg.swap(tmp);
+}
+
+@namespace_end@

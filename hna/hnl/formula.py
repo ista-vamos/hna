@@ -294,6 +294,13 @@ class PrenexFormula(Formula):
             [t.substitute(S) for t in self.quantifiers()], self.formula.substitute(S)
         )
 
+    def has_quantifier_alternation(self) -> bool:
+        Q = self.quantifiers()
+        if not Q:
+            return False
+        s = Q[0].type_symbol()
+        return any((s != q.type_symbol() for q in Q))
+
     @cached_str
     def __str__(self) -> str:
         return f"{' '.join(map(str, self.quantifier_prefix))}: {self.formula}"
@@ -355,6 +362,9 @@ class Function(TraceFormula):
         self.traces = traces
 
     @cached_str
+    def c_name(self) -> str:
+        return f"{self.name}__{'_'.join(map(str, self.traces))}"
+
     def __str__(self) -> str:
         return f"@{self.name}({', '.join(map(str, self.traces))})"
 
@@ -806,6 +816,17 @@ class ForAll(Quantifier):
     def __init__(self, var: TraceVariable, formula: Formula = None) -> None:
         super().__init__(var, formula)
 
+    def type_symbol(self) -> str:
+        return "∀"
+
+    def swap(self):
+        """
+        Convert the quantifier into its counterpart (exists -> forall, forall -> exists).
+        IMPORTANT: This method does not do negation, and it ignores the formula.
+        """
+        assert not self.children, self.children
+        return Exists(self.var)
+
     @cached_str
     def __str__(self) -> str:
         if self.children:
@@ -816,6 +837,17 @@ class ForAll(Quantifier):
 class Exists(Quantifier):
     def __init__(self, var: TraceVariable, formula: Formula = None):
         super().__init__(var, formula)
+
+    def swap(self):
+        """
+        Convert the quantifier into its counterpart (exists -> forall, forall -> exists).
+        IMPORTANT: This method does not do negation, and it ignores the formula.
+        """
+        assert not self.children, self.children
+        return ForAll(self.var)
+
+    def type_symbol(self) -> str:
+        return "∃"
 
     @cached_str
     def __str__(self):
@@ -829,11 +861,42 @@ class ExistsFromFun(Exists):
         super().__init__(var, formula)
         self.fun = fun
 
+    def swap(self):
+        """
+        Convert the quantifier into its counterpart (exists -> forall, forall -> exists).
+        IMPORTANT: This method does not do negation, and it ignores the formula.
+        """
+        assert not self.children, self.children
+        return ForAllFromFun(self.var, self.fun)
+
     @cached_str
     def __str__(self):
         if self.children:
             return f"∃{self.var}∈{self.fun}({self.children[0]})"
         return f"∃{self.var}∈{self.fun}"
+
+    def functions(self) -> List["Function"]:
+        return [self.fun]
+
+
+class ForAllFromFun(ForAll):
+    def __init__(self, var: TraceVariable, fun: Function, formula: Formula = None):
+        super().__init__(var, formula)
+        self.fun = fun
+
+    def swap(self):
+        """
+        Convert the quantifier into its counterpart (exists -> forall, forall -> exists).
+        IMPORTANT: This method does not do negation, and it ignores the formula.
+        """
+        assert not self.children, self.children
+        return ExistsFromFun(self.var, self.fun)
+
+    @cached_str
+    def __str__(self):
+        if self.children:
+            return f"∀{self.var}∈{self.fun}({self.children[0]})"
+        return f"∀{self.var}∈{self.fun}"
 
     def functions(self) -> List["Function"]:
         return [self.fun]

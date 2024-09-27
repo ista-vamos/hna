@@ -1,5 +1,5 @@
-#ifndef FINISHED_ATOM_MONITOR__@MONITOR_NAME@
-#define FINISHED_ATOM_MONITOR__@MONITOR_NAME@
+#ifndef FINISHED_ATOM_MONITOR__@monitor_name@
+#define FINISHED_ATOM_MONITOR__@monitor_name@
 
 #include "atom-monitor.h"
 #include "atom-identifier.h"
@@ -26,4 +26,4 @@ public:
 
 @namespace_end@
 
-#endif // FINISHED_ATOM_MONITOR__@MONITOR_NAME@
+#endif // FINISHED_ATOM_MONITOR__@monitor_name@

@@ -1,0 +1,58 @@
+// template: hnl-sub-monitor.h.in
+
+#ifndef HNL_SUB_MONITOR_H__@monitor_name@
+#define HNL_SUB_MONITOR_H__@monitor_name@
+
+#include <vector>
+#include <memory>
+
+#include "monitor.h"
+#include "verdict.h"
+#include "tracesetview.h"
+
+/* generated */
+#include "instance.h"
+
+@namespace_start@
+
+///
+// This class is an HNL monitor that does not handle atoms but nested monitors
+// in cases when there is quantifier alternation:
+// In cases when the formula is `forall ..., exists ...: F`,
+// we create a nested monitor M for the negation of `exists ...: F` and
+// use it from HNLSubMonitor that monitors `forall ...: !M`.
+class HNLMonitor : public Monitor {
+  @input_traces@
+
+  // here we store the running monitors
+  //std::vector<std::unique_ptr<@sub-namespace@::HNLMonitor>> _monitors_wbg;
+  std::vector<std::unique_ptr<Instance>> _instances;
+
+  bool addNewTraces();
+  void condenseWbg();
+
+public:
+  @ctors_dtors@
+
+  Verdict step();
+
+  void noFutureUpdates() { // _traces.noFutureUpdates();
+    abort();
+  }
+
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t num_instances{0};
+
+    // CPU time taken by running the HNL monitor
+   //#ifdef MEASURE_CPUTIME
+   //struct timespec cputime{0, 0};
+   //struct timespec cputime_adding_instances{0, 0};
+   //#endif
+  } stats;
+};
+
+#endif // !HNL_SUB_MONITOR_H__@monitor_name@
+
+@namespace_end@
