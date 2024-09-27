@@ -1,0 +1,99 @@
+// #pragma once is buggy if we generate multiple HNL monitors
+// and try to include them in the HNA monitor. We have to use
+// normal include guards. However, they must be different for each HNL
+// monitor
+
+#ifndef HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
+#define HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
+
+#include <vector>
+#include <list>
+#include <memory>
+
+#ifdef MEASURE_CPUTIME
+// There's no guarantee that chrono::high_resolution_clock will actually measure
+// CPU time, so use clock_gettime from `ctime`
+#include <ctime>
+#endif // !MEASURE_CPUTIME
+
+#include "verdict.h"
+#include "monitor.h"
+#include "atom-monitor.h"
+#include "finished-atom-monitor.h"
+#include "function.h"
+#include "trace.h"
+#include "traceset.h"
+#include "sharedtraceset.h"
+#include "tracesetview.h"
+#include "cmd.h"
+
+#include "hnl-sub-monitor-base.h"
+
+/* generated */
+#include "hnl-instance.h"
+#include "functions.h"
+#include "atom-identifier.h"
+
+@namespace_start@
+
+
+class HNLAtomsMonitor : public HNLSubMonitorBase {
+protected:
+  // here we store the running atoms
+  // std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
+
+  // the workbag of monitors to `step` -- they are either running or finished monitors
+  std::vector<@namespace@::AtomMonitor *> _monitors_wbg;
+
+#ifdef CACHE_ATOMS_RESULTS
+  // this map stores existing atom monitors by their identifier so that we can re-use them
+  // if they should be created again.
+  // FIXME: use better maps (some kind of a hash map)
+  std::map<AtomIdentifier, @namespace@::AtomMonitor *> _running_atoms;
+  std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
+#endif
+
+  // check for new traces and create HNLInstances for them
+  // if there are some
+  virtual bool addNewTraces();
+
+  void deleteAtomMonitor(AtomMonitor *);
+  void condenseWbg();
+
+  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
+  Verdict getFinishedVerdict(const AtomIdentifier& id);
+
+  CmdArgs *_cmd;
+
+public:
+  HNLAtomsMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {}
+  virtual ~HNLAtomsMonitor() {}
+
+  Verdict step();
+
+  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
+  void removeInstance(HNLInstance *instance);
+
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t num_instances{0};
+    // number of atom monitors
+    size_t num_atoms{0};
+
+    // CPU time taken by running the HNL monitor
+    #ifdef MEASURE_CPUTIME
+    struct timespec cputime{0, 0};
+    struct timespec cputime_adding_instances{0, 0};
+    #endif
+    #ifdef CACHE_ATOMS_RESULTS
+    // how many times we avoided creating a new redundant monitor
+    size_t reused_monitors{0};
+    size_t reused_verdict{0};
+    #endif
+  } stats;
+};
+
+#endif // !HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
+
+@namespace_end@

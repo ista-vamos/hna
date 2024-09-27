@@ -1,0 +1,85 @@
+// #pragma once is buggy if we generate multiple HNL monitors
+// and try to include them in the HNA monitor. We have to use
+// normal include guards. However, they must be different for each HNL
+// monitor, and that is why we generate also the ifdefs
+
+#ifndef HNL_SUB_MONITOR_H__@MONITOR_NAME@
+#define HNL_SUB_MONITOR_H__@MONITOR_NAME@
+
+#include <vector>
+#include <list>
+#include <memory>
+
+#ifdef MEASURE_CPUTIME
+// There's no guarantee that chrono::high_resolution_clock will actually measure
+// CPU time, so use clock_gettime from `ctime`
+#include <ctime>
+#endif // !MEASURE_CPUTIME
+
+#include "verdict.h"
+#include "trace.h"
+#include "traceset.h"
+#include "sharedtraceset.h"
+#include "tracesetview.h"
+#include "cmd.h"
+
+#include "hnl-sub-monitor-base.h"
+
+/* generated */
+#include "hnl-instance.h"
+#include "functions.h"
+
+@namespace_start@
+
+///
+// This class is an HNL monitor that does not handle atoms but nested monitors
+// in cases when there is quantifier alternation:
+// In cases when the formula is `forall ..., exists ...: F`,
+// we create a nested monitor M for the negation of `exists ...: F` and
+// use it from HNLSubMonitor that monitors `forall ...: !M`.
+class HNLSubMonitor : public HNLSubMonitorBase {
+protected:
+  // here we store the running atoms
+  std::vector<@namespace@::HNLSubMonitorBase *> _monitors_wbg;
+
+  bool addNewTraces() override;
+/*
+  void deleteMonitor(AtomMonitor *);
+  void condenseWbg();
+
+  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
+  Verdict getFinishedVerdict(const AtomIdentifier& id);
+
+  CmdArgs *_cmd;
+*/
+public:
+
+  Verdict step();
+
+  void removeInstance(HNLInstance *instance);
+
+/*
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t num_instances{0};
+    // number of atom monitors
+    size_t num_atoms{0};
+
+    // CPU time taken by running the HNL monitor
+    #ifdef MEASURE_CPUTIME
+    struct timespec cputime{0, 0};
+    struct timespec cputime_adding_instances{0, 0};
+    #endif
+    #ifdef CACHE_ATOMS_RESULTS
+    // how many times we avoided creating a new redundant monitor
+    size_t reused_monitors{0};
+    size_t reused_verdict{0};
+    #endif
+  } stats;
+  */
+};
+
+#endif // !HNL_SUB_MONITOR_H__@MONITOR_NAME@
+
+@namespace_end@

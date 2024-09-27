@@ -99,7 +99,7 @@ target_compile_definitions(atoms${MONITOR_NAME} PRIVATE @additional_cflags@)
 target_include_directories(atoms${MONITOR_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 
 set(LIBRARY_NAME "hnl${MONITOR_NAME}")
-add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+add_library(${LIBRARY_NAME} STATIC hnl-atoms-monitor.cpp hnl-sub-monitor.cpp hnl-monitor.cpp)
 target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
