@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MONITOR_H_
+#define MONITOR_H_
 
 #include "events.h"
 
@@ -23,3 +24,5 @@ public:
   /// Notify that no new trace neither events can come in the future
   void noFutureUpdates(unsigned trace_id);
 };
+
+#endif

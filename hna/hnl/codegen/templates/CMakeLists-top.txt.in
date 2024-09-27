@@ -1,0 +1,111 @@
+# template: CMakeLists-top.txt.in
+
+cmake_minimum_required(VERSION 3.9)
+project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
+
+set(vamos-buffers_DIR @vamos-buffers_DIR@)
+
+find_package(vamos-buffers REQUIRED)
+
+set(monitor_name "@monitor_name@")
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@ CACHE STRING "" FORCE)
+if(NOT CMAKE_BUILD_TYPE)
+	message(STATUS "Build type not set. Using 'Release'.")
+	set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+set(CMAKE_VERBOSE_MAKEFILE 1)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+
+option(BUILD_EXE "Compile executable monitor (ON by default)" ON)
+option(NO_EXCEPTIONS "Compile with -fno-exceptions (ON by default)" ON)
+option(NO_RTTI "Compile with -fno-rtti (ON by default)" ON)
+option(ENABLE_TESTS "Compile tests (ON by default)" ON)
+option(DEBUG_PRINTS "Print debugging messages on stderr (OFF by default)" OFF)
+option(SANITIZE "Compile with -fsanitize=address,undefined (OFF by default)" OFF)
+option(SANITIZE_THREAD "Compile with -fsanitize=thread (OFF by default)" OFF)
+OPTION(ENABLE_IPO "Enable interprocedural optimizations (forced OFF for Debug builds, otherwise ON)" ON)
+option(MEASURE_CPUTIME "Measure and print CPU time of running monitors (ON by default)" ON)
+option(CACHE_ATOMS_RESULTS "Do not create atoms for the same traces multiple times (ON by default)" ON)
+
+if(NO_EXCEPTIONS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+endif()
+if(NO_RTTI)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
+if(SANITIZE)
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+endif()
+if(SANITIZE_THREAD)
+  if (SANITIZE)
+    message(FATAL_ERROR "-fsanitize=address is incompatible with -fsanitize=thread")
+  endif()
+  set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+endif()
+if (DEBUG_PRINTS)
+    add_compile_definitions(DEBUG_PRINTS)
+endif()
+if (MEASURE_CPUTIME)
+    add_compile_definitions(MEASURE_CPUTIME)
+endif()
+if (CACHE_ATOMS_RESULTS)
+    add_compile_definitions(CACHE_ATOMS_RESULTS)
+endif()
+
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(ENABLE_IPO OFF)
+  message(STATUS "Disabling IPO for the debug build")
+endif()
+
+if (ENABLE_IPO)
+    include(CheckIPOSupported)
+    check_ipo_supported()
+    message(STATUS "Enabling IPO globally")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif(ENABLE_IPO)
+
+
+get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-ringbuf vamos-buffers-ringbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-shmbuf vamos-buffers-shmbuf LOCATION)
+get_target_property(vamos-buffers_vamos-buffers-streams vamos-buffers-streams LOCATION)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_lib ${vamos-buffers_vamos-buffers-lib} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_core ${vamos-buffers_vamos-buffers-ringbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_shmbuf ${vamos-buffers_vamos-buffers-shmbuf} DIRECTORY)
+get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamos-buffers-streams} DIRECTORY)
+
+get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
+
+add_library(events STATIC events.cpp)
+add_library(trace STATIC trace.cpp)
+add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp)
+
+set(LIBRARY_NAME "hnl${monitor_name}")
+add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
+target_link_libraries(${LIBRARY_NAME} PUBLIC @submonitors_libs@  traceset trace events)
+
+if (BUILD_EXE)
+add_executable(${monitor_name} main.cpp cmd.cpp @additional_sources@)
+target_link_libraries(${monitor_name} ${LIBRARY_NAME} pthread)
+target_include_directories(${monitor_name} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
+endif()
+
+@submonitors@

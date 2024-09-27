@@ -1,11 +1,14 @@
-from os import readlink
+from os import readlink, listdir
 from os.path import abspath, dirname, islink, join as pathjoin
+from subprocess import run
 
 from vamos_common.codegen.codegen import CodeGen as CG
 
 
 class CodeGen(CG):
-    def __init__(self, args, ctx, out_dir: str = None):
+    def __init__(
+        self, name: str, args, ctx, out_dir: str = None, namespace: str = None
+    ):
         super().__init__(args, ctx, out_dir)
 
         self_dir = abspath(
@@ -14,4 +17,33 @@ class CodeGen(CG):
         self.common_templates_path = pathjoin(self_dir, "templates/cpp")
         self.templates_path = None  # must be set by child classes
 
+        self._name = name
+        self._namespace = namespace
+
         self._add_gen_files = []
+        self._submonitors = []
+
+    def name(self) -> str:
+        return self._name
+
+    def sub_name(self) -> str:
+        return f"sub{self._name}"
+
+    def sub_namespace(self) -> str:
+        return f"{self._namespace}::sub" if self._namespace else "sub"
+
+    def namespace(self) -> str:
+        return self._namespace or ""
+
+    def submonitors(self):
+        return self._submonitors
+
+    def format_generated_code(self):
+        # format the files if we have clang-format
+        # FIXME: check clang-format properly instead of catching the exception
+        try:
+            for path in listdir(self.out_dir):
+                if path.endswith(".h") or path.endswith(".cpp"):
+                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
+        except FileNotFoundError:
+            pass

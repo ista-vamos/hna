@@ -1,122 +1,47 @@
-// #pragma once is buggy if we generate multiple HNL monitors
-// and try to include them in the HNA monitor. We have to use
-// normal include guards. However, they must be different for each HNL
-// monitor
+// template: hnl-monitor.h.in
 
-#ifndef HNL_MONITOR_H__@MONITOR_NAME@
-#define HNL_MONITOR_H__@MONITOR_NAME@
+#ifndef HNLMONITOR_H_
+#define HNLMONITOR_H_
 
-#include <vector>
-#include <list>
-#include <memory>
-
-#ifdef MEASURE_CPUTIME
-// There's no guarantee that chrono::high_resolution_clock will actually measure
-// CPU time, so use clock_gettime from `ctime`
-#include <ctime>
-#endif // !MEASURE_CPUTIME
-
-#include "verdict.h"
 #include "monitor.h"
-#include "atom-monitor.h"
-#include "finished-atom-monitor.h"
-#include "function.h"
-#include "trace.h"
 #include "traceset.h"
-#include "sharedtraceset.h"
-#include "tracesetview.h"
+#include "submonitor/hnl-monitor.h"
+
 #include "cmd.h"
-
-#include "hnl-monitor-base.h"
-
-/* generated */
-#include "hnl-instance.h"
-#include "functions.h"
-#include "atom-identifier.h"
 
 @namespace_start@
 
-
-class HNLMonitor : public HNLMonitorBase {
-protected:
-  // here we store the running atoms
-  // std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
-
-  // the workbag of monitors to `step` -- they are either running or finished monitors
-  std::vector<@namespace@::AtomMonitor *> _monitors_wbg;
-
-#ifdef CACHE_ATOMS_RESULTS
-  // this map stores existing atom monitors by their identifier so that we can re-use them
-  // if they should be created again.
-  // FIXME: use better maps (some kind of a hash map)
-  std::map<AtomIdentifier, @namespace@::AtomMonitor *> _running_atoms;
-  std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
-#endif
+///
+// The top-level class for HNL monitor for an arbitrary HNL formula
+class HNLMonitor : public Monitor {
+  // This class is a wrapper and a container for traces (including function traces).
+  // The actual monitoring happens in this submonitor.
+  sub::HNLMonitor _monitor;
+  // All traces for this monitor (and submonitors).
+  // The submonitors will have only a view of this container
+  TraceSet _traces;
+  CmdArgs *_cmd;
 
   #include "function-instances.h"
-
-  // check for new traces and create HNLInstances for them
-  // if there are some
-  virtual bool addNewTraces();
-
-  void deleteAtomMonitor(AtomMonitor *);
-  void condenseWbg();
-
-  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
-  Verdict getFinishedVerdict(const AtomIdentifier& id);
-
-  CmdArgs *_cmd;
 
 public:
   HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {
     #include "functions-initialize.h"
   }
 
-  virtual ~HNLMonitor() {}
+  //virtual ~HNLMonitor() {}
+
+  // adding and extending traces
+  void newTrace(unsigned trace_id);
+  void extendTrace(unsigned trace_id, const Event &e);
+  void traceFinished(unsigned trace_id);
+  void noFutureUpdates();
+  bool allTracesFinished();
+  bool hasTrace(unsigned trace_id);
 
   Verdict step();
-
-  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
-  void removeInstance(HNLInstance *instance);
-
-  // statistics
-  struct {
-    // number of HNL configurations
-    size_t num_instances{0};
-    // number of atom monitors
-    size_t num_atoms{0};
-
-    // CPU time taken by running the HNL monitor
-    #ifdef MEASURE_CPUTIME
-    struct timespec cputime{0, 0};
-    struct timespec cputime_adding_instances{0, 0};
-    #endif
-    #ifdef CACHE_ATOMS_RESULTS
-    // how many times we avoided creating a new redundant monitor
-    size_t reused_monitors{0};
-    size_t reused_verdict{0};
-    #endif
-  } stats;
 };
-
-
-// specialization of the monitor for function atoms -- this one does not own the trace set,
-// but only uses a view of existing trace sets
-class FunctionHNLMonitor : public HNLMonitor {
-  TraceSetView _traces_l;
-  TraceSetView _traces_r;
-
-  bool addNewTraces() override;
-
-public:
-    FunctionHNLMonitor(CmdArgs *cmd = nullptr) : HNLMonitor(cmd) {}
-    
-    FunctionHNLMonitor(SharedTraceSet& traces_l, Trace *tr) : _traces_l(traces_l), _traces_r(tr) {}
-    // the `bool` here is just a dummy argument so that we can overload
-    FunctionHNLMonitor(Trace *tl, SharedTraceSet& traces_r) : _traces_l(tl), _traces_r(traces_r) {}
-    FunctionHNLMonitor(SharedTraceSet& traces_l, SharedTraceSet& traces_r) : _traces_l(traces_l),  _traces_r(traces_r) {}
-};
-
-#endif // !HNL_MONITOR_H__@MONITOR_NAME@
 
 @namespace_end@
+
+#endif // HNLMONITOR_H_

@@ -1,0 +1,28 @@
+# template: CMakeLists-sub.txt.in
+
+cmake_minimum_required(VERSION 3.9)
+project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
+
+set(monitor_name "@monitor_name@")
+
+set(LIBRARY_NAME "hnl${monitor_name}")
+add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
+target_link_libraries(${LIBRARY_NAME} PUBLIC  atoms${monitor_name} @submonitors_libs@  traceset trace events)
+
+if (BUILD_HNL_EXE)
+add_executable(${monitor_name} main.cpp cmd.cpp @additional_sources@)
+target_link_libraries(${monitor_name} ${LIBRARY_NAME})
+target_include_directories(${monitor_name} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${monitor_name} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
+endif()
+
+if (ENABLE_TESTS)
+    #add_subdirectory(tests EXCLUDE_FROM_ALL)
+    message(WARNING "ENABLE sub-monitors tests!")
+endif()
+
+@ADD_NESTED_MONITORS@

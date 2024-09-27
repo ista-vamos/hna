@@ -68,7 +68,7 @@ class CodeGenCpp(CodeGen):
             "monitor.h",
             "atom-base.h",
             "atom-evaluation-state.h",
-            "hnl-monitor-base.h",
+            "hnl-monitor.h.in",
             "function.h",
             "stream.h",
             "trace.h",
@@ -312,7 +312,7 @@ class CodeGenCpp(CodeGen):
                     )
 
     def _gen_create_hnl_monitor(self, hna):
-        with self.new_file("create-hnl-monitor.h") as f:
+        with self.new_file("create-hnl-monitor.h.in") as f:
             wr = f.write
             dump_codegen_position(wr)
             wr("HNLMonitorBase *createHNLMonitor(HNANodeType node) {")
@@ -373,7 +373,7 @@ class CodeGenCpp(CodeGen):
             wr("#pragma once\n\n")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
-                wr(f'#include "hnl-{state_id}/hnl-monitor.h"\n')
+                wr(f'#include "hnl-{state_id}/hnl-monitor.h.in"\n')
 
         with self.new_file("slices-tree-ctor.h") as f:
             wr = f.write
