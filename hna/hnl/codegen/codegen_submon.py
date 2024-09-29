@@ -302,37 +302,11 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code
         """
-
-        print(f"Generating (sub) monitor for '{formula}' into '{self.out_dir}'")
-
         top_formula, sub_formula = _split_formula(formula)
-        has_submonitors = sub_formula.has_quantifier_alternation()
-
-        self.generate_monitor(top_formula)
-
-        nested_out_dir = f"{self.out_dir}/submonitor"
-
-        if has_submonitors:
-            nested_cg = CodeGenCpp(
-                self.sub_name(),
-                self.args,
-                self.ctx,
-                nested_out_dir,
-                self.sub_namespace(),
-            )
-        else:
-            nested_cg = CodeGenCppAtomsMon(
-                self.sub_name(),
-                self.args,
-                self.ctx,
-                nested_out_dir,
-                self.sub_namespace(),
-            )
-
-        nested_cg.generate_embedded(sub_formula)
-        self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
         # generate this monitor
+        self.generate_monitor(top_formula)
+        self.generate_submonitors(sub_formula)
 
         # cmake generation should go at the end so that
         # it knows all the generated files
@@ -344,9 +318,10 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code as an embedded CMake project
         """
+        top_formula, sub_formula = _split_formula(formula)
 
-        self.generate_monitor(formula)
-        self.generate_cmake(embedded=True)
+        self.generate_monitor(top_formula)
+        self.generate_submonitors(sub_formula)
 
         # if gen_tests:
         #    self.generate_tests(self.args.alphabet)
@@ -368,7 +343,31 @@ class CodeGenCpp(CodeGen):
             # overwrite_keys={"@monitor_name@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
+
         self.format_generated_code()
+
+    def generate_submonitors(self, sub_formula):
+        nested_out_dir = f"{self.out_dir}/submonitor"
+        has_submonitors = sub_formula.has_quantifier_alternation()
+
+        if has_submonitors:
+            nested_cg = CodeGenCpp(
+                self.sub_name(),
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                self.sub_namespace(),
+            )
+        else:
+            nested_cg = CodeGenCppAtomsMon(
+                self.sub_name(),
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                self.sub_namespace(),
+            )
+        nested_cg.generate_embedded(sub_formula)
+        self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
     def generate_monitor(self, formula):
         values = {

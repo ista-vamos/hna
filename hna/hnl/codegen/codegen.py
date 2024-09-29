@@ -350,7 +350,7 @@ class CodeGenCpp(CodeGen):
 
         # FIXME: do this more elegantly, this is more or less a hack
         self.args.out_dir_overwrite = False
-        codegen.generate_embedded(formula, alphabet)
+        codegen.generate_embedded(formula)
 
         self.generate_monitor()
         self.generate_main()

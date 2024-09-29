@@ -1,7 +1,6 @@
 import random
-from os import readlink, listdir, makedirs
+from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
-from subprocess import run
 from sys import stderr
 
 from pyeda.inter import bddvar
@@ -16,8 +15,6 @@ from hna.hnl.formula import (
     Or,
     Not,
     Constant,
-    Function,
-    ForAll,
     PrenexFormula,
 )
 from hna.hnl.formula2automata import (
@@ -95,54 +92,6 @@ def traces_positions(t1_pos, N):
         yield i
     if t1_pos == N:
         yield 1
-
-
-def _check_functions(functions):
-    funs = {}
-    for fun in functions:
-        f = funs.get(fun.name)
-        if f is None:
-            funs[fun.name] = fun
-        else:
-            if len(f.traces) != len(fun.traces):
-                raise RuntimeError(
-                    f"Function '{fun.name}' is used multiple time with different number of arguments:\n{fun} and {f}"
-                )
-
-
-def _universal_quantifiers_prefix(formula: PrenexFormula):
-    assert isinstance(formula, PrenexFormula), formula
-
-    univ, rest = [], []
-    for n, q in enumerate(formula.quantifier_prefix):
-        if isinstance(q, ForAll):
-            univ.append(q)
-        else:
-            rest = formula.quantifier_prefix[n:]
-            break
-
-    return univ, rest
-
-
-def _split_formula(formula: PrenexFormula):
-    """
-    Split the given formula into a universally quantified formula and the sub-formula
-    for the nested monitor. E.g., `forall a. exists b: F` gets transformed into
-    two formulas: `forall a. !F'` where `F' = forall b: !F`.
-    However, the first formula has only a placeholder constant instead of `!F`,
-    because we handle that part separately.
-    """
-    universal, rest = _universal_quantifiers_prefix(formula)
-    if not rest:
-        # this formula is only universally quantified
-        return formula, None
-
-    F1 = PrenexFormula(universal, Not(Constant("subF")))
-    F2 = PrenexFormula([q.swap() for q in rest], Not(formula.formula))
-    print("Split formula: topF = ", F1)
-    print("Split formula: subF = ", F2)
-
-    return F1, F2
 
 
 class CodeGenCpp(CodeGen):
@@ -241,120 +190,10 @@ class CodeGenCpp(CodeGen):
             values.update(overwrite_keys)
 
         if embedded:
-            cmakelists = "CMakeLists-embedded.txt.in"
+            cmakelists = "CMakeLists-atoms-embedded.txt.in"
         else:
-            cmakelists = "CMakeLists.txt.in"
+            cmakelists = "CMakeLists-atoms.txt.in"
         self.gen_config(cmakelists, "CMakeLists.txt", values)
-
-    def _generate_events(self):
-        with self.new_file("events.h") as f:
-            wr = f.write
-            wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
-            wr("#include <iostream>\n")
-            wr("#include <cstdint>\n\n")
-            # wr("#include <cassert>\n\n")
-
-            dump_codegen_position(wr)
-            wr("struct Event {\n")
-            for name, ty in self._event:
-                wr(f"  {ty} {name};\n")
-            wr("};\n\n")
-
-            wr("std::ostream& operator<<(std::ostream& os, const Event& ev);\n")
-
-            wr("#endif\n")
-
-        with self.new_file("events.cpp") as f:
-            wr = f.write
-            wr("#include <iostream>\n\n")
-            wr('#include "events.h"\n\n')
-            dump_codegen_position(wr)
-            wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
-            wr('  os << "("')
-            for n, field in enumerate(self._event):
-                name, ty = field
-                if n > 0:
-                    wr(f'  << ", "')
-                wr(f'  << "{name} = " << ev.{name}')
-            wr('   << ")";\n')
-            wr("return os;\n")
-            wr("}\n")
-
-    def _generate_csv_reader(self):
-        self.copy_file("csvreader.h", from_dir=self.common_templates_path)
-        self.copy_file("csvreader.cpp", from_dir=self.common_templates_path)
-        self._add_gen_files.append("csvreader.cpp")
-
-        with self.new_file("csvreader-aux.h") as f:
-            dump_codegen_position(f)
-
-        with self.new_file("read_csv_event.h") as f:
-            wr = f.write
-            wr(f"int ch;\n\n")
-            for n, tmp in enumerate(self._event):
-                name, ty = tmp
-                # wr(f"char action[{max_len_action_name}];\n\n")
-                wr(f"_stream >> ev.{name};\n")
-                wr("if (_stream.fail()) {")
-                if n == 0:  # assume this is the header
-                    wr(" if (_events_num_read == 0) {\n")
-                    wr("   _stream.clear(); // assume this is the header\n")
-                    wr("   // FIXME: check that the header matches the events \n")
-                    wr("   // ignore the rest of the line and try with the next one\n")
-                    wr(
-                        "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
-                    )
-                    wr(f"   _stream >> ev.{name};\n")
-                    wr("    if (_stream.fail()) {")
-                    wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
-                    )
-                    wr("    abort();")
-                    wr("  }")
-                    wr("} else {")
-                    wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
-                    )
-                    wr("    abort();")
-                    wr("}")
-                else:
-                    wr(
-                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
-                    )
-                    wr("  abort();")
-                wr("}")
-                if n == len(self._event) - 1:
-                    wr(
-                        f"""
-                    while ((ch = _stream.get()) != EOF) {{
-                      if (ch == '\\n') {{
-                        break;
-                      }}
-                      
-                      if (!std::isspace(ch)) {{
-                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
-                        std::cerr << "Expected the end of line, got '" << static_cast<char>(ch) << "'\\n";
-                        abort();
-                      }}
-                    }}
-                    """
-                    )
-                else:
-                    wr(
-                        f"""
-                    while ((ch = _stream.get()) != EOF) {{
-                      if (ch == ',') {{
-                        break;
-                      }}
-                      
-                      if (!std::isspace(ch) || ch == '\\n') {{
-                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
-                        std::cerr << "Expected next column (',' character), got '" << static_cast<char>(ch) << "'\\n";
-                        abort();
-                      }}
-                    }}
-                    """
-                    )
 
     def _gen_bdd_from_formula(self, formula):
         """
@@ -400,11 +239,10 @@ class CodeGenCpp(CodeGen):
             return f"ATOM_{nd.get_id()}"
 
         with self.new_file("hnl-state.h") as f:
-            ns = self._namespace or ""
             f.write(
                 f"""
-            #ifndef _HNL_STATE_H__{ns}
-            #define _HNL_STATE_H__{ns}
+            #ifndef _HNL_STATE_H__{self.name()}
+            #define _HNL_STATE_H__{self.name()}
             """
             )
             if self._namespace:
@@ -471,11 +309,10 @@ class CodeGenCpp(CodeGen):
     def _generate_hnlinstances(self, formula):
         with self.new_file("hnl-instance.h") as f:
             wr = f.write
-            ns = self._namespace or ""
             wr(
                 f"""
-            #ifndef _HNL_INSTANCE_H__{ns}
-            #define _HNL_INSTANCE_H__{ns}
+            #ifndef _HNL_INSTANCE_H__{self.name()}
+            #define _HNL_INSTANCE_H__{self.name()}
             """
             )
             wr("#include <cassert>\n\n")
@@ -649,11 +486,8 @@ class CodeGenCpp(CodeGen):
             f.write("switch(monitor_type) {\n")
             for nd in self._bdd_nodes:
                 num, F = nd.get_id(), nd.formula
-                lf, rf = F.children[0].functions(), F.children[1].functions()
-                lf = f", function_{lf[0].name}.get()" if lf else ""
-                rf = f", function_{rf[0].name}.get()" if rf else ""
                 f.write(
-                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance{lf}{rf}); break;\n"
+                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
                 )
             f.write("default: abort();\n")
             f.write("}\n\n")
@@ -690,25 +524,19 @@ class CodeGenCpp(CodeGen):
                 continue
 
             with self.new_file(f"atom-{num}.h") as fh:
-                if F.functions():
-                    self._generate_atom_with_funs_header(F, num, fh.write)
-                else:
-                    self._generate_atom_header(F, nd.automaton, num, fh.write)
+                self._generate_atom_header(F, nd.automaton, num, fh.write)
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:
-                if F.functions():
-                    self._generate_atom_with_funs(fcpp.write, formula, F, num)
-                else:
-                    self._generate_atom(fcpp.write, formula, nd)
+                self._generate_atom(fcpp.write, formula, nd)
             self._atoms_files.append(f"atom-{num}.cpp")
             generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
 
         with self.new_file("atom-identifier.h") as f:
-            ns = self._namespace or ""
+            ns = self.namespace()
             f.write(
                 f"""
-            #ifndef _ATOM_IDENTIFIER_H__{ns}
-            #define _ATOM_IDENTIFIER_H__{ns}
+            #ifndef _ATOM_IDENTIFIER_H__{self.name()}
+            #define _ATOM_IDENTIFIER_H__{self.name()}
 
             #include <tuple>
             """
@@ -726,15 +554,14 @@ class CodeGenCpp(CodeGen):
             f.write(", unsigned" * len(formula.quantifiers()))
             f.write("> ;\n")
             if ns:
-                f.write(f"}} // namespace {ns}\n\n")
+                f.write(f"}} // namespace {self.name()}\n\n")
             f.write("#endif\n")
 
         with self.new_file("atoms.h") as f:
-            ns = self._namespace or ""
             f.write(
                 f"""
-            #ifndef _ATOMS_H__{ns}
-            #define _ATOMS_H__{ns}
+            #ifndef _ATOMS_H__{self.name()}
+            #define _ATOMS_H__{self.name()}
             """
             )
             dump_codegen_position(f)
@@ -984,11 +811,10 @@ class CodeGenCpp(CodeGen):
         wrcpp("}\n\n")
 
     def _generate_atom_header(self, atom_formula, automaton, num, wrh):
-        ns = self._namespace or ""
         wrh(
             f"""
-        #ifndef _ATOM_{num}_H__{ns}
-        #define _ATOM_{num}_H__{ns}
+        #ifndef _ATOM_{num}_H__{self.name()}
+        #define _ATOM_{num}_H__{self.name()}
         """
         )
         dump_codegen_position(wrh)
@@ -1013,17 +839,16 @@ class CodeGenCpp(CodeGen):
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
         if self._namespace:
-            wrh(f"}} // namespace {self._namespace}\n")
+            wrh(f"}} // namespace {self.name()}\n")
         wrh("#endif\n")
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
-        ns = self._namespace or ""
         num, atom_formula = nd.get_id(), nd.formula
 
         wrh(
             f"""
-        #ifndef _ATOM_{num}_H__{ns}
-        #define _ATOM_{num}_H__{ns}
+        #ifndef _ATOM_{num}_H__{self.name()}
+        #define _ATOM_{num}_H__{self.name()}
         """
         )
         dump_codegen_position(wrh)
@@ -1052,109 +877,6 @@ class CodeGenCpp(CodeGen):
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
         )
-
-    def _generate_atom_with_funs(self, wrcpp, formula, atom_formula: IsPrefix, num):
-        lf, rf = (
-            atom_formula.children[0].functions(),
-            atom_formula.children[1].functions(),
-        )
-        lf_name, rf_name = lf[0].name if lf else None, rf[0].name if rf else None
-        lfarg = f", Function *lf /* {lf_name} */" if lf else ""
-        rfarg = f", Function *rf /* {rf_name} */" if rf else ""
-
-        wrcpp(f'#include "atom-{num}.h"\n\n')
-        if lf_name:
-            wrcpp(f'#include "function-{lf_name}.h"\n')
-        if rf_name:
-            wrcpp(f'#include "function-{rf_name}.h"\n')
-
-        if self._namespace:
-            wrcpp(f"using namespace {self._namespace};\n\n")
-        dump_codegen_position(wrcpp)
-        identifier = f"AtomIdentifier{{ATOM_{num}"
-        traces = [t.name for t in atom_formula.trace_variables()]
-        for q in formula.quantifiers():
-            if q.var.name in traces:
-                identifier += f",instance.{q.var.name}->id()"
-            else:
-                identifier += ",0"
-        identifier += "}"
-
-        wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance{lfarg}{rfarg}) \n  : FunctionAtomMonitor({identifier}), "
-        )
-        monitor_init = []
-        if lf:
-            args = ", ".join(f"instance.{t.name}" for t in lf[0].traces)
-            monitor_init.append(
-                f"static_cast<Function_{lf_name}*>(lf)->getTraceSet({args})"
-            )
-        else:
-            # dummy argument that says the trace set is the one on the right
-            tr = atom_formula.children[0].trace_variables()
-            assert len(tr) == 1, atom_formula.children[0]
-            monitor_init.append(f"instance.{tr[0].name}")
-
-        if rf:
-            args = ", ".join(f"instance.{t.name}" for t in rf[0].traces)
-            monitor_init.append(
-                f"static_cast<Function_{rf_name}*>(rf)->getTraceSet({args})"
-            )
-        else:
-            # dummy argument that says the trace set is the one on the right
-            tr = atom_formula.children[1].trace_variables()
-            assert len(tr) == 1, atom_formula.children[1]
-            monitor_init.append(f"instance.{tr[0].name}")
-
-        wrcpp(f"monitor({', '.join(monitor_init)})")
-        wrcpp("{}\n\n")
-
-        wrcpp(f"Verdict AtomMonitor{num}::step(unsigned /* num_steps */) {{ \n")
-        wrcpp(
-            """
-        auto verdict = monitor.step();
-        switch (verdict) {
-          case Verdict::FALSE: return Verdict::TRUE;
-          case Verdict::TRUE:  return Verdict::FALSE;
-          default:             return Verdict::UNKNOWN;
-        };
-        """
-        )
-        wrcpp("}")
-
-    def _generate_atom_with_funs_header(self, atom_formula, num, wrh):
-        ns = self._namespace or ""
-        wrh(
-            f"""
-        #ifndef _ATOM_{num}_H__{ns}
-        #define _ATOM_{num}_H__{ns}
-        """
-        )
-        dump_codegen_position(wrh)
-        wrh('#include "nested-hnl-atom-monitor.h"\n\n')
-        wrh(f'#include "{self._submonitors_dirs[num]}/hnl-atoms-monitor.h.in"\n\n')
-        if self._namespace:
-            wrh(f"namespace {self._namespace} {{\n\n")
-
-        lf, rf = (
-            atom_formula.children[0].functions(),
-            atom_formula.children[1].functions(),
-        )
-        lf_name, rf_name = lf[0].name if lf else None, rf[0].name if rf else None
-        lf = f", Function * lf/* {lf_name} */" if lf else ""
-        rf = f", Function * rf/* {rf_name} */" if rf else ""
-
-        dump_codegen_position(wrh)
-        wrh(f"/* {atom_formula}*/\n")
-        wrh(f"class AtomMonitor{num} : public FunctionAtomMonitor {{\n\n")
-        wrh(f"  atom{num}::FunctionHNLMonitor monitor;\n")
-        wrh("public:\n")
-        wrh(f"AtomMonitor{num}(const HNLInstance& instance{lf}{rf});\n\n")
-        wrh(f"Verdict step(unsigned num = 0);\n\n")
-        wrh("};\n\n")
-        if self._namespace:
-            wrh(f"}} // namespace {self._namespace}\n")
-        wrh("#endif\n")
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):
 
@@ -1427,7 +1149,7 @@ class CodeGenCpp(CodeGen):
         makedirs(f"{self.out_dir}/tests", exist_ok=True)
 
         self.gen_config(
-            "CMakeLists-tests.txt.in",
+            "CMakeLists-atoms-tests.txt.in",
             "tests/CMakeLists.txt",
             {
                 "@submonitors_libs@": " ".join(self._submonitors),
@@ -1500,7 +1222,7 @@ class CodeGenCpp(CodeGen):
 
     def generate(self, formula, alphabet=None):
         """
-        The top-level function to generate code
+        The top-level method to generate code
         """
 
         alphabet = alphabet or self.args.alphabet
@@ -1540,7 +1262,7 @@ class CodeGenCpp(CodeGen):
 
     def generate_embedded(self, formula, alphabet=None, gen_tests=True):
         """
-        The top-level function to generate code
+        The top-level method to generate code
         """
 
         alphabet = alphabet or self.args.alphabet
@@ -1579,17 +1301,21 @@ class CodeGenCpp(CodeGen):
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
-            "@namespace_start@": "",
-            "@namespace_end@": "",
+            "@namespace_start@": (
+                f"namespace {self._namespace} {{" if self._namespace else ""
+            ),
+            "@namespace_end@": (
+                f"}} // namespace {self._namespace}" if self._namespace else ""
+            ),
         }
 
-        self.gen_file("hnl-atoms-monitor.h.in", "hnl-atoms-monitor.h", values)
-        self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-atoms-monitor.cpp", values)
+        self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)
+        self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
-        # there is no sub-formula, this is the monitor for the body of the function
+        # there is no sub-formula, this is the monitor for the body of the formula
         self._gen_bdd_from_formula(formula)
 
         for nd in self._bdd_nodes:
