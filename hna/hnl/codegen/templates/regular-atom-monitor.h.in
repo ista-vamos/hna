@@ -1,5 +1,5 @@
-#ifndef REGULAR_ATOM_MONITOR__@MONITOR_NAME@
-#define REGULAR_ATOM_MONITOR__@MONITOR_NAME@
+#ifndef REGULAR_ATOM_MONITOR__@monitor_name@
+#define REGULAR_ATOM_MONITOR__@monitor_name@
 
 #include "verdict.h"
 #include "hnl-instance.h"
@@ -26,4 +26,4 @@ public:
 
 @namespace_end@
 
-#endif // REGULAR_ATOM_MONITOR__@MONITOR_NAME@
+#endif // REGULAR_ATOM_MONITOR__@monitor_name@

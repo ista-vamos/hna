@@ -7,10 +7,10 @@ foreach(file ${inputs})
         message(STATUS "${file} ${CMAKE_MATCH_1} ${CMAKE_MATCH_2}")
 
         set(NAME "test-atom-${CMAKE_MATCH_1}-${CMAKE_MATCH_2}")
-        set(TARGET_NAME "${MONITOR_NAME}-${NAME}")
+        set(TARGET_NAME "${monitor_name}-${NAME}")
         add_executable(${TARGET_NAME} ${NAME}.cpp)
         target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-        target_link_libraries(${TARGET_NAME} trace atoms${MONITOR_NAME} events @submonitors_libs@)
+        target_link_libraries(${TARGET_NAME} trace atoms${monitor_name} events @submonitors_libs@)
         target_compile_options(${TARGET_NAME} PRIVATE -Wno-missing-field-initializers)
 
         add_test(NAME ${TARGET_NAME}

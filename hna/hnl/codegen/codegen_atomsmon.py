@@ -228,7 +228,7 @@ class CodeGenCpp(CodeGen):
             "@atoms_sources@": " ".join((basename(f) for f in self._atoms_files)),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
-            "@MONITOR_NAME@": f'"{self._name}"',
+            "@monitor_name@": self.name(),
             "@add_submonitors@": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
@@ -658,7 +658,7 @@ class CodeGenCpp(CodeGen):
             f.write("default: abort();\n")
             f.write("}\n\n")
 
-    def _generate_monitor(self, formula, alphabet, embedding_data):
+    def _generate_monitor(self, formula, alphabet):
         """
         Generate a monitor that actually monitors the body of the formula,
         i.e., it creates and moves with atom monitors.
@@ -1568,38 +1568,21 @@ class CodeGenCpp(CodeGen):
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
-            # overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
+            # overwrite_keys={"@monitor_name@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
         self.format_generated_code()
 
-    def generate_monitor(self, formula: PrenexFormula, alphabet, embedding_data=None):
+    def generate_monitor(self, formula: PrenexFormula, alphabet):
         assert not formula.has_quantifier_alternation(), formula
 
-        if embedding_data:
-            values = {
-                "@MONITOR_NAME@": embedding_data["monitor_name"],
-                "@namespace@": self._namespace or "",
-                "@namespace_start@": (
-                    f"namespace {self._namespace} {{" if self._namespace else ""
-                ),
-                "@namespace_end@": (
-                    f"}} // namespace {self._namespace}" if self._namespace else ""
-                ),
-            }
-        else:
-            embedding_data = {}
-            values = {
-                "@MONITOR_NAME@": "",
-                "@namespace@": self._namespace or "",
-                "@namespace_start@": "",
-                "@namespace_end@": "",
-            }
+        values = {
+            "@monitor_name@": self.name(),
+            "@namespace@": self.namespace(),
+            "@namespace_start@": "",
+            "@namespace_end@": "",
+        }
 
-        self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
-        self.gen_file("hnl-sub-monitor.h.in", "hnl-sub-monitor.h", values)
-        self.gen_file("hnl-sub-monitor.cpp.in", "hnl-sub-monitor.cpp", values)
         self.gen_file("hnl-atoms-monitor.h.in", "hnl-atoms-monitor.h", values)
         self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-atoms-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
@@ -1618,4 +1601,4 @@ class CodeGenCpp(CodeGen):
 
         formula.visit(gen_automaton)
 
-        self._generate_monitor(formula, alphabet, embedding_data)
+        self._generate_monitor(formula, alphabet)

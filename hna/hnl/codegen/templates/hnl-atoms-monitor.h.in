@@ -3,8 +3,8 @@
 // normal include guards. However, they must be different for each HNL
 // monitor
 
-#ifndef HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
-#define HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
+#ifndef HNL_ATOMS_MONITOR_H__@monitor_name@
+#define HNL_ATOMS_MONITOR_H__@monitor_name@
 
 #include <vector>
 #include <list>
@@ -94,6 +94,6 @@ public:
   } stats;
 };
 
-#endif // !HNL_ATOMS_MONITOR_H__@MONITOR_NAME@
+#endif // !HNL_ATOMS_MONITOR_H__@monitor_name@
 
 @namespace_end@

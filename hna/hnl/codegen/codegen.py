@@ -108,7 +108,7 @@ class CodeGenCpp(CodeGen):
             ),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
-            "@MONITOR_NAME@": '"monitor"',
+            "@monitor_name@": self.name(),
             "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
             "@submonitors@": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
@@ -118,7 +118,7 @@ class CodeGenCpp(CodeGen):
             values.update(overwrite_keys)
 
         if embedding_data is not None:
-            cmakelists = "CMakeLists-embedded.txt.in"
+            cmakelists = "CMakeLists-top-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-top.txt.in"
         self.gen_config(cmakelists, "CMakeLists.txt", values)
@@ -256,9 +256,7 @@ class CodeGenCpp(CodeGen):
             wr("};\n")
             wr("#endif\n")
 
-    def generate_functions(
-        self, formula: PrenexFormula, embedding_data={"monitor_name": ""}
-    ):
+    def generate_functions(self, formula: PrenexFormula):
         functions_instances = formula.functions()
         functions = list(set(functions_instances))
 
@@ -267,15 +265,15 @@ class CodeGenCpp(CodeGen):
 
         with self.new_file("functions.h") as f:
             dump_codegen_position(f)
-            f.write(f'#ifndef HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
-            f.write(f'#define HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
+            f.write(f"#ifndef HNL_FUNCTIONS__{self.name()}\n")
+            f.write(f"#define HNL_FUNCTIONS__{self.name()}\n")
             f.write("#include <memory>\n")
             f.write('#include "function.h"\n\n')
             for fun in functions:
                 f.write(
                     f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n"
                 )
-            f.write(f'#endif // !HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
+            f.write(f"#endif // !HNL_FUNCTIONS__{self.name()}\n")
 
         with self.new_file("functions-initialize.h") as f:
             dump_codegen_position(f)
@@ -379,7 +377,7 @@ class CodeGenCpp(CodeGen):
 
     def generate_monitor(self):
         values = {
-            "@MONITOR_NAME@": f'"{self.name()}"',
+            "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
             "@namespace_start@": (
                 f"namespace {self._namespace} {{" if self._namespace else ""

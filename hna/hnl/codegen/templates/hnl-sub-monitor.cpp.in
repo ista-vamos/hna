@@ -22,14 +22,14 @@ Verdict HNLMonitor::step() {
   const auto n_monitors = _instances.size();
 
   for (unsigned n = 0; n < n_monitors; ++n) {
-      auto *instance = _instances[n];
+      auto &instance = _instances[n];
       if (!instance) {
           ++empty_slots;
           continue;
       }
       if ((verdict = instance->monitor->step()) != Verdict::UNKNOWN) {
           // this monitor is done
-          _instances[n] = nullptr;
+          _instances[n].reset();
           ++empty_slots;
       }
   }
@@ -39,10 +39,10 @@ Verdict HNLMonitor::step() {
   }
 
   bool traces_finished = addNewTraces();
-  bool finished = traces_finished && _monitors_wbg.empty();
+  bool finished = traces_finished && _instances.empty();
 
   if (finished) {
-      assert(_monitors_wbg.empty());
+      assert(_instances.empty());
       return Verdict::TRUE;
   }
 
@@ -50,19 +50,19 @@ Verdict HNLMonitor::step() {
 }
 
 void HNLMonitor::condenseWbg() {
-    if (_monitors_wbg.empty())
+    if (_instances.empty())
         return;
 
     // FIXME: do it in place without creating a new vector
-    decltype(_monitors_wbg) tmp;
-    tmp.reserve(_monitors_wbg.size());
+    decltype(_instances) tmp;
+    tmp.reserve(_instances.size());
 
-    for (auto *ptr : _monitors_wbg) {
+    for (auto *ptr : _instances) {
         if (ptr) {
             tmp.push_back(ptr);
         }
     }
-    _monitors_wbg.swap(tmp);
+    _instances.swap(tmp);
 }
 
 @namespace_end@

@@ -121,7 +121,7 @@ class CodeGenCpp(CodeGen):
             ),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
-            "@MONITOR_NAME@": f'"{self._name}"',
+            "@monitor_name@": self.name(),
             "@add_submonitors@": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
@@ -365,14 +365,14 @@ class CodeGenCpp(CodeGen):
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
-            # overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
+            # overwrite_keys={"@monitor_name@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
         self.format_generated_code()
 
     def generate_monitor(self, formula):
         values = {
-            "@MONITOR_NAME@": f'"{self.name()}"',
+            "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
             "@sub-namespace@": self.sub_namespace(),
             "@namespace_start@": (
