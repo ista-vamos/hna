@@ -152,19 +152,16 @@ class CodeGenCpp(CodeGen):
     """
 
     def __init__(self, name, args, ctx, out_dir: str = None, namespace: str = None):
-        super().__init__(args, ctx, out_dir)
+        super().__init__(name, args, ctx, out_dir, namespace)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
-        self._name = name
-        self._namespace = namespace
         self.BDD = None
         self._bdd_nodes = []
         self._bdd_vars_to_nodes = {}
         self._automata = {}
-        self._add_gen_files = []
         self._atoms_files = []
 
         assert (
@@ -175,7 +172,7 @@ class CodeGenCpp(CodeGen):
             for event in self.args.csv_header.split(",")
         ]
 
-    def _copy_files(self):
+    def copy_files(self, embedded=True):
         # copy files from the CMD line
         for f in self.args.cpp_files:
             self.copy_file(f)
@@ -183,7 +180,6 @@ class CodeGenCpp(CodeGen):
         # copy common templates
         files = [
             "monitor.h",
-            "hnl-sub-monitor-base.h",
             "cmd.h",
             "cmd.cpp",
             "stream.h",
@@ -201,15 +197,15 @@ class CodeGenCpp(CodeGen):
             # XXX: do this only when functions are used
             "function.h",
         ]
+        if not embedded:
+            files += []
 
         from_dir = self.common_templates_path
         for f in files:
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(
-        self, has_submonitors=False, overwrite_keys=None, embedded=False
-    ):
+    def generate_cmake(self, overwrite_keys=None, embedded=False):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -233,7 +229,7 @@ class CodeGenCpp(CodeGen):
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@MONITOR_NAME@": f'"{self._name}"',
-            "@ADD_NESTED_MONITORS@": "\n".join(
+            "@add_submonitors@": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
                     for submon_dir in (d["out_dir"] for d in self._submonitors)
@@ -245,7 +241,6 @@ class CodeGenCpp(CodeGen):
             values.update(overwrite_keys)
 
         if embedded:
-            assert not has_submonitors, "Not handled yet"
             cmakelists = "CMakeLists-embedded.txt.in"
         else:
             cmakelists = "CMakeLists.txt.in"
@@ -671,16 +666,8 @@ class CodeGenCpp(CodeGen):
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
-        # self._generate_create_instances_nested_mon(embedding_data)
         self._generate_automata_code(formula, alphabet)
         self._generate_atom_monitor()
-
-    def generate_toplevel_monitor(self, formula, alphabet, embedding_data):
-        """
-        Generate a monitor that moves with nested HNL monitors.
-        """
-        self._generate_hnlinstances(formula)
-        self._generate_create_instances(formula)
 
     def _generate_automata_code(self, formula, alphabet):
         generated_automata = {}
@@ -1435,7 +1422,7 @@ class CodeGenCpp(CodeGen):
 
         return Ap
 
-    def generate_tests(self, alphabet):
+    def generate_tests(self):
         print("-- Generating tests --")
         makedirs(f"{self.out_dir}/tests", exist_ok=True)
 
@@ -1511,86 +1498,15 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-    def _gen_function_files(self, fun: Function):
-        with self.new_file(f"function-{fun.name}.h") as f:
-            wr = f.write
-            ns = self._namespace or ""
-            wr(
-                f"""
-            #ifndef _FUNCTION_{fun.name}_H__{ns}
-            #define _FUNCTION_{fun.name}_H__{ns}
-            """
-            )
-
-            wr('#include "function.h"\n')
-            wr('#include "sharedtraceset.h"\n\n')
-
-            wr(f"class Function_{fun.name} : public Function{{\n")
-
-            wr("public:\n")
-            wr(" virtual SharedTraceSet& getTraceSet(")
-            wr(", ".join((f"Trace *{tr.name}" for tr in fun.traces)))
-            wr(") = 0;\n")
-            wr("};\n")
-            wr("#endif\n")
-
-    def generate_functions(self, formula, embedding_data={"monitor_name": ""}):
-        functions_instances = formula.functions()
-        functions = list(set(functions_instances))
-
-        # check types of functions
-        _check_functions(functions_instances)
-
-        with self.new_file("functions.h") as f:
-            dump_codegen_position(f)
-            f.write(f'#ifndef HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
-            f.write(f'#define HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
-            f.write("#include <memory>\n")
-            f.write('#include "function.h"\n\n')
-            for fun in functions:
-                f.write(
-                    f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n"
-                )
-            f.write(f'#endif // !HNL_FUNCTIONS__{embedding_data["monitor_name"]}\n')
-
-        with self.new_file("functions-initialize.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"function_{fun.name} = createFunction_{fun.name}(_cmd);\n")
-
-        with self.new_file("function-instances.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"std::unique_ptr<Function> function_{fun.name};\n")
-
-        for fun in functions:
-            self._gen_function_files(fun)
-
-        with self.new_file("gen-function-traces.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"function_{fun.name}->step();\n")
-            f.write("if (finished) {")
-            f.write(" // check if also the function traces generators finished\n")
-            for fun in functions:
-                f.write(f"finished &= function_{fun.name}->noFutureUpdates();\n")
-            f.write("}")
-
-    def generate(self, formula, alphabet=None, embedding_data=None):
+    def generate(self, formula, alphabet=None):
         """
         The top-level function to generate code
         """
 
-        print(f"Generating (base) monitor for '{formula}' into '{self.out_dir}'")
-
         alphabet = alphabet or self.args.alphabet
 
-        if embedding_data is not None:
-            self._generate_embedded(formula, alphabet, embedding_data)
-            return
-
         self.generate_monitor(formula, alphabet)
-        self.generate_tests(alphabet)
+        self.generate_tests()
 
         self.gen_file(
             "main.cpp.in",
@@ -1602,7 +1518,7 @@ class CodeGenCpp(CodeGen):
             },
         )
 
-        self._copy_files()
+        self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake()
@@ -1622,17 +1538,17 @@ class CodeGenCpp(CodeGen):
         assert alphabet, "The alphabet is empty"
         return alphabet
 
-    def _generate_embedded(self, formula, alphabet, embedding_data: dict):
+    def generate_embedded(self, formula, alphabet=None, gen_tests=True):
         """
         The top-level function to generate code
         """
 
-        self.generate_functions(formula, embedding_data)
+        alphabet = alphabet or self.args.alphabet
 
-        self.generate_monitor(formula, alphabet, embedding_data)
+        self.generate_monitor(formula, alphabet)
 
-        if embedding_data.get("tests"):
-            self.generate_tests(alphabet)
+        if gen_tests:
+            self.generate_tests()
 
         self.gen_file(
             "main.cpp.in",
@@ -1644,23 +1560,18 @@ class CodeGenCpp(CodeGen):
             },
         )
 
+        from_dir = self.common_templates_path
+        for f in ("atom-base.h", "atom-evaluation-state.h"):
+            if f not in self.args.overwrite_file:
+                self.copy_file(f, from_dir=from_dir)
+
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
-            overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
+            # overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
         self.format_generated_code()
-
-    def format_generated_code(self):
-        # format the files if we have clang-format
-        # FIXME: check clang-format properly instead of catching the exception
-        try:
-            for path in listdir(self.out_dir):
-                if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
-        except FileNotFoundError:
-            pass
 
     def generate_monitor(self, formula: PrenexFormula, alphabet, embedding_data=None):
         assert not formula.has_quantifier_alternation(), formula

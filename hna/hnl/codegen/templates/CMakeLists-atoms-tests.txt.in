@@ -1,3 +1,5 @@
+# template: CMakeLists-tests.txt.in
+
 file(GLOB inputs "test-atom-*.cpp")
 
 foreach(file ${inputs})

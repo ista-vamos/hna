@@ -84,15 +84,12 @@ class CodeGenCpp(CodeGen):
     """
 
     def __init__(self, name, args, ctx, out_dir: str = None, namespace: str = None):
-        super().__init__(args, ctx, out_dir)
+        super().__init__(name, args, ctx, out_dir, namespace)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
-        self._name = name
-        self._namespace = namespace
-        self._sub_namespace = "sub"
 
         assert (
             self.args.csv_header
@@ -125,7 +122,7 @@ class CodeGenCpp(CodeGen):
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@MONITOR_NAME@": f'"{self._name}"',
-            "@ADD_NESTED_MONITORS@": "\n".join(
+            "@add_submonitors@": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
                     for submon_dir in (d["out_dir"] for d in self._submonitors)
@@ -137,8 +134,7 @@ class CodeGenCpp(CodeGen):
             values.update(overwrite_keys)
 
         if embedded:
-            assert False
-            cmakelists = "CMakeLists-embedded.txt.in"
+            cmakelists = "CMakeLists-sub-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-sub.txt.in"
         self.gen_config(cmakelists, "CMakeLists.txt", values)
@@ -294,7 +290,7 @@ class CodeGenCpp(CodeGen):
         for i in range(2, len(formula.quantifier_prefix) + 1):
             wr("}\n")
 
-    def _generate_monitor(self, formula, alphabet, embedding_data):
+    def _generate_monitor(self, formula):
         """
         Generate a monitor that actually monitors the body of the formula,
         i.e., it creates and moves with atom monitors.
@@ -302,44 +298,39 @@ class CodeGenCpp(CodeGen):
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
 
-    def generate(self, formula, alphabet=None, embedding_data=None):
+    def generate(self, formula):
         """
         The top-level function to generate code
         """
 
         print(f"Generating (sub) monitor for '{formula}' into '{self.out_dir}'")
 
-        alphabet = alphabet or self.args.alphabet
         top_formula, sub_formula = _split_formula(formula)
         has_submonitors = sub_formula.has_quantifier_alternation()
 
-        if embedding_data is not None:
-            self._generate_embedded(top_formula, alphabet, embedding_data)
-        else:
-            self.generate_monitor(top_formula, alphabet)
+        self.generate_monitor(top_formula)
 
         nested_out_dir = f"{self.out_dir}/submonitor"
-        submon_name = self._name + "sub"
 
         if has_submonitors:
             nested_cg = CodeGenCpp(
-                submon_name, self.args, self.ctx, nested_out_dir, self._sub_namespace
+                self.sub_name(),
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                self.sub_namespace(),
             )
         else:
             nested_cg = CodeGenCppAtomsMon(
-                submon_name, self.args, self.ctx, nested_out_dir, self._sub_namespace
+                self.sub_name(),
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                self.sub_namespace(),
             )
 
-        embedding_data = embedding_data or {}
-        embedding_data.update(
-            {
-                "monitor_name": submon_name,
-                "namespace": "sub",
-            }
-        )
-        # generate submonitors of this monitor
-        nested_cg.generate(sub_formula, alphabet, embedding_data)
-        self._submonitors = [{"name": submon_name, "out_dir": nested_out_dir}]
+        nested_cg.generate_embedded(sub_formula)
+        self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
         # generate this monitor
 
@@ -349,17 +340,18 @@ class CodeGenCpp(CodeGen):
 
         self.format_generated_code()
 
-    def _generate_embedded(self, formula, alphabet, embedding_data: dict):
+    def generate_embedded(self, formula, gen_main=False, gen_tests=True):
         """
-        The top-level function to generate code
+        The top-level function to generate code as an embedded CMake project
         """
 
-        self.generate_monitor(formula, alphabet, embedding_data)
+        self.generate_monitor(formula)
+        self.generate_cmake(embedded=True)
 
-        # if embedding_data.get("tests"):
-        #    self.generate_tests(alphabet)
+        # if gen_tests:
+        #    self.generate_tests(self.args.alphabet)
 
-        if embedding_data.get("generate-main"):
+        if gen_main:
             self.gen_file(
                 "main.cpp.in",
                 "main.cpp",
@@ -373,50 +365,25 @@ class CodeGenCpp(CodeGen):
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(
-            overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
+            # overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
         self.format_generated_code()
 
-    def format_generated_code(self):
-        # format the files if we have clang-format
-        # FIXME: check clang-format properly instead of catching the exception
-        try:
-            for path in listdir(self.out_dir):
-                if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
-        except FileNotFoundError:
-            pass
-
-    def generate_monitor(self, formula, alphabet, embedding_data=None):
-        if embedding_data:
-            values = {
-                "@MONITOR_NAME@": embedding_data["monitor_name"],
-                "@namespace@": self._namespace or "",
-                "@namespace_start@": (
-                    f"namespace {self._namespace} {{" if self._namespace else ""
-                ),
-                "@namespace_end@": (
-                    f"}} // namespace {self._namespace}" if self._namespace else ""
-                ),
-            }
-        else:
-            embedding_data = {}
-            values = {
-                "@MONITOR_NAME@": "",
-                "@namespace@": self._namespace or "",
-                "@sub-namespace@": self._sub_namespace or "",
-                "@namespace_start@": (
-                    f"namespace {self._namespace} {{" if self._namespace else ""
-                ),
-                "@namespace_end@": (
-                    f"}} // namespace {self._namespace}" if self._namespace else ""
-                ),
-            }
-
-        print(values)
+    def generate_monitor(self, formula):
+        values = {
+            "@MONITOR_NAME@": f'"{self.name()}"',
+            "@namespace@": self.namespace(),
+            "@sub-namespace@": self.sub_namespace(),
+            "@namespace_start@": (
+                f"namespace {self._namespace} {{" if self._namespace else ""
+            ),
+            "@namespace_end@": (
+                f"}} // namespace {self._namespace}" if self._namespace else ""
+            ),
+        }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)
         self.gen_file("hnl-sub-monitor.cpp.in", "hnl-monitor.cpp", values)
 
-        self._generate_monitor(formula, alphabet, embedding_data)
+        self._generate_monitor(formula)

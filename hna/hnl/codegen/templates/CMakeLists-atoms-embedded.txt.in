@@ -1,19 +1,6 @@
-cmake_minimum_required(VERSION 3.9)
-project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
+# template: CMakeLists-embedded.txt.in
 
-set(EMBEDDED TRUE)
-
-if (@MONITOR_NAME@ STREQUAL "")
-set(MONITOR_NAME "monitor")
-else()
 set(MONITOR_NAME @MONITOR_NAME@)
-endif()
-
-if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-endif()
-
-set(CMAKE_VERBOSE_MAKEFILE 1)
 
 add_library(atoms${MONITOR_NAME} STATIC @atoms_sources@)
 target_compile_definitions(atoms${MONITOR_NAME} PRIVATE @additional_cflags@)
@@ -39,4 +26,4 @@ if (ENABLE_TESTS)
     #add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()
 
-@ADD_NESTED_MONITORS@
+@add_submonitors@
