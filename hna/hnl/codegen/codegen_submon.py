@@ -222,10 +222,8 @@ class CodeGenCpp(CodeGen):
 
         wr(
             """
-           auto *instance = new Instance{t1, t2, INITIAL_ATOM};
+           auto *instance = new Instance{t1, t2};
            ++stats.num_instances;
-
-           instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
 
            #ifdef DEBUG_PRINTS
            std::cerr << "Instance[init"
@@ -240,10 +238,9 @@ class CodeGenCpp(CodeGen):
             wr(
                 """
                if (t1 != t2)  {
-                  auto *instance = new Instance{t2, t1, INITIAL_ATOM};
+                  auto *instance = new Instance{t2, t1};
                   ++stats.num_instances;
 
-                  instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
                   #ifdef DEBUG_PRINTS
                     std::cerr << "Instance[init"
                               << ", " << t2->id() << ", " << t1->id() << "]\\n";
@@ -261,8 +258,7 @@ class CodeGenCpp(CodeGen):
 
         dump_codegen_position(wr)
         for t1_pos in range(1, N + 1):
-            # compute the condition to avoid repeating the combinations
-            # of traces
+            # compute the condition to avoid repeating the combinations of traces
             conds = []
             # FIXME: generate the matrix instead of generating the rows again and again
             posrow = list(traces_positions(t1_pos, N))
@@ -280,11 +276,12 @@ class CodeGenCpp(CodeGen):
             wr(f"if ({cond}) {{")
             dump_codegen_position(wr)
             wr("\n  auto *instance = new Instance{")
-            for i in traces_positions(t1_pos, N):
+            for n, i in enumerate(traces_positions(t1_pos, N)):
+                if n > 0:
+                    wr(", ")
                 wr(f"t{i}, ")
-            wr("INITIAL_ATOM};\n")
+            wr("};\n")
             wr("++stats.num_instances;\n\n")
-            wr("instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);\n")
             dump_codegen_position(wr)
             ns = f"{self._namespace}::" if self._namespace else ""
             wr("#ifdef DEBUG_PRINTS\n")

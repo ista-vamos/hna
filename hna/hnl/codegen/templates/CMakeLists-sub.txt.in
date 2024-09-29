@@ -1,3 +1,5 @@
+# template: CMakeLists-sub.txt.in
+
 cmake_minimum_required(VERSION 3.9)
 project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
 
