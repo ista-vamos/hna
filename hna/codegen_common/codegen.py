@@ -16,6 +16,10 @@ class CodeGen(CG):
         self.templates_path = None  # must be set by child classes
 
         self._add_gen_files = []
+        self._submonitors = []
+
+    def submonitors(self):
+        return self._submonitors
 
     def format_generated_code(self):
         # format the files if we have clang-format

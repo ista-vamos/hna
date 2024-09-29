@@ -1,19 +1,26 @@
+// template: hnl-monitor.h.in
+
 #ifndef HNLMONITOR_H_
 #define HNLMONITOR_H_
 
 #include "monitor.h"
 #include "traceset.h"
-@SUBMONITOR_INCLUDE@
+#include "submonitor/hnl-monitor.h"
+
+#include "cmd.h"
+
+@namespace_start@
 
 ///
-// The top-level class for HNL monitor for arbitrary HNL formula
+// The top-level class for HNL monitor for an arbitrary HNL formula
 class HNLMonitor : public Monitor {
-  // HNLMonitor is a wrapper and a container for traces (including function traces).
+  // This class is a wrapper and a container for traces (including function traces).
   // The actual monitoring happens in this submonitor.
-  @SUBMONITOR_TY@ _monitor;
-
-protected:
+  sub::HNLMonitor _monitor;
+  // All traces for this monitor (and submonitors).
+  // The submonitors will have only a view of this container
   TraceSet _traces;
+  CmdArgs *_cmd;
 
   #include "function-instances.h"
 
@@ -22,24 +29,19 @@ public:
     #include "functions-initialize.h"
   }
 
-  virtual ~HNLMonitor() {}
+  //virtual ~HNLMonitor() {}
 
   // adding and extending traces
-  void newTrace(unsigned trace_id) { _traces.newTrace(trace_id); }
-
-  void extendTrace(unsigned trace_id, const Event &e) {
-    _traces.extendTrace(trace_id, e);
-  }
-
-  void traceFinished(unsigned trace_id) { _traces.traceFinished(trace_id); }
-
-  void noFutureUpdates() { _traces.noFutureUpdates(); }
-
-  bool allTracesFinished() { return _traces.allTracesFinished(); }
-
-  bool hasTrace(unsigned trace_id) { return _traces.hasTrace(trace_id); }
+  void newTrace(unsigned trace_id);
+  void extendTrace(unsigned trace_id, const Event &e);
+  void traceFinished(unsigned trace_id);
+  void noFutureUpdates();
+  bool allTracesFinished();
+  bool hasTrace(unsigned trace_id);
 
   Verdict step();
 };
+
+@namespace_end@
 
 #endif // HNLMONITOR_H_

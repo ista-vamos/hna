@@ -44,7 +44,6 @@ class CodeGenCpp(CodeGen):
         )
         self.templates_path = pathjoin(self_dir, "templates/")
         self._namespace = namespace
-        self._add_gen_files = []
 
         assert (
             self.args.csv_header
@@ -62,7 +61,6 @@ class CodeGenCpp(CodeGen):
         # copy common templates
         files = [
             "monitor.h",
-            "hnl-sub-monitor-base.h",
             "cmd.h",
             "cmd.cpp",
             "stream.h",
@@ -86,9 +84,7 @@ class CodeGenCpp(CodeGen):
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(
-        self, has_submonitors=False, overwrite_keys=None, embedded=False
-    ):
+    def generate_cmake(self, overwrite_keys=None, embedding_data=None):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -97,6 +93,9 @@ class CodeGenCpp(CodeGen):
         build_type = self.args.build_type
         if not build_type:
             build_type = '"Debug"' if self.args.debug else "Release"
+
+        if embedding_data is not None:
+            raise NotImplementedError("HERE")
 
         values = {
             "@vamos-buffers_DIR@": vamos_buffers_DIR,
@@ -108,28 +107,22 @@ class CodeGenCpp(CodeGen):
                     + self._add_gen_files
                 )
             ),
-            "@atoms_sources@": " ".join((basename(f) for f in self._atoms_files)),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
-            "@MONITOR_NAME@": '""',
-            "@ADD_NESTED_MONITORS@": "\n".join(
-                (
-                    f"add_subdirectory({submon_dir})"
-                    for submon_dir in self._submonitors_dirs.values()
-                )
+            "@MONITOR_NAME@": '"monitor"',
+            "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
+            "@submonitors@": "\n".join(
+                (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
             ),
-            "@submonitors_libs@": " ".join(self._submonitors),
         }
         if overwrite_keys:
             values.update(overwrite_keys)
 
-        if embedded:
-            assert not has_submonitors, "Not handled yet"
+        if embedding_data is not None:
+            raise NotImplementedError("HERE")
             cmakelists = "CMakeLists-embedded.txt.in"
-        elif has_submonitors:
-            cmakelists = "CMakeLists-sub.txt.in"
         else:
-            cmakelists = "CMakeLists.txt.in"
+            cmakelists = "CMakeLists-top.txt.in"
         self.gen_config(cmakelists, "CMakeLists.txt", values)
 
     def _generate_events(self):
@@ -303,33 +296,23 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(f)
             for fun in functions:
                 f.write(f"function_{fun.name}->step();\n")
-            f.write("if (finished) {")
+
+        with self.new_file("function-traces-finished.h") as f:
+            dump_codegen_position(f)
             f.write(" // check if also the function traces generators finished\n")
             for fun in functions:
-                f.write(f"finished &= function_{fun.name}->noFutureUpdates();\n")
-            f.write("}")
+                f.write(f"finished &= function_{fun.name}->allTracesFinished();\n")
 
-        self.gen_file(
-            "nested-hnl-atom-monitor.h.in",
-            "nested-hnl-atom-monitor.h",
-            {
-                "@MONITOR_NAME@": embedding_data["monitor_name"],
-                "@namespace@": self._namespace or "",
-                "@namespace_start@": (
-                    f"namespace {self._namespace} {{" if self._namespace else ""
-                ),
-                "@namespace_end@": (
-                    f"}} // namespace {self._namespace}" if self._namespace else ""
-                ),
-            },
-        )
+    def generate(self, formula: PrenexFormula, alphabet=None, embedding_data=None):
+        """The top-level function to generate code"""
 
-    def generate(self, formula: PrenexFormula):
-        """
-        The top-level function to generate code
-        """
+        print(f"Generating top-level monitor for '{formula}' into '{self.out_dir}'")
 
-        self.args.alphabet = self._get_alphabet(formula)
+        self.args.alphabet = alphabet or self._get_alphabet(formula)
+        if embedding_data is not None:
+            assert False, "Not implemented"
+            self._generate_embedded(formula, alphabet, embedding_data)
+            return
 
         self._generate_events()
 
@@ -343,25 +326,47 @@ class CodeGenCpp(CodeGen):
         # generate directly the monitor for the body of the formula.
         # Otherwise, generate a monitor that has sub-monitors for the sub-formulas
         # where the formula alternates.
+        submon_name = "sub"
+        nested_out_dir_rel = "submonitor"
+        nested_out_dir = f"{self.out_dir}/{nested_out_dir_rel}"
+        nested_namespace = "sub"
+        self._submonitors = [
+            {
+                "name": submon_name,
+                "out_dir": nested_out_dir,
+                "out_dir_rel": nested_out_dir_rel,
+                "namespace": nested_namespace,
+            }
+        ]
+
         if has_quantifier_alternation:
             codegen = CodeGenCppSubMon(
-                self.args, self.ctx, self.out_dir, self._namespace
+                submon_name,
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                namespace=nested_namespace,
             )
         else:
             codegen = CodeGenCppAtomsMon(
-                self.args, self.ctx, self.out_dir, self._namespace
+                submon_name,
+                self.args,
+                self.ctx,
+                nested_out_dir,
+                namespace=nested_namespace,
             )
 
         # FIXME: do this more elegantly, this is more or less a hack
         self.args.out_dir_overwrite = False
         codegen.generate(formula)
 
-        self.generate_main(has_quantifier_alternation)
+        self.generate_monitor(embedding_data)
+        self.generate_main()
 
         self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake(has_submonitors=has_quantifier_alternation)
+        self.generate_cmake(embedding_data)
 
         self.format_generated_code()
 
@@ -378,7 +383,35 @@ class CodeGenCpp(CodeGen):
         assert alphabet, "The alphabet is empty"
         return alphabet
 
-    def generate_main(self, has_submonitors):
+    def generate_monitor(self, embedding_data=None):
+        if embedding_data:
+            values = {
+                "@MONITOR_NAME@": embedding_data["monitor_name"],
+                "@namespace@": self._namespace or "",
+                "@namespace_start@": (
+                    f"namespace {self._namespace} {{" if self._namespace else ""
+                ),
+                "@namespace_end@": (
+                    f"}} // namespace {self._namespace}" if self._namespace else ""
+                ),
+            }
+        else:
+            embedding_data = {}
+            values = {
+                "@MONITOR_NAME@": f'"monitor"',
+                "@namespace@": self._namespace or "",
+                "@namespace_start@": (
+                    f"namespace {self._namespace} {{" if self._namespace else ""
+                ),
+                "@namespace_end@": (
+                    f"}} // namespace {self._namespace}" if self._namespace else ""
+                ),
+            }
+
+        self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
+        self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
+
+    def generate_main(self):
         self.gen_file(
             "main.cpp.in",
             "main.cpp",

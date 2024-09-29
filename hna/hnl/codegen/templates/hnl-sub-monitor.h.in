@@ -1,3 +1,5 @@
+// template: hnl-sub-monitor.h.in
+
 // #pragma once is buggy if we generate multiple HNL monitors
 // and try to include them in the HNA monitor. We have to use
 // normal include guards. However, they must be different for each HNL
@@ -16,18 +18,13 @@
 #include <ctime>
 #endif // !MEASURE_CPUTIME
 
+#include "monitor.h"
 #include "verdict.h"
 #include "trace.h"
-#include "traceset.h"
-#include "sharedtraceset.h"
 #include "tracesetview.h"
-#include "cmd.h"
-
-#include "hnl-sub-monitor-base.h"
 
 /* generated */
-#include "hnl-instance.h"
-#include "functions.h"
+#include "instance.h"
 
 @namespace_start@
 
@@ -37,17 +34,18 @@
 // In cases when the formula is `forall ..., exists ...: F`,
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
-class HNLSubMonitor : public HNLSubMonitorBase {
+class HNLMonitor : public Monitor {
+  TraceSetView _traces;
 protected:
   // here we store the running atoms
-  std::vector<@namespace@::HNLSubMonitorBase *> _monitors_wbg;
+  std::vector<@sub-namespace@::HNLMonitor *> _monitors_wbg;
 
-  bool addNewTraces() override;
+  bool addNewTraces();
 /*
   void deleteMonitor(AtomMonitor *);
   void condenseWbg();
 
-  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
+  Verdict updateInstance(Instance *instance, Verdict verdict);
   Verdict getFinishedVerdict(const AtomIdentifier& id);
 
   CmdArgs *_cmd;
@@ -56,7 +54,10 @@ public:
 
   Verdict step();
 
-  void removeInstance(HNLInstance *instance);
+  void removeInstance(Instance *instance);
+  void noFutureUpdates() { // _traces.noFutureUpdates();
+    abort();
+  }
 
 /*
   // statistics

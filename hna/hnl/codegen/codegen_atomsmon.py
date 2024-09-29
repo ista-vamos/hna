@@ -7,6 +7,7 @@ from sys import stderr
 from pyeda.inter import bddvar
 
 from hna.automata.automaton import Automaton
+from hna.codegen_common.codegen import CodeGen
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
@@ -17,7 +18,6 @@ from hna.hnl.formula import (
     Constant,
     Function,
     ForAll,
-    TraceVariable,
     PrenexFormula,
 )
 from hna.hnl.formula2automata import (
@@ -25,7 +25,6 @@ from hna.hnl.formula2automata import (
     compose_automata,
     to_priority_automaton,
 )
-from hna.codegen_common.codegen import CodeGen
 
 
 def random_path(A: Automaton, length: int) -> list:
@@ -152,13 +151,14 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, args, ctx, out_dir: str = None, namespace: str = None):
+    def __init__(self, name, args, ctx, out_dir: str = None, namespace: str = None):
         super().__init__(args, ctx, out_dir)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
+        self._name = name
         self._namespace = namespace
         self.BDD = None
         self._bdd_nodes = []
@@ -166,8 +166,6 @@ class CodeGenCpp(CodeGen):
         self._automata = {}
         self._add_gen_files = []
         self._atoms_files = []
-        self._submonitors_dirs = {}
-        self._submonitors = []
 
         assert (
             self.args.csv_header
@@ -234,11 +232,11 @@ class CodeGenCpp(CodeGen):
             "@atoms_sources@": " ".join((basename(f) for f in self._atoms_files)),
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
-            "@MONITOR_NAME@": '""',
+            "@MONITOR_NAME@": f'"{self._name}"',
             "@ADD_NESTED_MONITORS@": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
-                    for submon_dir in self._submonitors_dirs.values()
+                    for submon_dir in (d["out_dir"] for d in self._submonitors)
                 )
             ),
             "@submonitors_libs@": " ".join(self._submonitors),
@@ -249,8 +247,6 @@ class CodeGenCpp(CodeGen):
         if embedded:
             assert not has_submonitors, "Not handled yet"
             cmakelists = "CMakeLists-embedded.txt.in"
-        elif has_submonitors:
-            cmakelists = "CMakeLists-sub.txt.in"
         else:
             cmakelists = "CMakeLists.txt.in"
         self.gen_config(cmakelists, "CMakeLists.txt", values)
@@ -652,54 +648,6 @@ class CodeGenCpp(CodeGen):
         for i in range(2, len(formula.quantifier_prefix) + 1):
             wr("}\n")
 
-    def _generate_create_instances_nested_mon(self, embedding_data):
-        is_nested_monitor = embedding_data.get("is_nested_monitor") is not None
-        ns = f"{self._namespace}::" if self._namespace else ""
-
-        with self.new_file("create-instances-left.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-            if is_nested_monitor:
-                wr("/* the code that precedes this defines a variable `tl` */\n\n")
-                wr(
-                    f"""
-                for (auto &[tr_id, tr] : _traces_r) {{
-                    auto *instance = new HNLInstance{{tl, tr, INITIAL_ATOM}};
-                    ++stats.num_instances;
-                    
-                    instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
-                    #ifdef DEBUG_PRINTS
-                    std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
-                    #endif /* !DEBUG_PRINTS */
-                """
-                )
-                wr("}\n")
-            else:
-                wr("(void)tl; abort(); /* this function should be never called */\n")
-
-        with self.new_file("create-instances-right.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-            if is_nested_monitor:
-                wr("/* the code that precedes this defines a variable `tr` */\n\n")
-                wr(
-                    f"""
-                for (auto &[tl_id, tl] : _traces_l) {{
-                    auto *instance = new HNLInstance{{tl, tr, INITIAL_ATOM}};
-                    ++stats.num_instances;
-
-                    instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
-                        
-                    #ifdef DEBUG_PRINTS
-                    std::cerr << "{ns}HNLInstance[init" << ", " << tl->id() << ", " << tr->id() << "]\\n";
-                    #endif /* !DEBUG_PRINTS */
-                }}
-                """
-                )
-
-            else:
-                wr("(void)tr; abort(); /* this function should be never called */\n")
-
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
             dump_codegen_position(f)
@@ -820,22 +768,6 @@ class CodeGenCpp(CodeGen):
             )
             f.write("  default: abort();\n")
             f.write("}")
-
-    def generate_submonitor(self, alphabet, formula):
-        nested_mon = CodeGenCpp(
-            self.args,
-            ctx=None,
-            out_dir=f"{self.out_dir}/nested-monitor",
-            namespace=f"{self._namespace}-nested" if self._namespace else "nested",
-        )
-
-        embedding_data = {
-            "monitor_name": f"nested",
-            "tests": True,
-            "is_nested_monitor": True,
-        }
-
-        nested_mon.generate_embedded(formula, alphabet, embedding_data)
 
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
@@ -1644,37 +1576,20 @@ class CodeGenCpp(CodeGen):
                 f.write(f"finished &= function_{fun.name}->noFutureUpdates();\n")
             f.write("}")
 
-        self.gen_file(
-            "nested-hnl-atom-monitor.h.in",
-            "nested-hnl-atom-monitor.h",
-            {
-                "@MONITOR_NAME@": embedding_data["monitor_name"],
-                "@namespace@": self._namespace or "",
-                "@namespace_start@": (
-                    f"namespace {self._namespace} {{" if self._namespace else ""
-                ),
-                "@namespace_end@": (
-                    f"}} // namespace {self._namespace}" if self._namespace else ""
-                ),
-            },
-        )
-
-    def generate(self, formula):
+    def generate(self, formula, alphabet=None, embedding_data=None):
         """
         The top-level function to generate code
         """
 
-        self._generate_events()
+        print(f"Generating (base) monitor for '{formula}' into '{self.out_dir}'")
 
-        if self.args.gen_csv_reader:
-            self._generate_csv_reader()
+        alphabet = alphabet or self.args.alphabet
 
-        alphabet = self._get_alphabet(formula)
+        if embedding_data is not None:
+            self._generate_embedded(formula, alphabet, embedding_data)
+            return
 
-        self.generate_functions(formula)
-
-        has_submonitors = self.generate_monitor(formula, alphabet)
-
+        self.generate_monitor(formula, alphabet)
         self.generate_tests(alphabet)
 
         self.gen_file(
@@ -1690,7 +1605,7 @@ class CodeGenCpp(CodeGen):
         self._copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake(has_submonitors=has_submonitors)
+        self.generate_cmake()
 
         self.format_generated_code()
 
@@ -1707,7 +1622,7 @@ class CodeGenCpp(CodeGen):
         assert alphabet, "The alphabet is empty"
         return alphabet
 
-    def generate_embedded(self, formula, alphabet, embedding_data: dict):
+    def _generate_embedded(self, formula, alphabet, embedding_data: dict):
         """
         The top-level function to generate code
         """
@@ -1747,9 +1662,8 @@ class CodeGenCpp(CodeGen):
         except FileNotFoundError:
             pass
 
-    def generate_monitor(self, formula, alphabet, embedding_data=None):
-        top_formula, sub_formula = _split_formula(formula)
-        has_submonitors = bool(sub_formula)
+    def generate_monitor(self, formula: PrenexFormula, alphabet, embedding_data=None):
+        assert not formula.has_quantifier_alternation(), formula
 
         if embedding_data:
             values = {
@@ -1775,32 +1689,22 @@ class CodeGenCpp(CodeGen):
         self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("hnl-sub-monitor.h.in", "hnl-sub-monitor.h", values)
         self.gen_file("hnl-sub-monitor.cpp.in", "hnl-sub-monitor.cpp", values)
-        if not has_submonitors:
-            self.gen_file("hnl-atoms-monitor.h.in", "hnl-atoms-monitor.h", values)
-            self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-atoms-monitor.cpp", values)
-            self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
-            self.gen_file(
-                "finished-atom-monitor.h.in", "finished-atom-monitor.h", values
-            )
-            self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
+        self.gen_file("hnl-atoms-monitor.h.in", "hnl-atoms-monitor.h", values)
+        self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-atoms-monitor.cpp", values)
+        self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
+        self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
+        self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
-        if has_submonitors:
-            self.generate_toplevel_monitor(top_formula, alphabet, embedding_data)
-            self.generate_submonitor(alphabet, sub_formula)
-        else:
-            # there is no sub-formula, this is the monitor for the body of the function
-            assert formula == top_formula, (formula, top_formula)
-            self._gen_bdd_from_formula(formula)
+        # there is no sub-formula, this is the monitor for the body of the function
+        self._gen_bdd_from_formula(formula)
 
-            for nd in self._bdd_nodes:
-                nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
+        for nd in self._bdd_nodes:
+            nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
 
-            def gen_automaton(F):
-                if not isinstance(F, IsPrefix):
-                    return
+        def gen_automaton(F):
+            if not isinstance(F, IsPrefix):
+                return
 
-            formula.visit(gen_automaton)
+        formula.visit(gen_automaton)
 
-            self._generate_monitor(formula, alphabet, embedding_data)
-
-        return has_submonitors
+        self._generate_monitor(formula, alphabet, embedding_data)
