@@ -13,7 +13,7 @@
 
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
-class HNLMonitor : public Monitor {
+class HNLMonitor : public ::Monitor {
   // This class is a wrapper and a container for traces (including function traces).
   // The actual monitoring happens in this submonitor.
   sub::HNLMonitor _monitor;
