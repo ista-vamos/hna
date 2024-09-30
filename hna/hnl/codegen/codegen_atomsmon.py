@@ -337,7 +337,10 @@ class CodeGenCpp(CodeGen):
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
             wr("struct HNLInstance {\n")
-            wr("  /* traces */\n")
+            wr("  /* fixed traces */\n")
+            for q in self._fixed_quantifiers or ():
+                wr(f"  Trace *{q.var};\n")
+            wr("  /* variable traces */\n")
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
