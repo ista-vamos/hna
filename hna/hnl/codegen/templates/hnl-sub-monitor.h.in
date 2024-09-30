@@ -24,7 +24,7 @@
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
 class HNLMonitor : public Monitor {
-  TraceSetView _traces;
+  @input_traces@
 
   // here we store the running monitors
   //std::vector<std::unique_ptr<@sub-namespace@::HNLMonitor>> _monitors_wbg;

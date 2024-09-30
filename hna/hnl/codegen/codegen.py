@@ -300,9 +300,9 @@ class CodeGenCpp(CodeGen):
                 f.write(f"finished &= function_{fun.name}->allTracesFinished();\n")
 
     def generate(self, formula: PrenexFormula, alphabet=None):
-        """The top-level function to generate code"""
-
-        print(f"Generating top-level monitor for '{formula}' into '{self.out_dir}'")
+        """
+        The top-level function to generate code
+        """
 
         self.args.alphabet = alphabet or self._get_alphabet(formula)
 
@@ -336,7 +336,7 @@ class CodeGenCpp(CodeGen):
                 submon_name,
                 self.args,
                 self.ctx,
-                nested_out_dir,
+                out_dir=nested_out_dir,
                 namespace=nested_namespace,
             )
         else:
@@ -344,7 +344,7 @@ class CodeGenCpp(CodeGen):
                 submon_name,
                 self.args,
                 self.ctx,
-                nested_out_dir,
+                out_dir=nested_out_dir,
                 namespace=nested_namespace,
             )
 

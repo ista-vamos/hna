@@ -25,29 +25,10 @@ static inline Verdict do_step(AtomMonitor *M) {
 
 
 bool HNLMonitor::addNewTraces() {
-  if (auto *t1 = _traces.getNewTrace()) {
-      /* GENERATED */
-      #include "create-instances.h"
-  }
+  /* GENERATED */
+  #include "create-instances.h"
 
   return _traces.finished();
-}
-
-bool FunctionHNLMonitor::addNewTraces() {
-  // We know that this HNL monitor has only two quantifiers,
-  // so this code is not generated
-  /*
-  if (auto *tl = _traces_l.getNewTrace()) {
-      #include "create-instances-left.h"
-  }
-
-  if (auto *tr = _traces_r.getNewTrace()) {
-      #include "create-instances-right.h"
-  }
-
-  return _traces_l.finished() && _traces_r.finished();
-  */
-  abort();
 }
 
 Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {

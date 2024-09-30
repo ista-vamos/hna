@@ -27,7 +27,7 @@
 #include "tracesetview.h"
 #include "cmd.h"
 
-#include "hnl-sub-monitor-base.h"
+#include "monitor.h"
 
 /* generated */
 #include "hnl-instance.h"
@@ -37,11 +37,8 @@
 @namespace_start@
 
 
-class HNLAtomsMonitor : public HNLSubMonitorBase {
+class HNLMonitor : public Monitor {
 protected:
-  // here we store the running atoms
-  // std::vector<std::unique_ptr<@namespace@::AtomMonitor>> _atom_monitors;
-
   // the workbag of monitors to `step` -- they are either running or finished monitors
   std::vector<@namespace@::AtomMonitor *> _monitors_wbg;
 
@@ -53,9 +50,10 @@ protected:
   std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
 #endif
 
-  // check for new traces and create HNLInstances for them
-  // if there are some
-  virtual bool addNewTraces();
+  @input_traces@
+
+  // check for new traces and create HNLInstances for them if there are some
+  bool addNewTraces();
 
   void deleteAtomMonitor(AtomMonitor *);
   void condenseWbg();
@@ -66,8 +64,7 @@ protected:
   CmdArgs *_cmd;
 
 public:
-  HNLAtomsMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {}
-  virtual ~HNLAtomsMonitor() {}
+  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {}
 
   Verdict step();
 

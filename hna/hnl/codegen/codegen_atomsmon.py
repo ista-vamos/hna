@@ -16,6 +16,8 @@ from hna.hnl.formula import (
     Not,
     Constant,
     PrenexFormula,
+    ForAllFromFun,
+    ForAll,
 )
 from hna.hnl.formula2automata import (
     formula_to_automaton,
@@ -100,7 +102,15 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, name, args, ctx, out_dir: str = None, namespace: str = None):
+    def __init__(
+        self,
+        name,
+        args,
+        ctx,
+        fixed_quantifiers=None,
+        out_dir: str = None,
+        namespace: str = None,
+    ):
         super().__init__(name, args, ctx, out_dir, namespace)
 
         self_dir = abspath(
@@ -112,6 +122,7 @@ class CodeGenCpp(CodeGen):
         self._bdd_vars_to_nodes = {}
         self._automata = {}
         self._atoms_files = []
+        self._fixed_quantifiers = fixed_quantifiers
 
         assert (
             self.args.csv_header
@@ -370,7 +381,8 @@ class CodeGenCpp(CodeGen):
         with self.new_file("create-instances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("/* the code that precedes this defines a variable `t1` */\n\n")
+
+            wr("if (auto * t1 = _traces.getNewTrace()) {")
             wr(
                 """
             /* Create the instances
@@ -385,6 +397,8 @@ class CodeGenCpp(CodeGen):
                 self._gen_create_instance_reduced(formula, wr)
             else:
                 self._gen_create_instance(N, formula, wr)
+
+            wr("}\n\n")
 
     def _gen_create_instance_reduced(self, formula, wr):
         if len(formula.quantifier_prefix) > 2:
@@ -1247,19 +1261,6 @@ class CodeGenCpp(CodeGen):
 
         self.format_generated_code()
 
-    def _get_alphabet(self, formula):
-        if not self.args.alphabet:
-            print(
-                "No alphabet given, using constants from the formula: ",
-                formula.constants(),
-                file=stderr,
-            )
-            alphabet = formula.constants()
-        else:
-            alphabet = [Constant(a) for a in self.args.alphabet]
-        assert alphabet, "The alphabet is empty"
-        return alphabet
-
     def generate_embedded(self, formula, alphabet=None, gen_tests=True):
         """
         The top-level method to generate code
@@ -1295,6 +1296,26 @@ class CodeGenCpp(CodeGen):
         )
         self.format_generated_code()
 
+    def _traces_attribute_str(self, formula):
+        lines = []
+        # Add attributes for quantifiers fixed by parent monitors
+        for q in self._fixed_quantifiers or ():
+            lines.append(f"Trace *{q.var};")
+
+        others = {}
+        for q in formula.quantifier_prefix:
+            # None means observed traces (better than some string that could collide with the name
+            # of the function)
+            others.setdefault(
+                q.fun if isinstance(q, ForAllFromFun) else None, []
+            ).append(str(q.var))
+
+        for traceset, quantifiers in others.items():
+            lines.append(
+                f"TraceSetView {traceset.c_name() if traceset else 'traces'};  // {', '.join(quantifiers)}{traceset or ''};"
+            )
+        return "\n".join(lines)
+
     def generate_monitor(self, formula: PrenexFormula, alphabet):
         assert not formula.has_quantifier_alternation(), formula
 
@@ -1307,6 +1328,7 @@ class CodeGenCpp(CodeGen):
             "@namespace_end@": (
                 f"}} // namespace {self._namespace}" if self._namespace else ""
             ),
+            "@input_traces@": self._traces_attribute_str(formula),
         }
 
         self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)

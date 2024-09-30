@@ -362,6 +362,9 @@ class Function(TraceFormula):
         self.traces = traces
 
     @cached_str
+    def c_name(self) -> str:
+        return f"{self.name}__{'_'.join(map(str, self.traces))}"
+
     def __str__(self) -> str:
         return f"@{self.name}({', '.join(map(str, self.traces))})"
 

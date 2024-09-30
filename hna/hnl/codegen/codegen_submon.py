@@ -17,6 +17,7 @@ from hna.hnl.formula import (
     Constant,
     Function,
     ForAll,
+    ForAllFromFun,
     TraceVariable,
     PrenexFormula,
 )
@@ -27,19 +28,6 @@ from hna.hnl.formula2automata import (
 )
 from hna.codegen_common.codegen import CodeGen
 from .codegen_atomsmon import CodeGenCpp as CodeGenCppAtomsMon, traces_positions
-
-
-def _check_functions(functions):
-    funs = {}
-    for fun in functions:
-        f = funs.get(fun.name)
-        if f is None:
-            funs[fun.name] = fun
-        else:
-            if len(f.traces) != len(fun.traces):
-                raise RuntimeError(
-                    f"Function '{fun.name}' is used multiple time with different number of arguments:\n{fun} and {f}"
-                )
 
 
 def _universal_quantifiers_prefix(formula: PrenexFormula):
@@ -67,14 +55,15 @@ def _split_formula(formula: PrenexFormula):
     universal, rest = _universal_quantifiers_prefix(formula)
     if not rest:
         # this formula is only universally quantified
-        return formula, None
+        return formula, None, universal
 
     F1 = PrenexFormula(universal, Not(Constant("subF")))
     F2 = PrenexFormula([q.swap() for q in rest], Not(formula.formula))
     print("Split formula: topF = ", F1)
     print("Split formula: subF = ", F2)
+    print("Universal: ", universal)
 
-    return F1, F2
+    return F1, F2, universal
 
 
 class CodeGenCpp(CodeGen):
@@ -83,13 +72,22 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, name, args, ctx, out_dir: str = None, namespace: str = None):
+    def __init__(
+        self,
+        name,
+        args,
+        ctx,
+        fixed_quantifiers=None,
+        out_dir: str = None,
+        namespace: str = None,
+    ):
         super().__init__(name, args, ctx, out_dir, namespace)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
+        self._fixed_quantifiers = fixed_quantifiers
 
         assert (
             self.args.csv_header
@@ -290,6 +288,26 @@ class CodeGenCpp(CodeGen):
         for i in range(2, len(formula.quantifier_prefix) + 1):
             wr("}\n")
 
+    def _traces_attribute_str(self, formula):
+        lines = []
+        # Add attributes for quantifiers fixed by parent monitors
+        for q in self._fixed_quantifiers or ():
+            lines.append(f"Trace *{q.var};")
+
+        others = {}
+        for q in formula.quantifier_prefix:
+            # None means observed traces (better than some string that could collide with the name
+            # of the function)
+            others.setdefault(
+                q.fun if isinstance(q, ForAllFromFun) else None, []
+            ).append(str(q.var))
+
+        for traceset, quantifiers in others.items():
+            lines.append(
+                f"TraceSetView {traceset.c_name() if traceset else 'traces'};  // {', '.join(quantifiers)}{traceset or ''};"
+            )
+        return "\n".join(lines)
+
     def _generate_monitor(self, formula):
         """
         Generate a monitor that actually monitors the body of the formula,
@@ -302,11 +320,11 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code
         """
-        top_formula, sub_formula = _split_formula(formula)
+        top_formula, sub_formula, universal_prefix = _split_formula(formula)
 
         # generate this monitor
         self.generate_monitor(top_formula)
-        self.generate_submonitors(sub_formula)
+        self.generate_submonitors(sub_formula, universal_prefix)
 
         # cmake generation should go at the end so that
         # it knows all the generated files
@@ -318,10 +336,10 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code as an embedded CMake project
         """
-        top_formula, sub_formula = _split_formula(formula)
+        top_formula, sub_formula, universal_prefix = _split_formula(formula)
 
         self.generate_monitor(top_formula)
-        self.generate_submonitors(sub_formula)
+        self.generate_submonitors(sub_formula, universal_prefix)
 
         # if gen_tests:
         #    self.generate_tests(self.args.alphabet)
@@ -346,7 +364,7 @@ class CodeGenCpp(CodeGen):
 
         self.format_generated_code()
 
-    def generate_submonitors(self, sub_formula):
+    def generate_submonitors(self, sub_formula, universal_prefix: list):
         nested_out_dir = f"{self.out_dir}/submonitor"
         has_submonitors = sub_formula.has_quantifier_alternation()
 
@@ -355,16 +373,18 @@ class CodeGenCpp(CodeGen):
                 self.sub_name(),
                 self.args,
                 self.ctx,
-                nested_out_dir,
-                self.sub_namespace(),
+                fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
+                out_dir=nested_out_dir,
+                namespace=self.sub_namespace(),
             )
         else:
             nested_cg = CodeGenCppAtomsMon(
                 self.sub_name(),
                 self.args,
                 self.ctx,
-                nested_out_dir,
-                self.sub_namespace(),
+                fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
+                out_dir=nested_out_dir,
+                namespace=self.sub_namespace(),
             )
         nested_cg.generate_embedded(sub_formula)
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
@@ -380,6 +400,7 @@ class CodeGenCpp(CodeGen):
             "@namespace_end@": (
                 f"}} // namespace {self._namespace}" if self._namespace else ""
             ),
+            "@input_traces@": self._traces_attribute_str(formula),
         }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)
