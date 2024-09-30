@@ -21,7 +21,7 @@
 // In cases when the formula is `forall ..., exists ...: F`,
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
-class HNLMonitor : public Monitor {
+class HNLMonitor : public ::Monitor {
   @input_traces@
 
   // here we store the running monitors
