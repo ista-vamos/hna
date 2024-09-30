@@ -72,8 +72,6 @@ class CodeGenCpp(CodeGen):
             "sharedtraceset.h",
             "sharedtraceset.cpp",
             "verdict.h",
-            "atom-base.h",
-            "atom-evaluation-state.h",
             # XXX: do this only when functions are used
             "function.h",
         ]

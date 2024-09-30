@@ -39,6 +39,10 @@ public:
   bool allTracesFinished();
   bool hasTrace(unsigned trace_id);
 
+  /// This method calls `step` for the function traces generators
+  //  and then calls `step` of `_monitor`.
+  // Note that there is no need to do anything about `_traces` as that
+  // container is being filled asynchronously by the input thread
   Verdict step();
 };
 

@@ -132,7 +132,7 @@ class CodeGenCpp(CodeGen):
             for event in self.args.csv_header.split(",")
         ]
 
-    def copy_files(self, embedded=True):
+    def copy_files(self):
         # copy files from the CMD line
         for f in self.args.cpp_files:
             self.copy_file(f)
@@ -157,8 +157,6 @@ class CodeGenCpp(CodeGen):
             # XXX: do this only when functions are used
             "function.h",
         ]
-        if not embedded:
-            files += []
 
         from_dir = self.common_templates_path
         for f in files:
@@ -378,27 +376,29 @@ class CodeGenCpp(CodeGen):
 
     def _generate_create_instances(self, formula):
         N = len(formula.quantifier_prefix)
+        _, tracesets, _ = self.input_tracesets(formula)
+
         with self.new_file("create-instances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
+            for traceset in tracesets.keys():
+                wr(f"if (auto *t1 = {traceset}.getNewTrace()) {{\n")
+                wr(
+                    """
+                /* Create the instances
 
-            wr("if (auto * t1 = _traces.getNewTrace()) {")
-            wr(
+                   XXX: Maybe it could be more efficient to just have a hash map
+                   XXX: and check if we have generated the combination (instead of checking
+                   XXX: those conditions) */
                 """
-            /* Create the instances
+                )
 
-               XXX: Maybe it could be more efficient to just have a hash map
-               XXX: and check if we have generated the combination (instead of checking
-               XXX: those conditions) */
-            """
-            )
+                if self.args.reduction:
+                    self._gen_create_instance_reduced(formula, wr)
+                else:
+                    self._gen_create_instance(N, formula, wr)
 
-            if self.args.reduction:
-                self._gen_create_instance_reduced(formula, wr)
-            else:
-                self._gen_create_instance(N, formula, wr)
-
-            wr("}\n\n")
+                wr("}\n\n")
 
     def _gen_create_instance_reduced(self, formula, wr):
         if len(formula.quantifier_prefix) > 2:
@@ -1304,12 +1304,15 @@ class CodeGenCpp(CodeGen):
         q2setname = {}
         for q in formula.quantifier_prefix:
             if isinstance(q, ForAllFromFun):
-                set2quantifier.setdefault(q.fun, []).append(str(q.var))
+                assert (
+                    q.fun.c_name() != "traces"
+                ), "Collision in the name of obervations and function"
+                set2quantifier.setdefault(q.fun.c_name(), []).append(str(q.var))
                 q2setname[str(q.var)] = q.fun.c_name()
             else:
                 # None means observed traces (better than some string that could collide with the name
                 # of the function)
-                set2quantifier.setdefault(None, []).append(str(q.var))
+                set2quantifier.setdefault("traces", []).append(str(q.var))
                 q2setname[str(q.var)] = "traces"
 
         return (
@@ -1326,9 +1329,7 @@ class CodeGenCpp(CodeGen):
             lines.append(f"Trace *{q};")
 
         for traceset, quantifiers in tracesets.items():
-            lines.append(
-                f"TraceSetView {traceset.c_name() if traceset else 'traces'};  // {', '.join(quantifiers)}{traceset or ''};"
-            )
+            lines.append(f"TraceSetView {traceset};  // {', '.join(quantifiers)}")
         return "\n".join(lines)
 
     def _traces_ctors_dtors(self, formula):
@@ -1340,18 +1341,12 @@ class CodeGenCpp(CodeGen):
             wr = f.write
 
             args = [f"Trace *{q}" for q in fixed]
-            args += [
-                f"TraceSetView& {traceset.c_name() if traceset else 'traces'}"
-                for traceset in set2q.keys()
-            ]
+            args += [f"TraceSetView& {traceset}" for traceset in set2q.keys()]
             proto = f"HNLMonitor({', '.join(args)})"
             decls.append(f"{proto};")
 
             args = [f"{q}({q})" for q in fixed]
-            args += [
-                f"{traceset.c_name() if traceset else 'traces'}({traceset.c_name() if traceset else 'traces'})"
-                for traceset in set2q.keys()
-            ]
+            args += [f"{traceset}({traceset})" for traceset in set2q.keys()]
             wr(f"HNLMonitor::{proto} : ")
             wr(", ".join(args))
             wr("{}\n\n")
