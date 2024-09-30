@@ -4,12 +4,10 @@
 #define HNL_SUB_MONITOR_H__@monitor_name@
 
 #include <vector>
-#include <list>
 #include <memory>
 
 #include "monitor.h"
 #include "verdict.h"
-#include "trace.h"
 #include "tracesetview.h"
 
 /* generated */
@@ -34,6 +32,7 @@ class HNLMonitor : public Monitor {
   void condenseWbg();
 
 public:
+  @ctors_dtors@
 
   Verdict step();
 

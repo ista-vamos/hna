@@ -64,7 +64,7 @@ protected:
   CmdArgs *_cmd;
 
 public:
-  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {}
+  @ctors_dtors@
 
   Verdict step();
 

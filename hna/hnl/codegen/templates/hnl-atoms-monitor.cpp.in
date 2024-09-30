@@ -23,6 +23,9 @@ static inline Verdict do_step(AtomMonitor *M) {
   #include "do_step.h"
 }
 
+/* GENERATED */
+#include "hnl-monitor-ctors-dtors.h"
+
 
 bool HNLMonitor::addNewTraces() {
   /* GENERATED */

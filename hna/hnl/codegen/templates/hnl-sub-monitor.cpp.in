@@ -6,6 +6,9 @@
 
 @namespace_start@
 
+/* GENERATED */
+#include "hnl-monitor-ctors-dtors.h"
+
 bool HNLMonitor::addNewTraces() {
   if (auto *t1 = _traces.getNewTrace()) {
       /* GENERATED */

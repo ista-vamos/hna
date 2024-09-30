@@ -9,6 +9,8 @@ find_package(vamos-buffers REQUIRED)
 
 set(monitor_name "@monitor_name@")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@ CACHE STRING "" FORCE)
 if(NOT CMAKE_BUILD_TYPE)
 	message(STATUS "Build type not set. Using 'Release'.")

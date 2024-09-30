@@ -288,25 +288,67 @@ class CodeGenCpp(CodeGen):
         for i in range(2, len(formula.quantifier_prefix) + 1):
             wr("}\n")
 
+    def input_tracesets(self, formula):
+        """
+        Auxiliary (and unified) method to sort quantifiers for code generation
+        """
+        set2quantifier = {}
+        q2setname = {}
+        for q in formula.quantifier_prefix:
+            if isinstance(q, ForAllFromFun):
+                set2quantifier.setdefault(q.fun, []).append(str(q.var))
+                q2setname[str(q.var)] = q.fun.c_name()
+            else:
+                # None means observed traces (better than some string that could collide with the name
+                # of the function)
+                set2quantifier.setdefault(None, []).append(str(q.var))
+                q2setname[str(q.var)] = "traces"
+
+        return (
+            [str(q.var) for q in self._fixed_quantifiers or ()],
+            set2quantifier,
+            q2setname,
+        )
+
     def _traces_attribute_str(self, formula):
         lines = []
+        fixed, tracesets, _ = self.input_tracesets(formula)
         # Add attributes for quantifiers fixed by parent monitors
-        for q in self._fixed_quantifiers or ():
-            lines.append(f"Trace *{q.var};")
+        for q in fixed or ():
+            lines.append(f"Trace *{q};")
 
-        others = {}
-        for q in formula.quantifier_prefix:
-            # None means observed traces (better than some string that could collide with the name
-            # of the function)
-            others.setdefault(
-                q.fun if isinstance(q, ForAllFromFun) else None, []
-            ).append(str(q.var))
-
-        for traceset, quantifiers in others.items():
+        for traceset, quantifiers in tracesets.items():
             lines.append(
                 f"TraceSetView {traceset.c_name() if traceset else 'traces'};  // {', '.join(quantifiers)}{traceset or ''};"
             )
         return "\n".join(lines)
+
+    def _traces_ctors_dtors(self, formula):
+        decls = []
+        fixed, set2q, _ = self.input_tracesets(formula)
+
+        with self.new_file("hnl-monitor-ctors-dtors.h") as f:
+            dump_codegen_position(f)
+            wr = f.write
+
+            args = [f"Trace *{q}" for q in fixed]
+            args += [
+                f"TraceSetView& {traceset.c_name() if traceset else 'traces'}"
+                for traceset in set2q.keys()
+            ]
+            proto = f"HNLMonitor({', '.join(args)})"
+            decls.append(f"{proto};")
+
+            args = [f"{q}({q})" for q in fixed]
+            args += [
+                f"{traceset.c_name() if traceset else 'traces'}({traceset.c_name() if traceset else 'traces'})"
+                for traceset in set2q.keys()
+            ]
+            wr(f"HNLMonitor::{proto} : ")
+            wr(", ".join(args))
+            wr("{}\n\n")
+
+        return decls
 
     def _generate_monitor(self, formula):
         """
@@ -390,6 +432,11 @@ class CodeGenCpp(CodeGen):
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
     def generate_monitor(self, formula):
+        input_traces = self._traces_attribute_str(formula)
+        # NOTE: this method generates definitions of ctors and dtors into an .h file,
+        # and returns a list of declarations of those ctors and dtors
+        ctors_dtors = self._traces_ctors_dtors(formula)
+
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
@@ -400,7 +447,8 @@ class CodeGenCpp(CodeGen):
             "@namespace_end@": (
                 f"}} // namespace {self._namespace}" if self._namespace else ""
             ),
-            "@input_traces@": self._traces_attribute_str(formula),
+            "@input_traces@": input_traces,
+            "@ctors_dtors@": "\n".join(ctors_dtors),
         }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)
