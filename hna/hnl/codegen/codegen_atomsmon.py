@@ -254,8 +254,9 @@ class CodeGenCpp(CodeGen):
             #define _HNL_STATE_H__{self.name()}
             """
             )
-            if self._namespace:
-                f.write(f"namespace {self._namespace} {{\n\n")
+            f.write(self.namespace_start())
+            f.write("\n\n")
+
             dump_codegen_position(f)
             f.write(
                 "// FIXME: rename (or create a new enum with atom types that will coincide with this one) \n"
@@ -270,8 +271,9 @@ class CodeGenCpp(CodeGen):
                     f"  ATOM_{nd.get_id()} = {nd.get_id()}, // the atom is atom {nd.get_id()} \n"
                 )
             f.write("};\n")
-            if self._namespace:
-                f.write(f"}} // namespace {self._namespace}\n\n")
+
+            f.write(self.namespace_end())
+            f.write("\n\n")
             f.write("#endif\n")
 
         # this is so stupid, but I just cannot get the variable
@@ -328,8 +330,10 @@ class CodeGenCpp(CodeGen):
             wr('#include "hnl-state.h"\n')
             wr('#include "trace.h"\n\n')
             wr('#include "atom-identifier.h"\n\n')
-            if self._namespace:
-                wr(f"namespace {self._namespace} {{\n\n")
+
+            f.write(self.namespace_start())
+            f.write("\n\n")
+
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
             wr("struct HNLInstance {\n")
@@ -370,8 +374,10 @@ class CodeGenCpp(CodeGen):
             wr("}\n\n")
 
             wr("};\n\n")
-            if self._namespace:
-                wr(f" }} // namespace {self._namespace}\n")
+
+            f.write(self.namespace_end())
+            f.write("\n\n")
+
             wr("#endif\n")
 
     def _generate_create_instances(self, formula):
@@ -834,8 +840,10 @@ class CodeGenCpp(CodeGen):
         dump_codegen_position(wrh)
         wrh('#include "regular-atom-monitor.h"\n\n')
         wrh('#include "atom-identifier.h"\n\n')
-        if self._namespace:
-            wrh(f"namespace {self._namespace} {{\n\n")
+
+        wrh(self.namespace_start())
+        wrh("\n\n")
+
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
@@ -852,8 +860,8 @@ class CodeGenCpp(CodeGen):
         )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
-        if self._namespace:
-            wrh(f"}} // namespace {self.name()}\n")
+        wrh(self.namespace_end())
+        wrh("\n\n")
         wrh("#endif\n")
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
@@ -867,8 +875,10 @@ class CodeGenCpp(CodeGen):
         )
         dump_codegen_position(wrh)
         wrh(f'#include "atom-{duplicate_of}.h"\n\n')
-        if self._namespace:
-            wrh(f"namespace {self._namespace} {{\n\n")
+
+        wrh(self.namespace_start())
+        wrh("\n\n")
+
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula} */\n\n")
         wrh(
@@ -880,13 +890,15 @@ class CodeGenCpp(CodeGen):
             f"  AtomMonitor{num}(const HNLInstance&);\n"
             f"}};\n"
         )
-        if self._namespace:
-            wrh(f"}} // namespace {self._namespace}\n")
+
+        wrh(self.namespace_end())
+        wrh("\n\n")
         wrh("#endif\n")
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
+
         dump_codegen_position(wrcpp)
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
@@ -1360,24 +1372,11 @@ class CodeGenCpp(CodeGen):
         # and returns a list of declarations of those ctors and dtors
         ctors_dtors = self._traces_ctors_dtors(formula)
 
-        ns_start = "\n".join(
-            (
-                f"namespace {ns} {{"
-                for ns in (self._namespace.split("::") if self._namespace else ())
-            )
-        )
-        ns_end = "\n".join(
-            (
-                f"}} /* namespace {ns} */"
-                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
-            )
-        )
-
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
-            "@namespace_start@": ns_start,
-            "@namespace_end@": ns_end,
+            "@namespace_start@": self.namespace_start(),
+            "@namespace_end@": self.namespace_end(),
             "@input_traces@": input_traces,
             "@ctors_dtors@": "\n".join(ctors_dtors),
         }
