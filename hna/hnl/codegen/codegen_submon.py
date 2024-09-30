@@ -151,8 +151,10 @@ class CodeGenCpp(CodeGen):
             wr('#include "submonitor/hnl-monitor.h"\n\n')
 
             wr("class Monitor;\n\n")
-            if self._namespace:
-                wr(f"namespace {self._namespace} {{\n\n")
+
+            wr(self.namespace_start())
+            wr("\n\n")
+
             dump_codegen_position(wr)
             wr("struct Instance {\n")
             wr("  /* traces */\n")
@@ -172,8 +174,10 @@ class CodeGenCpp(CodeGen):
             wr("){}\n\n")
 
             wr("};\n\n")
-            if self._namespace:
-                wr(f" }} // namespace {self._namespace}\n")
+
+            wr(self.namespace_end())
+            wr("\n\n")
+
             wr("#endif\n")
 
     def _generate_create_instances(self, formula):
