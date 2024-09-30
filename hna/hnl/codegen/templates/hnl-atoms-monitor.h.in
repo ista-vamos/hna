@@ -20,7 +20,6 @@
 #include "monitor.h"
 #include "atom-monitor.h"
 #include "finished-atom-monitor.h"
-#include "function.h"
 #include "trace.h"
 #include "traceset.h"
 #include "sharedtraceset.h"
@@ -31,13 +30,12 @@
 
 /* generated */
 #include "hnl-instance.h"
-#include "functions.h"
 #include "atom-identifier.h"
 
 @namespace_start@
 
 
-class HNLMonitor : public Monitor {
+class HNLMonitor : public ::Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors
   std::vector<AtomMonitor *> _monitors_wbg;
