@@ -35,6 +35,22 @@ class CodeGen(CG):
     def namespace(self) -> str:
         return self._namespace or ""
 
+    def namespace_start(self) -> str:
+        return "\n".join(
+            (
+                f"namespace {ns} {{"
+                for ns in (self._namespace.split("::") if self._namespace else ())
+            )
+        )
+
+    def namespace_end(self) -> str:
+        return "\n".join(
+            (
+                f"}} /* namespace {ns} */"
+                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
+            )
+        )
+
     def submonitors(self):
         return self._submonitors
 

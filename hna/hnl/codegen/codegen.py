@@ -374,15 +374,25 @@ class CodeGenCpp(CodeGen):
         return alphabet
 
     def generate_monitor(self):
+
+        ns_start = "\n".join(
+            (
+                f"namespace {ns} {{"
+                for ns in (self._namespace.split("::") if self._namespace else ())
+            )
+        )
+        ns_end = "\n".join(
+            (
+                f"}} /* namespace {ns} */"
+                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
+            )
+        )
+
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
-            "@namespace_start@": (
-                f"namespace {self._namespace} {{" if self._namespace else ""
-            ),
-            "@namespace_end@": (
-                f"}} // namespace {self._namespace}" if self._namespace else ""
-            ),
+            "@namespace_start@": ns_start,
+            "@namespace_end@": ns_end,
         }
 
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
