@@ -1360,15 +1360,24 @@ class CodeGenCpp(CodeGen):
         # and returns a list of declarations of those ctors and dtors
         ctors_dtors = self._traces_ctors_dtors(formula)
 
+        ns_start = "\n".join(
+            (
+                f"namespace {ns} {{"
+                for ns in (self._namespace.split("::") if self._namespace else ())
+            )
+        )
+        ns_end = "\n".join(
+            (
+                f"}} /* namespace {ns} */"
+                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
+            )
+        )
+
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
-            "@namespace_start@": (
-                f"namespace {self._namespace} {{" if self._namespace else ""
-            ),
-            "@namespace_end@": (
-                f"}} // namespace {self._namespace}" if self._namespace else ""
-            ),
+            "@namespace_start@": ns_start,
+            "@namespace_end@": ns_end,
             "@input_traces@": input_traces,
             "@ctors_dtors@": "\n".join(ctors_dtors),
         }

@@ -140,15 +140,16 @@ class CodeGenCpp(CodeGen):
     def _generate_hnlinstances(self, formula):
         with self.new_file("instance.h") as f:
             wr = f.write
-            ns = self._namespace or ""
             wr(
                 f"""
-            #ifndef _HNL_INSTANCE_H__{ns}
-            #define _HNL_INSTANCE_H__{ns}
+            #ifndef HNL_INSTANCE_H__{self.name()}
+            #define HNL_INSTANCE_H__{self.name()}
             """
             )
             wr("#include <cassert>\n\n")
             wr('#include "trace.h"\n\n')
+            wr('#include "submonitor/hnl-monitor.h"\n\n')
+
             wr("class Monitor;\n\n")
             if self._namespace:
                 wr(f"namespace {self._namespace} {{\n\n")
@@ -158,18 +159,17 @@ class CodeGenCpp(CodeGen):
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
             wr("  /* The monitor this configuration waits for */\n")
-            wr("  Monitor *monitor{nullptr};\n\n")
+            wr("  sub::HNLMonitor *monitor;\n\n")
             wr(f"  Instance(")
             for n, q in enumerate(formula.quantifier_prefix):
                 if n > 0:
                     wr(", ")
                 wr(f"Trace *{q.var}")
             wr(")\n  : ")
-            for n, q in enumerate(formula.quantifier_prefix):
-                if n > 0:
-                    wr(", ")
-                wr(f"{q.var}({q.var})")
-            wr("{}\n\n")
+            for q in formula.quantifier_prefix:
+                wr(f"{q.var}({q.var}), ")
+            wr("monitor(new sub::HNLMonitor()")
+            wr("){}\n\n")
 
             wr("};\n\n")
             if self._namespace:
@@ -177,32 +177,60 @@ class CodeGenCpp(CodeGen):
             wr("#endif\n")
 
     def _generate_create_instances(self, formula):
-        N = len(formula.quantifier_prefix)
-        _, tracesets, _ = self.input_tracesets(formula)
+        _, tracesets, q2set = self.input_tracesets(formula)
 
         with self.new_file("create-instances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            for traceset in tracesets.keys():
-                wr(f"if (auto *t1 = {traceset}.getNewTrace()) {{\n")
-                wr(
-                    """
-                /* Create the instances
+            # XXX: here we might check the same traceset for a new trace
+            # multiple times, but we do not care that much
+            checked = set()
+            for n, quantifier in enumerate(formula.quantifier_prefix):
+                traceset = q2set[str(quantifier.var)]
+                if traceset in checked:
+                    continue
+                checked.add(traceset)
 
-                   XXX: Maybe it could be more efficient to just have a hash map
-                   XXX: and check if we have generated the combination (instead of checking
-                   XXX: those conditions) */
-                """
-                )
+                dump_codegen_position(wr)
+                wr(f"if (auto *t_new = {traceset}.getNewTrace()) {{\n")
 
                 if self.args.reduction:
-                    self._gen_create_instance_reduced(formula, wr)
+                    self._gen_create_instance_reduced(formula, n, wr)
                 else:
-                    self._gen_create_instance(N, formula, wr)
+                    self._gen_create_instance(formula, traceset, q2set, wr)
 
                 wr("}\n\n")
 
+    def _gen_create_instance(self, formula, traceset, q2set, wr):
+        dump_codegen_position(wr)
+
+        new_ns = []
+        for n, q in enumerate(formula.quantifier_prefix):
+            if (
+                q2set[str(q.var)] == traceset
+            ):  # this quantifier can be instantiated with the new trace
+                self._gen_combinations(n, formula, traceset, q2set, new_ns, wr)
+                new_ns.append(n)
+
+    def _gen_combinations(self, new_n, formula, traceset, q2set, new_ns, wr):
+        dump_codegen_position(wr)
+        for n, q in enumerate(formula.quantifier_prefix):
+            i = n + 1
+            if n == new_n:
+                wr(f"  auto *t{i} = t_new;\n")
+            else:
+                wr(f"for (auto &[t{i}_id, t{i}_ptr] : {q2set[str(q.var)]}) {{\n")
+                wr(f"  auto *t{i} = t{i}_ptr.get();\n")
+            if n in new_ns:
+                wr(f"if (t{n + 1} == t_new) {{ continue; }}\n")
+
+        # there is one less } than quantifiers, because we do not generate
+        # for loop for the quantifier to which we assign t_new
+        for i in range(1, len(formula.quantifier_prefix)):
+            wr("}\n")
+
     def _gen_create_instance_reduced(self, formula, wr):
+        raise NotImplementedError("Not re-implemented after chagnes")
         dump_codegen_position(wr)
         if len(formula.quantifier_prefix) > 2:
             raise NotImplementedError(
@@ -249,50 +277,6 @@ class CodeGenCpp(CodeGen):
             }
             """
             )
-
-    def _gen_create_instance(self, N, formula, wr):
-        dump_codegen_position(wr)
-        for i in range(2, N + 1):
-            wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
-            wr(f"  auto *t{i} = t{i}_ptr.get();\n")
-
-        dump_codegen_position(wr)
-        for t1_pos in range(1, N + 1):
-            # compute the condition to avoid repeating the combinations of traces
-            conds = []
-            # FIXME: generate the matrix instead of generating the rows again and again
-            posrow = list(traces_positions(t1_pos, N))
-            for r in range(1, t1_pos):
-                # these traces cannot be the same
-                diffs = set()
-                for i1, i2 in zip(
-                    posrow[r - 1 : t1_pos],
-                    list(traces_positions(r, N))[r - 1 : t1_pos],
-                ):
-                    diffs.add((i1, i2) if i1 < i2 else (i2, i1))
-                c = "||".join((f"t{i1} != t{i2}" for i1, i2 in diffs))
-                conds.append(f"({c})" if len(diffs) > 1 else c)
-            cond = "&&".join(conds) if conds else "true"
-            wr(f"if ({cond}) {{")
-            dump_codegen_position(wr)
-            wr("\n  auto *instance = new Instance{")
-            for n, i in enumerate(traces_positions(t1_pos, N)):
-                if n > 0:
-                    wr(", ")
-                wr(f"t{i}, ")
-            wr("};\n")
-            wr("++stats.num_instances;\n\n")
-            dump_codegen_position(wr)
-            ns = f"{self._namespace}::" if self._namespace else ""
-            wr("#ifdef DEBUG_PRINTS\n")
-            wr(f'std::cerr << "{ns}Instance[init"')
-            for i in traces_positions(t1_pos, N):
-                wr(f' << ", " << t{i}->id()')
-            wr('<< "]\\n";\n')
-            wr("#endif /* !DEBUG_PRINTS */\n")
-            wr("}\n")
-        for i in range(2, len(formula.quantifier_prefix) + 1):
-            wr("}\n")
 
     def input_tracesets(self, formula):
         """
@@ -440,16 +424,24 @@ class CodeGenCpp(CodeGen):
         # and returns a list of declarations of those ctors and dtors
         ctors_dtors = self._traces_ctors_dtors(formula)
 
+        ns_start = "\n".join(
+            (
+                f"namespace {ns} {{"
+                for ns in (self._namespace.split("::") if self._namespace else ())
+            )
+        )
+        ns_end = "\n".join(
+            (
+                f"}} /* namespace {ns} */"
+                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
+            )
+        )
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
             "@sub-namespace@": self.sub_namespace(),
-            "@namespace_start@": (
-                f"namespace {self._namespace} {{" if self._namespace else ""
-            ),
-            "@namespace_end@": (
-                f"}} // namespace {self._namespace}" if self._namespace else ""
-            ),
+            "@namespace_start@": ns_start,
+            "@namespace_end@": ns_end,
             "@input_traces@": input_traces,
             "@ctors_dtors@": "\n".join(ctors_dtors),
         }
