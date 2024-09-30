@@ -10,11 +10,10 @@
 #include "hnl-monitor-ctors-dtors.h"
 
 bool HNLMonitor::addNewTraces() {
-  if (auto *t1 = _traces.getNewTrace()) {
-      /* GENERATED */
-      #include "create-instances.h"
-  }
+  /* GENERATED */
+  #include "create-instances.h"
 
+  abort(); // TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!
   return _traces.finished();
 }
 
