@@ -273,29 +273,8 @@ class CodeGenCpp(CodeGen):
                 )
             f.write(f"#endif // !HNL_FUNCTIONS__{self.name()}\n")
 
-        with self.new_file("functions-initialize.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"function_{fun.name} = createFunction_{fun.name}(_cmd);\n")
-
-        with self.new_file("function-instances.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"std::unique_ptr<Function> function_{fun.name};\n")
-
         for fun in functions:
             self._gen_function_files(fun)
-
-        with self.new_file("gen-function-traces.h") as f:
-            dump_codegen_position(f)
-            for fun in functions:
-                f.write(f"function_{fun.name}->step();\n")
-
-        with self.new_file("function-traces-finished.h") as f:
-            dump_codegen_position(f)
-            f.write(" // check if also the function traces generators finished\n")
-            for fun in functions:
-                f.write(f"finished &= function_{fun.name}->allTracesFinished();\n")
 
     def generate(self, formula: PrenexFormula, alphabet=None):
         """
@@ -350,7 +329,7 @@ class CodeGenCpp(CodeGen):
         self.args.out_dir_overwrite = False
         codegen.generate_embedded(formula)
 
-        self.generate_monitor()
+        self.generate_monitor(formula)
         self.generate_main()
 
         self.copy_files()
@@ -373,26 +352,44 @@ class CodeGenCpp(CodeGen):
         assert alphabet, "The alphabet is empty"
         return alphabet
 
-    def generate_monitor(self):
+    def _functions_mon_h_str(self, functions):
+        return (
+            "\n".join(
+                (f"std::unique_ptr<Function> function_{fun.name};" for fun in functions)
+            ),
+            ", ".join(
+                (
+                    f"function_{fun.name}(createFunction_{fun.name}(_cmd))"
+                    for fun in functions
+                )
+            ),
+        )
 
-        ns_start = "\n".join(
-            (
-                f"namespace {ns} {{"
-                for ns in (self._namespace.split("::") if self._namespace else ())
-            )
-        )
-        ns_end = "\n".join(
-            (
-                f"}} /* namespace {ns} */"
-                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
-            )
-        )
+    def _functions_mon_cpp_str(self, functions):
+        step = "\n".join((f"function_{fun.name}->step();" for fun in functions))
+        finished = [" // check if also the function traces generators finished"] + [
+            f"finished &= function_{fun.name}->allTracesFinished();"
+            for fun in functions
+        ]
+        return step, "\n".join(finished)
+
+    def generate_monitor(self, formula):
+        functions_instances = formula.functions()
+        functions = list(set(functions_instances))
+
+        funs, funs_init = self._functions_mon_h_str(functions)
+        funs_init = f", {funs_init}" if funs_init else ""
+        funs_step, funs_finished = self._functions_mon_cpp_str(functions)
 
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
-            "@namespace_start@": ns_start,
-            "@namespace_end@": ns_end,
+            "@namespace_start@": self.namespace_start(),
+            "@namespace_end@": self.namespace_end(),
+            "@functions@": funs,
+            "@functions_init@": funs_init,
+            "@functions_step@": funs_step,
+            "@functions_finished@": funs_finished,
         }
 
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
