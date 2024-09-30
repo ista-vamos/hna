@@ -163,9 +163,9 @@ class CodeGenCpp(CodeGen):
                 wr(f"  Trace *{q.var};\n")
             wr("  /* fixed traces */\n")
             for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
+                wr(f"  FixedTrace *{q.var};\n")
             wr("  /* The monitor this configuration waits for */\n")
-            wr("  sub::HNLMonitor *monitor;\n\n")
+            wr("  sub::HNLMonitor *monitor{nullptr};\n\n")
             args = (
                 f"Trace *{q.var}"
                 for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
@@ -181,7 +181,7 @@ class CodeGenCpp(CodeGen):
                     )
                 )
             )
-            wr(", monitor(new sub::HNLMonitor()")
+            # wr(", monitor(new sub::HNLMonitor()")
             wr("){}\n\n")
 
             wr("};\n\n")
@@ -238,6 +238,24 @@ class CodeGenCpp(CodeGen):
                 wr(f"  auto *t{i} = t{i}_ptr.get();\n")
             if n in new_ns:
                 wr(f"if (t{n + 1} == t_new) {{ continue; }}\n")
+
+        dump_codegen_position(wr)
+        args = ",".join(
+            (
+                str(q.var)
+                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+            )
+        )
+        wr(f"\n  auto *instance = new Instance({args});\n")
+        wr(f"    instance->monitor = new sub::HNLMonitor();\n")
+        wr(f"    _instances.emplace_back(instance);\n")
+        wr("++stats.num_instances;\n\n")
+
+        ns = f"{self._namespace}::" if self._namespace else ""
+        wr("#ifdef DEBUG_PRINTS\n")
+        wr(f'std::cerr << "{ns}Instance["')
+        wr('<< "]\\n";\n')
+        wr("#endif /* !DEBUG_PRINTS */\n")
 
         # there is one less } than quantifiers, because we do not generate
         # for loop for the quantifier to which we assign t_new
