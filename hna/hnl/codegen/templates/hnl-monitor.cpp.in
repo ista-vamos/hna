@@ -9,10 +9,10 @@
 @namespace_start@
 
 Verdict HNLMonitor::step() {
-    /* GENERATED */
-    /* It can modify the `finished` variable */
-    #include "gen-function-traces.h"
+    // generate function traces
+    @functions_step@
 
+    // step the monitor(s)
     return _monitor.step();
 }
 
@@ -38,9 +38,9 @@ void HNLMonitor::noFutureUpdates() {
 
 bool HNLMonitor::allTracesFinished() {
     bool finished =  _traces.allTracesFinished();
-    // GENERATED, can modify `finished` variable
-    #include "function-traces-finished.h"
-
+    if (finished) {
+        @functions_finished@
+    }
     return finished;
 }
 

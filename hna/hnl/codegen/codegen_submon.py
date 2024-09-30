@@ -1,4 +1,5 @@
 import random
+from itertools import chain
 from os import readlink, listdir, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from subprocess import run
@@ -157,23 +158,30 @@ class CodeGenCpp(CodeGen):
 
             dump_codegen_position(wr)
             wr("struct Instance {\n")
-            wr("  /* fixed traces */\n")
-            for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
             wr("  /* variable traces */\n")
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
+            wr("  /* fixed traces */\n")
+            for q in self._fixed_quantifiers or ():
+                wr(f"  Trace *{q.var};\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  sub::HNLMonitor *monitor;\n\n")
-            wr(f"  Instance(")
-            for n, q in enumerate(formula.quantifier_prefix):
-                if n > 0:
-                    wr(", ")
-                wr(f"Trace *{q.var}")
-            wr(")\n  : ")
-            for q in formula.quantifier_prefix:
-                wr(f"{q.var}({q.var}), ")
-            wr("monitor(new sub::HNLMonitor()")
+            args = (
+                f"Trace *{q.var}"
+                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+            )
+            wr(f"  Instance({', '.join(args)})\n  : ")
+            wr(
+                ", ".join(
+                    (
+                        f"{q.var}({q.var})"
+                        for q in chain(
+                            formula.quantifier_prefix, self._fixed_quantifiers or ()
+                        )
+                    )
+                )
+            )
+            wr(", monitor(new sub::HNLMonitor()")
             wr("){}\n\n")
 
             wr("};\n\n")
