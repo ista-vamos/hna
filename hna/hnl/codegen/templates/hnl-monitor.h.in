@@ -3,11 +3,15 @@
 #ifndef HNLMONITOR_H_
 #define HNLMONITOR_H_
 
+#include <memory>
+
 #include "monitor.h"
 #include "traceset.h"
+#include "function.h"
+#include "cmd.h"
 #include "submonitor/hnl-monitor.h"
 
-#include "cmd.h"
+#include "functions.h"
 
 @namespace_start@
 
@@ -22,11 +26,10 @@ class HNLMonitor : public ::Monitor {
   TraceSet _traces;
   CmdArgs *_cmd;
 
-  #include "function-instances.h"
+  @functions@
 
 public:
-  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) {
-    #include "functions-initialize.h"
+  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) @functions_init@ {
   }
 
   //virtual ~HNLMonitor() {}

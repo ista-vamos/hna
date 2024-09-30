@@ -1,4 +1,5 @@
 import random
+from itertools import chain
 from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from sys import stderr
@@ -337,28 +338,33 @@ class CodeGenCpp(CodeGen):
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
             wr("struct HNLInstance {\n")
-            wr("  /* fixed traces */\n")
-            for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
             wr("  /* variable traces */\n")
             for q in formula.quantifier_prefix:
+                wr(f"  Trace *{q.var};\n")
+            wr("  /* fixed traces */\n")
+            for q in self._fixed_quantifiers or ():
                 wr(f"  Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
             wr(f"  HNLEvaluationState state;\n\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  AtomMonitor *monitor{nullptr};\n\n")
-            wr(f"  HNLInstance(")
-            for q in formula.quantifier_prefix:
-                wr(f"Trace *{q.var}, ")
-            wr("HNLEvaluationState init_state)\n  : ")
-            for q in formula.quantifier_prefix:
-                wr(f"{q.var}({q.var}), ")
-            wr("state(init_state) { assert(state != INVALID); }\n\n")
+            args = (
+                f"Trace *{q.var}"
+                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+            )
+            wr(f"  HNLInstance({', '.join(args)}, HNLEvaluationState init_state)\n  : ")
 
-            # wr(f"  HNLInstance(const HNLInstance& other, HNLEvaluationState init_state)\n  : ")
-            # for q in formula.quantifier_prefix:
-            #    wr(f"{q.var}(other.{q.var}), ")
-            # wr("state(init_state) { assert(state != INVALID); }\n\n")
+            wr(
+                ", ".join(
+                    (
+                        f"{q.var}({q.var})"
+                        for q in chain(
+                            formula.quantifier_prefix, self._fixed_quantifiers or ()
+                        )
+                    )
+                )
+            )
+            wr(", state(init_state) { assert(state != INVALID); }\n\n")
 
             wr("AtomIdentifier createMonitorID(int monitor_type) {")
             wr("switch (monitor_type) {")

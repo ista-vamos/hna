@@ -132,10 +132,6 @@ Verdict HNLMonitor::step() {
 
   bool finished = traces_finished && _monitors_wbg.empty();//_instances.empty();
 
-  /* GENERATED */
-  /* It can modify the `finished` variable */
-  #include "gen-function-traces.h"
-
   if (finished) {
 #ifdef CACHE_ATOMS_RESULTS
       assert(_running_atoms.empty());
