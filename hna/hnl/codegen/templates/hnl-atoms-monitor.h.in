@@ -40,14 +40,14 @@
 class HNLMonitor : public Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors
-  std::vector<@namespace@::AtomMonitor *> _monitors_wbg;
+  std::vector<AtomMonitor *> _monitors_wbg;
 
 #ifdef CACHE_ATOMS_RESULTS
   // this map stores existing atom monitors by their identifier so that we can re-use them
   // if they should be created again.
   // FIXME: use better maps (some kind of a hash map)
-  std::map<AtomIdentifier, @namespace@::AtomMonitor *> _running_atoms;
-  std::map<AtomIdentifier, @namespace@::FinishedAtomMonitor> _finished_atoms;
+  std::map<AtomIdentifier, AtomMonitor *> _running_atoms;
+  std::map<AtomIdentifier, FinishedAtomMonitor> _finished_atoms;
 #endif
 
   @input_traces@
@@ -68,7 +68,7 @@ public:
 
   Verdict step();
 
-  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, @namespace@::HNLInstance&);
+  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance&);
   void removeInstance(HNLInstance *instance);
 
   // statistics

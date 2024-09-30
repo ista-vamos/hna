@@ -50,6 +50,9 @@ class ProcessAST(Transformer):
         elif items[0].data == "exists_in_fun":
             fun = items[0].children[-1]
             return [ExistsFromFun(c, fun) for c in items[0].children[:-1]]
+        elif items[0].data == "forall_in_fun":
+            fun = items[0].children[-1]
+            return [ForAllFromFun(c, fun) for c in items[0].children[:-1]]
         raise RuntimeError(f"Invalid quantifier: {items}")
 
     def quantified_formula(self, items):
