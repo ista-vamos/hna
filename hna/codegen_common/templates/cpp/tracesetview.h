@@ -9,6 +9,8 @@
 #include "sharedtraceset.h"
 #include "trace.h"
 
+class TraceSet;
+
 // trace set that only references traces from some other (shared) trace set
 // (or references a single trace from some trace set)
 class TraceSetView {
@@ -22,7 +24,7 @@ class TraceSetView {
   // std::mutex _traces_mtx;
 
   // get the trace with the given ID
-  // NOTE: lock is not held as this method should not be called
+  // NOTE: no lock is held as this method should not be called
   // concurrently with iterating over _traces
   Trace *get(unsigned trace_id);
 
@@ -30,6 +32,7 @@ public:
   TraceSetView() = default;
   ~TraceSetView();
   TraceSetView(SharedTraceSet &);
+  TraceSetView(TraceSet &) { abort(); /* NOT IMPLEMENTED */}
   TraceSetView(Trace *);
 
   bool finished() const {
