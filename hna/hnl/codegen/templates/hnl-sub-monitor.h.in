@@ -8,9 +8,10 @@
 
 #include "monitor.h"
 #include "verdict.h"
-#include "tracesetview.h"
+#include "traceset.h"
 
 /* generated */
+#include "alltracesets.h"
 #include "instance.h"
 
 @namespace_start@
@@ -22,6 +23,8 @@
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
 class HNLMonitor : public ::Monitor {
+  const AllTraceSets& TS;
+
   @input_traces@
 
   // here we store the running monitors

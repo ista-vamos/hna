@@ -31,6 +31,7 @@
 /* generated */
 #include "hnl-instance.h"
 #include "atom-identifier.h"
+#include "alltracesets.h"
 
 @namespace_start@
 

@@ -1,6 +1,5 @@
-from os import readlink, listdir
+from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
-from subprocess import run
 
 from vamos_common.codegen.codegen import CodeGen as CG
 
@@ -53,13 +52,3 @@ class CodeGen(CG):
 
     def submonitors(self):
         return self._submonitors
-
-    def format_generated_code(self):
-        # format the files if we have clang-format
-        # FIXME: check clang-format properly instead of catching the exception
-        try:
-            for path in listdir(self.out_dir):
-                if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
-        except FileNotFoundError:
-            pass

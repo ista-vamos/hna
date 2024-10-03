@@ -301,6 +301,22 @@ class PrenexFormula(Formula):
         s = Q[0].type_symbol()
         return any((s != q.type_symbol() for q in Q))
 
+    def has_different_quantifiers(self) -> bool:
+        """
+        Return True iff not all quantifiers are of the same type
+        (ForAll and ForAllFromFun are different types)
+        """
+        Q = self.quantifiers()
+        if not Q:
+            return False
+        t = type(Q[0])
+        return any((t != type(q) for q in Q))
+
+    def negate(self):
+        return PrenexFormula(
+            [q.swap() for q in self.quantifier_prefix], Not(self.formula)
+        )
+
     @cached_str
     def __str__(self) -> str:
         return f"{' '.join(map(str, self.quantifier_prefix))}: {self.formula}"
@@ -369,10 +385,14 @@ class Function(TraceFormula):
         return f"@{self.name}({', '.join(map(str, self.traces))})"
 
     def __hash__(self) -> int:
-        return hash(str(self.name))
+        return hash(str(self))
 
     def __eq__(self, other) -> bool:
-        return isinstance(other, Function) and self.name == other.name
+        return (
+            isinstance(other, Function)
+            and self.name == other.name
+            and self.traces == other.traces
+        )
 
     def functions(self):
         return [self]

@@ -1,3 +1,4 @@
+from itertools import chain
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 from sys import stderr
@@ -9,8 +10,8 @@ from hna.hnl.formula import (
     Function,
     PrenexFormula,
 )
-from .codegen_atomsmon import CodeGenCpp as CodeGenCppAtomsMon
-from .codegen_submon import CodeGenCpp as CodeGenCppSubMon
+from hna.hnl.codegen.submonitors.atoms import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):
@@ -254,27 +255,58 @@ class CodeGenCpp(CodeGen):
             wr("};\n")
             wr("#endif\n")
 
-    def generate_functions(self, formula: PrenexFormula):
-        functions_instances = formula.functions()
-        functions = list(set(functions_instances))
-
-        # check types of functions
-        _check_functions(functions_instances)
-
+    def generate_functions(self, functions):
         with self.new_file("functions.h") as f:
             dump_codegen_position(f)
-            f.write(f"#ifndef HNL_FUNCTIONS__{self.name()}\n")
-            f.write(f"#define HNL_FUNCTIONS__{self.name()}\n")
-            f.write("#include <memory>\n")
-            f.write('#include "function.h"\n\n')
+            wr = f.write
+            wr(f"#ifndef HNL_FUNCTIONS__{self.name()}\n")
+            wr(f"#define HNL_FUNCTIONS__{self.name()}\n")
+            wr("#include <memory>\n")
+            wr('#include "function.h"\n\n')
             for fun in functions:
-                f.write(
+                wr(f'#include "function-{fun.name}.h"\n')
+            wr("\n\n")
+            for fun in functions:
+                wr(
                     f"std::unique_ptr<Function> createFunction_{fun.name}(CmdArgs *cmd);\n"
                 )
-            f.write(f"#endif // !HNL_FUNCTIONS__{self.name()}\n")
+            wr(f"#endif // !HNL_FUNCTIONS__{self.name()}\n")
 
         for fun in functions:
             self._gen_function_files(fun)
+
+    def generate_alltracesets_class(self, functions):
+
+        with self.new_file("alltracesets.h") as f:
+            dump_codegen_position(f)
+            wr = f.write
+            wr(f"#ifndef HNL_ALLTRACESETS__{self.name()}\n")
+            wr(f"#define HNL_ALLTRACESETS__{self.name()}\n\n")
+
+            wr('#include "traceset.h"\n')
+            for fun in functions:
+                wr(f'#include "function-{fun.name}.h"\n')
+
+            wr("\n")
+
+            wr(
+                "/* An object passed to monitors with references to traces and functions */\n"
+            )
+            wr("struct AllTraceSets {\n")
+            wr(" TraceSet& traces;")
+            for fun in functions:
+                wr(f"  Function_{fun.name}& {fun.name};\n")
+            wr("\n")
+            fun_args = ",".join(
+                (f"Function_{fun.name}& {fun.name}" for fun in functions)
+            )
+            fun_init = ",".join((f"{fun.name}({fun.name})" for fun in functions))
+            wr(
+                f"  AllTraceSets(TraceSet& traces{', ' if fun_args else ''}{fun_args}) : traces(traces) {',' if fun_init else ''} {fun_init} {{}}\n"
+            )
+            wr("};\n\n")
+
+            wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
 
     def generate(self, formula: PrenexFormula, alphabet=None):
         """
@@ -288,7 +320,13 @@ class CodeGenCpp(CodeGen):
         if self.args.gen_csv_reader:
             self._generate_csv_reader()
 
-        self.generate_functions(formula)
+        functions_instances = formula.functions()
+        functions = list(set(functions_instances))
+        # check types of functions
+        _check_functions(functions_instances)
+
+        self.generate_functions(functions)
+        self.generate_alltracesets_class(functions)
 
         has_quantifier_alternation = formula.has_quantifier_alternation()
         # Generate the actual monitors. If there is no quantifier alternation,
@@ -353,16 +391,18 @@ class CodeGenCpp(CodeGen):
         return alphabet
 
     def _functions_mon_h_str(self, functions):
+        init = ", ".join(
+            (
+                f"function_{fun.name}(createFunction_{fun.name}(_cmd))"
+                for fun in functions
+            )
+        )
+        init = f", {init}" if init else ""
         return (
             "\n".join(
                 (f"std::unique_ptr<Function> function_{fun.name};" for fun in functions)
             ),
-            ", ".join(
-                (
-                    f"function_{fun.name}(createFunction_{fun.name}(_cmd))"
-                    for fun in functions
-                )
-            ),
+            init,
         )
 
     def _functions_mon_cpp_str(self, functions):
@@ -378,8 +418,16 @@ class CodeGenCpp(CodeGen):
         functions = list(set(functions_instances))
 
         funs, funs_init = self._functions_mon_h_str(functions)
-        funs_init = f", {funs_init}" if funs_init else ""
         funs_step, funs_finished = self._functions_mon_cpp_str(functions)
+        alltracesets_init = ",".join(
+            chain(
+                ("_traces",),
+                (
+                    f"*static_cast<Function_{fun.name}*>(function_{fun.name}.get())"
+                    for fun in functions
+                ),
+            )
+        )
 
         values = {
             "@monitor_name@": self.name(),
@@ -390,6 +438,7 @@ class CodeGenCpp(CodeGen):
             "@functions_init@": funs_init,
             "@functions_step@": funs_step,
             "@functions_finished@": funs_finished,
+            "@alltracesets_init@": alltracesets_init,
         }
 
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)

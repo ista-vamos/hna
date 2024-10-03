@@ -19,12 +19,10 @@ Verdict HNLMonitor::step() {
 // adding and extending traces
 void HNLMonitor::newTrace(unsigned trace_id) {
     _traces.newTrace(trace_id);
-    _monitor.newTrace(trace_id);
 }
 
 void HNLMonitor::traceFinished(unsigned trace_id) {
     _traces.traceFinished(trace_id);
-    _monitor.traceFinished(trace_id);
 }
 
 void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
@@ -33,7 +31,6 @@ void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
 
 void HNLMonitor::noFutureUpdates() {
     _traces.noFutureUpdates();
-    _monitor.noFutureUpdates();
 }
 
 bool HNLMonitor::allTracesFinished() {

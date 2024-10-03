@@ -31,7 +31,8 @@ bool HNLMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
 
-  return _traces.finished();
+  assert(false && "TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!");
+  // return traces.finished();
 }
 
 Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
