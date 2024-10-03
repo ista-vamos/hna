@@ -4,7 +4,7 @@
 
 // NOTE: we do not lock anything as there should be no concurrency here.
 
-TraceSetView::TraceSetView(SharedTraceSet &S) : traceset(&S) {
+TraceSetView::TraceSetView(TraceSetBase &S) : traceset(&S) {
   // register this view so that we'll get updated on new traces
   S.addView(this);
 

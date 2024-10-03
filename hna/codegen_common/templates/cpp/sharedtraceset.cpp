@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cassert>
 
 #include "sharedtraceset.h"
@@ -54,16 +53,4 @@ bool SharedTraceSet::allTracesFinished() {
   }
 
   return true;
-}
-
-// NOTE: this should not be called concurrently, do not lock
-void SharedTraceSet::addView(TraceSetView *view) {
-  assert(std::find(_views.begin(), _views.end(), view) == _views.end());
-  _views.push_back(view);
-}
-
-void SharedTraceSet::removeView(TraceSetView *view) {
-  auto it = std::find(_views.begin(), _views.end(), view);
-  assert(it != _views.end());
-  _views.erase(it);
 }
