@@ -10,8 +10,8 @@ from hna.hnl.formula import (
     Function,
     PrenexFormula,
 )
-from .codegen_atomsmon import CodeGenCpp as CodeGenCppAtomsMon
-from .codegen_submon import CodeGenCpp as CodeGenCppSubMon
+from hna.hnl.codegen.submonitors.atoms import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):
@@ -302,7 +302,7 @@ class CodeGenCpp(CodeGen):
             )
             fun_init = ",".join((f"{fun.name}({fun.name})" for fun in functions))
             wr(
-                f"  AllTraceSets(TraceSet& traces, {fun_args}) : traces(traces) {',' if fun_init else ''} {fun_init} {{}}\n"
+                f"  AllTraceSets(TraceSet& traces{', ' if fun_args else ''}{fun_args}) : traces(traces) {',' if fun_init else ''} {fun_init} {{}}\n"
             )
             wr("};\n\n")
 

@@ -6,8 +6,8 @@ from sys import stderr
 
 from pyeda.inter import bddvar
 
+from .codegen_shared import CodeGenCpp
 from hna.automata.automaton import Automaton
-from hna.codegen_common.codegen import CodeGen
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
@@ -97,7 +97,7 @@ def traces_positions(t1_pos, N):
         yield 1
 
 
-class CodeGenCpp(CodeGen):
+class CodeGenCpp(CodeGenCpp):
     """
     Class for generating monitors in C++.
     The main function to be called is `generate`.
@@ -112,26 +112,13 @@ class CodeGenCpp(CodeGen):
         out_dir: str = None,
         namespace: str = None,
     ):
-        super().__init__(name, args, ctx, out_dir, namespace)
+        super().__init__(name, args, ctx, fixed_quantifiers, out_dir, namespace)
 
-        self_dir = abspath(
-            dirname(readlink(__file__) if islink(__file__) else __file__)
-        )
-        self.templates_path = pathjoin(self_dir, "templates/")
         self.BDD = None
         self._bdd_nodes = []
         self._bdd_vars_to_nodes = {}
         self._automata = {}
         self._atoms_files = []
-        self._fixed_quantifiers = fixed_quantifiers
-
-        assert (
-            self.args.csv_header
-        ), "Give --csv-header, other methods not supported yet"
-        self._event = [
-            [s.strip() for s in event.split(":")]
-            for event in self.args.csv_header.split(",")
-        ]
 
     def copy_files(self):
         # copy files from the CMD line
@@ -389,125 +376,29 @@ class CodeGenCpp(CodeGen):
 
             wr("#endif\n")
 
-    def _generate_create_instances(self, formula):
-        N = len(formula.quantifier_prefix)
-        _, tracesets, _ = self.input_tracesets(formula)
-
-        with self.new_file("create-instances.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-            for traceset in tracesets.keys():
-                wr(f"if (auto *t1 = {traceset}.getNewTrace()) {{\n")
-                wr(
-                    """
-                /* Create the instances
-
-                   XXX: Maybe it could be more efficient to just have a hash map
-                   XXX: and check if we have generated the combination (instead of checking
-                   XXX: those conditions) */
-                """
-                )
-
-                if self.args.reduction:
-                    self._gen_create_instance_reduced(formula, wr)
-                else:
-                    self._gen_create_instance(N, formula, wr)
-
-                wr("}\n\n")
-
-    def _gen_create_instance_reduced(self, formula, wr):
-        if len(formula.quantifier_prefix) > 2:
-            raise NotImplementedError(
-                "Reductions work now only with at most 2 quantifiers"
-            )
-
+    def _create_instance(self, formula, wr):
         dump_codegen_position(wr)
-        wr(
-            """
-        for (auto &[t2_id, t2_ptr] : _traces) {
-            auto *t2 = t2_ptr.get();
-        """
+        args = ",".join(
+            chain(
+                (str(q.var) for q in formula.quantifier_prefix),
+                (f"/* fixed */ {q.var}" for q in self._fixed_quantifiers or ()),
+            )
         )
-
-        if "reflexive" in self.args.reduction:
-            wr("if (t1 == t2) { continue;}")
-
+        print_args = '<< ", " <<'.join(
+            (f"{q.var}->id()" for q in formula.quantifier_prefix)
+        )
         wr(
-            """
-           auto *instance = new HNLInstance{t1, t2, INITIAL_ATOM};
+            f"""
+           auto *instance = new HNLInstance{{{args}, INITIAL_ATOM}};
            ++stats.num_instances;
 
            instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
 
            #ifdef DEBUG_PRINTS
-           std::cerr << "HNLInstance[init"
-                     << ", " << t1->id() << ", " << t2->id() << "]\\n";
+           std::cerr << "HNLInstance[init, " << {print_args} << "]\\n";
            #endif /* !DEBUG_PRINTS */
         """
         )
-
-        if "symmetric" in self.args.reduction:
-            wr("}\n")
-        else:
-            wr(
-                """
-               if (t1 != t2)  {
-                  auto *instance = new HNLInstance{t2, t1, INITIAL_ATOM};
-                  ++stats.num_instances;
-
-                  instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
-                  #ifdef DEBUG_PRINTS
-                    std::cerr << "HNLInstance[init"
-                              << ", " << t2->id() << ", " << t1->id() << "]\\n";
-                  #endif /* !DEBUG_PRINTS */
-               }
-            }
-            """
-            )
-
-    def _gen_create_instance(self, N, formula, wr):
-        dump_codegen_position(wr)
-        for i in range(2, N + 1):
-            wr(f"for (auto &[t{i}_id, t{i}_ptr] : _traces) {{\n")
-            wr(f"  auto *t{i} = t{i}_ptr.get();\n")
-
-        dump_codegen_position(wr)
-        for t1_pos in range(1, N + 1):
-            # compute the condition to avoid repeating the combinations
-            # of traces
-            conds = []
-            # FIXME: generate the matrix instead of generating the rows again and again
-            posrow = list(traces_positions(t1_pos, N))
-            for r in range(1, t1_pos):
-                # these traces cannot be the same
-                diffs = set()
-                for i1, i2 in zip(
-                    posrow[r - 1 : t1_pos],
-                    list(traces_positions(r, N))[r - 1 : t1_pos],
-                ):
-                    diffs.add((i1, i2) if i1 < i2 else (i2, i1))
-                c = "||".join((f"t{i1} != t{i2}" for i1, i2 in diffs))
-                conds.append(f"({c})" if len(diffs) > 1 else c)
-            cond = "&&".join(conds) if conds else "true"
-            wr(f"if ({cond}) {{")
-            dump_codegen_position(wr)
-            wr("\n  auto *instance = new HNLInstance{")
-            for i in traces_positions(t1_pos, N):
-                wr(f"t{i}, ")
-            wr("INITIAL_ATOM};\n")
-            wr("++stats.num_instances;\n\n")
-            wr("instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);\n")
-            dump_codegen_position(wr)
-            ns = f"{self._namespace}::" if self._namespace else ""
-            wr("#ifdef DEBUG_PRINTS\n")
-            wr(f'std::cerr << "{ns}HNLInstance[init"')
-            for i in traces_positions(t1_pos, N):
-                wr(f' << ", " << t{i}->id()')
-            wr('<< "]\\n";\n')
-            wr("#endif /* !DEBUG_PRINTS */\n")
-            wr("}\n")
-        for i in range(2, len(formula.quantifier_prefix) + 1):
-            wr("}\n")
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
@@ -1317,78 +1208,12 @@ class CodeGenCpp(CodeGen):
         )
         self.format_generated_code()
 
-    def input_tracesets(self, formula):
-        """
-        Auxiliary (and unified) method to sort quantifiers for code generation
-        """
-        set2quantifier = {}
-        q2setname = {}
-        for q in formula.quantifier_prefix:
-            if isinstance(q, ForAllFromFun):
-                assert (
-                    q.fun.name != "traces"
-                ), "Collision in the name of obervations and function"
-                set2quantifier.setdefault(q.fun, []).append(q)
-                q2setname[q] = q.fun
-            else:
-                # None means observed traces (better than some string that could collide with the name
-                # of the function)
-                set2quantifier.setdefault(None, []).append(q)
-                q2setname[q] = "traces"
-
-        return (
-            [str(q.var) for q in self._fixed_quantifiers or ()],
-            set2quantifier,
-            q2setname,
-        )
-
-    def _traces_attribute_str(self, formula):
-        lines = []
-        fixed, set2q, q2set = self.input_tracesets(formula)
-        # Add attributes for quantifiers fixed by parent monitors
-        print(set2q)
-        lines = [f"Trace *{q};" for q in (fixed or ())] + [
-            f"TraceSetView "
-            + ("traces" if traceset is None else f"traces_{traceset.c_name()}")
-            + ";"
-            for traceset, q in set2q.items()
-        ]
-        return "\n".join(lines)
-
-    def _traces_ctors_dtors(self, formula):
-        decls = []
-        fixed, set2q, q2setname = self.input_tracesets(formula)
-
-        with self.new_file("hnl-monitor-ctors-dtors.h") as f:
-            dump_codegen_position(f)
-            wr = f.write
-
-            args = [f"Trace *{q}" for q in fixed]
-            proto = f"HNLMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
-            decls.append(f"{proto};")
-
-            args = [f"{q}({q})" for q in fixed]
-
-            for traceset, qs in set2q.items():
-                if traceset is None:
-                    args.append(f"traces(TS.traces)")
-                else:
-                    funargs = ",".join((str(t) for t in traceset.traces))
-                    args.append(
-                        f"traces_{traceset.c_name()}(TS.{traceset.name}.getTraceSet({funargs}))"
-                    )
-            wr(f"HNLMonitor::{proto} : {',' if args else ''}")
-            wr(", ".join(args))
-            wr("{}\n\n")
-
-        return decls
-
     def generate_monitor(self, formula: PrenexFormula, alphabet):
         assert not formula.has_quantifier_alternation(), formula
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
-        ctors_dtors = self._traces_ctors_dtors(formula)
+        ctors_dtors = self._traces_ctors_dtors(formula, with_TS=False)
 
         values = {
             "@monitor_name@": self.name(),

@@ -56,6 +56,17 @@ public:
   // Note that there is no need to do anything about `_traces` as that
   // container is being filled asynchronously by the input thread
   Verdict step();
+
+  // statistics
+  struct {
+    // number of HNL configurations
+    size_t num_instances{0};
+
+    // CPU time taken by running the HNL monitor
+    #ifdef MEASURE_CPUTIME
+    struct timespec cputime{0, 0};
+    #endif
+  } stats;
 };
 
 @namespace_end@

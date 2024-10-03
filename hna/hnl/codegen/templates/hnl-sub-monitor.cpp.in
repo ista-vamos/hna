@@ -14,8 +14,9 @@ bool HNLMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
 
+  assert(false && "TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!");
   abort(); // TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!
-  return traces.finished();
+  //return traces.finished();
 }
 
 static inline Verdict negate_verdict(Verdict v) {
