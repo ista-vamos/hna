@@ -7,13 +7,16 @@
 #include <mutex>
 #include <vector>
 
+#include "tracesetbase.h"
 #include "trace.h"
 
 class TraceSetView;
 
-class TraceSet {
-  // mapping from IDs to traces
-  std::map<unsigned, std::unique_ptr<Trace>> _traces;
+///
+// The class for storing observation traces.
+// Unlike SharedTraceSet which is sequential, this class
+// supports parallel addition or traces, their updates and querying.
+class TraceSet : public TraceSetBase {
   std::map<unsigned, std::unique_ptr<Trace>> _new_traces;
 
   std::atomic<bool> _traces_finished{false};
@@ -51,7 +54,7 @@ public:
     _traces_finished.store(true, std::memory_order_release);
   }
 
-  bool finished() {
+  bool finished() override {
     bool r = _traces_finished.load(std::memory_order_acquire);
     if (r) {
       lock();
@@ -67,9 +70,6 @@ public:
   bool hasTrace(unsigned trace_id);
 
   size_t size();
-
-  auto begin() const -> auto { return _traces.begin(); }
-  auto end() const -> auto { return _traces.end(); }
 };
 
 #endif

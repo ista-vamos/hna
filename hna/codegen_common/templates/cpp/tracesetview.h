@@ -6,7 +6,7 @@
 #include <mutex>
 #include <vector>
 
-#include "sharedtraceset.h"
+#include "tracesetbase.h"
 #include "trace.h"
 
 class TraceSet;
@@ -14,7 +14,7 @@ class TraceSet;
 // trace set that only references traces from some other (shared) trace set
 // (or references a single trace from some trace set)
 class TraceSetView {
-  SharedTraceSet *traceset{nullptr};
+  TraceSetBase *traceset{nullptr};
   bool _traceset_destroyed{false};
 
   // mapping from IDs to traces
@@ -31,8 +31,7 @@ class TraceSetView {
 public:
   TraceSetView() = default;
   ~TraceSetView();
-  TraceSetView(SharedTraceSet &);
-  TraceSetView(TraceSet &) { abort(); /* NOT IMPLEMENTED */}
+  TraceSetView(TraceSetBase &);
   TraceSetView(Trace *);
 
   bool finished() const {
