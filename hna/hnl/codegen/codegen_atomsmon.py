@@ -1326,15 +1326,15 @@ class CodeGenCpp(CodeGen):
         for q in formula.quantifier_prefix:
             if isinstance(q, ForAllFromFun):
                 assert (
-                    q.fun.c_name() != "traces"
+                    q.fun.name != "traces"
                 ), "Collision in the name of obervations and function"
-                set2quantifier.setdefault(q.fun.c_name(), []).append(str(q.var))
-                q2setname[str(q.var)] = q.fun.c_name()
+                set2quantifier.setdefault(q.fun, []).append(q)
+                q2setname[q] = q.fun
             else:
                 # None means observed traces (better than some string that could collide with the name
                 # of the function)
-                set2quantifier.setdefault("traces", []).append(str(q.var))
-                q2setname[str(q.var)] = "traces"
+                set2quantifier.setdefault(None, []).append(q)
+                q2setname[q] = "traces"
 
         return (
             [str(q.var) for q in self._fixed_quantifiers or ()],
@@ -1344,31 +1344,40 @@ class CodeGenCpp(CodeGen):
 
     def _traces_attribute_str(self, formula):
         lines = []
-        fixed, tracesets, _ = self.input_tracesets(formula)
+        fixed, set2q, q2set = self.input_tracesets(formula)
         # Add attributes for quantifiers fixed by parent monitors
-        for q in fixed or ():
-            lines.append(f"Trace *{q};")
-
-        for traceset, quantifiers in tracesets.items():
-            lines.append(f"TraceSetView {traceset};  // {', '.join(quantifiers)}")
+        print(set2q)
+        lines = [f"Trace *{q};" for q in (fixed or ())] + [
+            f"TraceSetView "
+            + ("traces" if traceset is None else f"traces_{traceset.c_name()}")
+            + ";"
+            for traceset, q in set2q.items()
+        ]
         return "\n".join(lines)
 
     def _traces_ctors_dtors(self, formula):
         decls = []
-        fixed, set2q, _ = self.input_tracesets(formula)
+        fixed, set2q, q2setname = self.input_tracesets(formula)
 
         with self.new_file("hnl-monitor-ctors-dtors.h") as f:
             dump_codegen_position(f)
             wr = f.write
 
             args = [f"Trace *{q}" for q in fixed]
-            args += [f"TraceSetView& {traceset}" for traceset in set2q.keys()]
-            proto = f"HNLMonitor({', '.join(args)})"
+            proto = f"HNLMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
             decls.append(f"{proto};")
 
             args = [f"{q}({q})" for q in fixed]
-            args += [f"{traceset}({traceset})" for traceset in set2q.keys()]
-            wr(f"HNLMonitor::{proto} : ")
+
+            for traceset, qs in set2q.items():
+                if traceset is None:
+                    args.append(f"traces(TS.traces)")
+                else:
+                    funargs = ",".join((str(t) for t in traceset.traces))
+                    args.append(
+                        f"traces_{traceset.c_name()}(TS.{traceset.name}.getTraceSet({funargs}))"
+                    )
+            wr(f"HNLMonitor::{proto} : {',' if args else ''}")
             wr(", ".join(args))
             wr("{}\n\n")
 

@@ -12,15 +12,13 @@
 #include "submonitor/hnl-monitor.h"
 
 #include "functions.h"
+#include "alltracesets.h"
 
 @namespace_start@
 
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
 class HNLMonitor : public ::Monitor {
-  // This class is a wrapper and a container for traces (including function traces).
-  // The actual monitoring happens in this submonitor.
-  sub::HNLMonitor _monitor;
   // All traces for this monitor (and submonitors).
   // The submonitors will have only a view of this container
   TraceSet _traces;
@@ -28,9 +26,20 @@ class HNLMonitor : public ::Monitor {
 
   @functions@
 
+  // An object containing a reference to _traces and all functions.
+  // We use it to pass these references around to monitors.
+  const AllTraceSets allTraceSets;
+
+  // This class is a wrapper and a container for traces (including function traces).
+  // The actual monitoring happens in this submonitor.
+  sub::HNLMonitor _monitor;
+
 public:
-  HNLMonitor(CmdArgs *cmd = nullptr) : _cmd(cmd) @functions_init@ {
-  }
+  HNLMonitor(CmdArgs *cmd = nullptr)
+    : _cmd(cmd)
+      @functions_init@,
+      allTraceSets(@alltracesets_init@),
+      _monitor(allTraceSets) {}
 
   //virtual ~HNLMonitor() {}
 

@@ -7,6 +7,7 @@
 @namespace_start@
 
 /* GENERATED */
+#include "functions.h"
 #include "hnl-monitor-ctors-dtors.h"
 
 bool HNLMonitor::addNewTraces() {
@@ -14,7 +15,12 @@ bool HNLMonitor::addNewTraces() {
   #include "create-instances.h"
 
   abort(); // TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!
-  return _traces.finished();
+  return traces.finished();
+}
+
+static inline Verdict negate_verdict(Verdict v) {
+    assert(v != Verdict::UNKNOWN);
+    return v == Verdict::FALSE ? Verdict::TRUE : Verdict::FALSE;
 }
 
 Verdict HNLMonitor::step() {
@@ -33,6 +39,8 @@ Verdict HNLMonitor::step() {
           // this monitor is done
           _instances[n].reset();
           ++empty_slots;
+
+          @process_submonitor_verdict@
       }
   }
 
@@ -59,9 +67,9 @@ void HNLMonitor::condenseWbg() {
     decltype(_instances) tmp;
     tmp.reserve(_instances.size());
 
-    for (auto *ptr : _instances) {
+    for (auto &ptr : _instances) {
         if (ptr) {
-            tmp.push_back(ptr);
+            tmp.push_back(std::move(ptr));
         }
     }
     _instances.swap(tmp);

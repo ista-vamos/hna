@@ -46,6 +46,7 @@ public:
   // time, so there is no race while iterating unlocked over traces.
   Trace *getNewTrace();
 
+  // set that there will be no new traces nor events in the future
   void noFutureUpdates() {
     _traces_finished.store(true, std::memory_order_release);
   }

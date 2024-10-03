@@ -1,70 +1,15 @@
-import random
 from itertools import chain
-from os import readlink, listdir, makedirs
+from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
-from subprocess import run
-from sys import stderr
 
-from pyeda.inter import bddvar
-
-from hna.automata.automaton import Automaton
-from hna.codegen_common.utils import dump_codegen_position, FIXME
-from hna.hnl.codegen.bdd import BDDNode
+from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.formula import (
-    IsPrefix,
-    And,
-    Or,
-    Not,
-    Constant,
-    Function,
-    ForAll,
     ForAllFromFun,
-    TraceVariable,
-    PrenexFormula,
-)
-from hna.hnl.formula2automata import (
-    formula_to_automaton,
-    compose_automata,
-    to_priority_automaton,
+    Exists,
 )
 from hna.codegen_common.codegen import CodeGen
-from .codegen_atomsmon import CodeGenCpp as CodeGenCppAtomsMon, traces_positions
-
-
-def _universal_quantifiers_prefix(formula: PrenexFormula):
-    assert isinstance(formula, PrenexFormula), formula
-
-    univ, rest = [], []
-    for n, q in enumerate(formula.quantifier_prefix):
-        if isinstance(q, ForAll):
-            univ.append(q)
-        else:
-            rest = formula.quantifier_prefix[n:]
-            break
-
-    return univ, rest
-
-
-def _split_formula(formula: PrenexFormula):
-    """
-    Split the given formula into a universally quantified formula and the sub-formula
-    for the nested monitor. E.g., `forall a. exists b: F` gets transformed into
-    two formulas: `forall a. !F'` where `F' = forall b: !F`.
-    However, the first formula has only a placeholder constant instead of `!F`,
-    because we handle that part separately.
-    """
-    universal, rest = _universal_quantifiers_prefix(formula)
-    if not rest:
-        # this formula is only universally quantified
-        return formula, None, universal
-
-    F1 = PrenexFormula(universal, Not(Constant("subF")))
-    F2 = PrenexFormula([q.swap() for q in rest], Not(formula.formula))
-    print("Split formula: topF = ", F1)
-    print("Split formula: subF = ", F2)
-    print("Universal: ", universal)
-
-    return F1, F2, universal
+from .codegen_atomsmon import CodeGenCpp as CodeGenCppAtomsMon
+from .utils import _split_formula
 
 
 class CodeGenCpp(CodeGen):
@@ -163,7 +108,7 @@ class CodeGenCpp(CodeGen):
                 wr(f"  Trace *{q.var};\n")
             wr("  /* fixed traces */\n")
             for q in self._fixed_quantifiers or ():
-                wr(f"  FixedTrace *{q.var};\n")
+                wr(f"  Trace *{q.var};\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  sub::HNLMonitor *monitor{nullptr};\n\n")
             args = (
@@ -182,7 +127,7 @@ class CodeGenCpp(CodeGen):
                 )
             )
             # wr(", monitor(new sub::HNLMonitor()")
-            wr("){}\n\n")
+            wr("{}\n\n")
 
             wr("};\n\n")
 
@@ -192,7 +137,7 @@ class CodeGenCpp(CodeGen):
             wr("#endif\n")
 
     def _generate_create_instances(self, formula):
-        _, tracesets, q2set = self.input_tracesets(formula)
+        _, _, q2set = self.input_tracesets(formula)
 
         with self.new_file("create-instances.h") as f:
             wr = f.write
@@ -201,13 +146,18 @@ class CodeGenCpp(CodeGen):
             # multiple times, but we do not care that much
             checked = set()
             for n, quantifier in enumerate(formula.quantifier_prefix):
-                traceset = q2set[str(quantifier.var)]
+                traceset = q2set[quantifier]
                 if traceset in checked:
                     continue
                 checked.add(traceset)
 
                 dump_codegen_position(wr)
-                wr(f"if (auto *t_new = {traceset}.getNewTrace()) {{\n")
+                if traceset is None:
+                    wr(f"if (auto *t_new = traces.getNewTrace()) {{\n")
+                else:
+                    wr(
+                        f"if (auto *t_new = traces_{traceset.c_name()}.getNewTrace()) {{\n"
+                    )
 
                 if self.args.reduction:
                     self._gen_create_instance_reduced(formula, n, wr)
@@ -222,7 +172,7 @@ class CodeGenCpp(CodeGen):
         new_ns = []
         for n, q in enumerate(formula.quantifier_prefix):
             if (
-                q2set[str(q.var)] == traceset
+                q2set[q] == traceset
             ):  # this quantifier can be instantiated with the new trace
                 self._gen_combinations(n, formula, traceset, q2set, new_ns, wr)
                 new_ns.append(n)
@@ -232,18 +182,20 @@ class CodeGenCpp(CodeGen):
         for n, q in enumerate(formula.quantifier_prefix):
             i = n + 1
             if n == new_n:
-                wr(f"  auto *t{i} = t_new;\n")
+                wr(f"  auto *{q.var} = t_new;\n")
             else:
-                wr(f"for (auto &[t{i}_id, t{i}_ptr] : {q2set[str(q.var)]}) {{\n")
-                wr(f"  auto *t{i} = t{i}_ptr.get();\n")
+                ts = q2set[q]
+                if ts is None:
+                    wr(f"for (auto &[t{i}_id, t{i}_ptr] : {ts}) {{\n")
+                    wr(f"  auto *{q.var} = t{i}_ptr.get();\n")
             if n in new_ns:
-                wr(f"if (t{n + 1} == t_new) {{ continue; }}\n")
+                wr(f"if ({q.var} == t_new) {{ continue; }}\n")
 
         dump_codegen_position(wr)
         args = ",".join(
-            (
-                str(q.var)
-                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+            chain(
+                (str(q.var) for q in formula.quantifier_prefix),
+                (f"/* fixed */ {q.var}" for q in self._fixed_quantifiers or ()),
             )
         )
         wr(f"\n  auto *instance = new Instance({args});\n")
@@ -320,15 +272,15 @@ class CodeGenCpp(CodeGen):
         for q in formula.quantifier_prefix:
             if isinstance(q, ForAllFromFun):
                 assert (
-                    q.fun.c_name() != "traces"
+                    q.fun.name != "traces"
                 ), "Collision in the name of obervations and function"
-                set2quantifier.setdefault(q.fun.c_name(), []).append(str(q.var))
-                q2setname[str(q.var)] = q.fun.c_name()
+                set2quantifier.setdefault(q.fun, []).append(q)
+                q2setname[q] = q.fun
             else:
                 # None means observed traces (better than some string that could collide with the name
                 # of the function)
-                set2quantifier.setdefault("traces", []).append(str(q.var))
-                q2setname[str(q.var)] = "traces"
+                set2quantifier.setdefault(None, []).append(q)
+                q2setname[q] = None
 
         return (
             [str(q.var) for q in self._fixed_quantifiers or ()],
@@ -338,33 +290,40 @@ class CodeGenCpp(CodeGen):
 
     def _traces_attribute_str(self, formula):
         lines = []
-        fixed, tracesets, _ = self.input_tracesets(formula)
+        fixed, set2q, q2set = self.input_tracesets(formula)
         # Add attributes for quantifiers fixed by parent monitors
-        for q in fixed or ():
-            lines.append(f"Trace *{q};")
-
-        for traceset, quantifiers in tracesets.items():
-            lines.append(
-                f"TraceSetView {traceset};  // {', '.join(quantifiers)} in {traceset};"
-            )
+        print(set2q)
+        lines = [f"Trace *{q};" for q in (fixed or ())] + [
+            f"TraceSetView "
+            + ("traces" if traceset is None else f"traces_{traceset.c_name()}")
+            + ";"
+            for traceset, q in set2q.items()
+        ]
         return "\n".join(lines)
 
     def _traces_ctors_dtors(self, formula):
         decls = []
-        fixed, set2q, _ = self.input_tracesets(formula)
+        fixed, set2q, q2setname = self.input_tracesets(formula)
 
         with self.new_file("hnl-monitor-ctors-dtors.h") as f:
             dump_codegen_position(f)
             wr = f.write
 
             args = [f"Trace *{q}" for q in fixed]
-            args += [f"TraceSetView& {traceset}" for traceset in set2q.keys()]
-            proto = f"HNLMonitor({', '.join(args)})"
+            proto = f"HNLMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
             decls.append(f"{proto};")
 
             args = [f"{q}({q})" for q in fixed]
-            args += [f"{traceset}({traceset})" for traceset in set2q.keys()]
-            wr(f"HNLMonitor::{proto} : ")
+
+            for traceset, qs in set2q.items():
+                if traceset is None:
+                    args.append(f"traces(TS.traces)")
+                else:
+                    funargs = ",".join((str(t) for t in traceset.traces))
+                    args.append(
+                        f"traces_{traceset.c_name()}(TS.{traceset.name}.getTraceSet({funargs}))"
+                    )
+            wr(f"HNLMonitor::{proto} : TS(TS) {',' if args else ''}")
             wr(", ".join(args))
             wr("{}\n\n")
 
@@ -382,11 +341,12 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code
         """
-        top_formula, sub_formula, universal_prefix = _split_formula(formula)
+        top_formula, sub_formula, fixed_quantifiers = _split_formula(formula)
+        negate_submonitor_result = isinstance(sub_formula.quantifier_prefix[0], Exists)
 
         # generate this monitor
-        self.generate_monitor(top_formula)
-        self.generate_submonitors(sub_formula, universal_prefix)
+        self.generate_monitor(top_formula, negate_submonitor_result)
+        self.generate_submonitors(sub_formula, fixed_quantifiers)
 
         # cmake generation should go at the end so that
         # it knows all the generated files
@@ -398,10 +358,11 @@ class CodeGenCpp(CodeGen):
         """
         The top-level function to generate code as an embedded CMake project
         """
-        top_formula, sub_formula, universal_prefix = _split_formula(formula)
+        top_formula, sub_formula, fixed_quantifiers = _split_formula(formula)
+        negate_submonitor_result = isinstance(sub_formula.quantifier_prefix[0], Exists)
 
-        self.generate_monitor(top_formula)
-        self.generate_submonitors(sub_formula, universal_prefix)
+        self.generate_monitor(top_formula, negate_submonitor_result)
+        self.generate_submonitors(sub_formula, fixed_quantifiers)
 
         # if gen_tests:
         #    self.generate_tests(self.args.alphabet)
@@ -428,7 +389,10 @@ class CodeGenCpp(CodeGen):
 
     def generate_submonitors(self, sub_formula, universal_prefix: list):
         nested_out_dir = f"{self.out_dir}/submonitor"
-        has_submonitors = sub_formula.has_quantifier_alternation()
+        has_submonitors = sub_formula.has_different_quantifiers()
+
+        if isinstance(sub_formula.quantifier_prefix[0], Exists):
+            sub_formula = sub_formula.negate()
 
         if has_submonitors:
             nested_cg = CodeGenCpp(
@@ -451,32 +415,23 @@ class CodeGenCpp(CodeGen):
         nested_cg.generate_embedded(sub_formula)
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
-    def generate_monitor(self, formula):
+    def generate_monitor(self, formula, negate_submonitor_result=False):
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
         ctors_dtors = self._traces_ctors_dtors(formula)
 
-        ns_start = "\n".join(
-            (
-                f"namespace {ns} {{"
-                for ns in (self._namespace.split("::") if self._namespace else ())
-            )
-        )
-        ns_end = "\n".join(
-            (
-                f"}} /* namespace {ns} */"
-                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
-            )
-        )
         values = {
             "@monitor_name@": self.name(),
             "@namespace@": self.namespace(),
             "@sub-namespace@": self.sub_namespace(),
-            "@namespace_start@": ns_start,
-            "@namespace_end@": ns_end,
+            "@namespace_start@": self.namespace_start(),
+            "@namespace_end@": self.namespace_end(),
             "@input_traces@": input_traces,
             "@ctors_dtors@": "\n".join(ctors_dtors),
+            "@process_submonitor_verdict@": (
+                "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""
+            ),
         }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)

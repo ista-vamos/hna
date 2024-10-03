@@ -8,6 +8,8 @@ TraceSetView::TraceSetView(SharedTraceSet &S) : traceset(&S) {
   // register this view so that we'll get updated on new traces
   S.addView(this);
 
+  // add all traces that are currently in S between new traces,
+  // so that they are returned from `getNewTrace`
   for (auto &[trid, tr_ptr] : S) {
     newTrace(trid, tr_ptr.get());
   }

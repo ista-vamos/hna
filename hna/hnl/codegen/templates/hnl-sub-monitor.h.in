@@ -8,9 +8,11 @@
 
 #include "monitor.h"
 #include "verdict.h"
-#include "tracesetview.h"
+#include "function.h"
+#include "traceset.h"
 
 /* generated */
+#include "alltracesets.h"
 #include "instance.h"
 
 @namespace_start@
@@ -30,6 +32,8 @@ class HNLMonitor : public ::Monitor {
 
   bool addNewTraces();
   void condenseWbg();
+
+  const AllTraceSets& TS;
 
 public:
   @ctors_dtors@
