@@ -4,11 +4,16 @@
 #include "traceset.h"
 
 Trace *TraceSet::newTrace(unsigned trace_id) {
-  Trace *t;
+  Trace *t = new Trace(trace_id);
 
   lock();
-  t = _new_traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
+  _new_traces.emplace(trace_id, t);
   unlock();
+
+  // update views with the new trace
+  for (auto *view : _views) {
+    view->newTrace(trace_id, t);
+  }
 
   return t;
 }

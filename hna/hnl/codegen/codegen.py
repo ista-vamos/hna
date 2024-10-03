@@ -66,6 +66,8 @@ class CodeGenCpp(CodeGen):
             "stream.h",
             "trace.h",
             "trace.cpp",
+            "tracesetbase.h",
+            "tracesetbase.cpp",
             "traceset.h",
             "traceset.cpp",
             "tracesetview.h",
