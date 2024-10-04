@@ -31,8 +31,11 @@ class HNLMonitor : public ::Monitor {
   //std::vector<std::unique_ptr<@sub-namespace@::HNLMonitor>> _monitors_wbg;
   std::vector<std::unique_ptr<Instance>> _instances;
 
-  bool addNewTraces();
+  void addNewTraces();
   void condenseWbg();
+
+  bool _inputs_finished{false};
+  bool inputs_finished();
 
 public:
   @ctors_dtors@
