@@ -3,36 +3,23 @@
 
 #include "traceset.h"
 
+TraceSet::~TraceSet() {
+  for (auto *view : _views) {
+    view->traceSetDestroyed();
+  }
+}
+
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t = new Trace(trace_id);
 
   lock();
-  _new_traces.emplace(trace_id, t);
+  _traces.emplace(trace_id, t);
   unlock();
 
   // update views with the new trace
   for (auto *view : _views) {
     view->newTrace(trace_id, t);
   }
-
-  return t;
-}
-
-Trace *TraceSet::getNewTrace() {
-  Trace *t = nullptr;
-
-  lock();
-  if (_new_traces.empty()) {
-    unlock();
-    return nullptr;
-  }
-
-  auto trace_it = _new_traces.begin();
-  t = trace_it->second.get();
-
-  _traces.emplace(t->id(), std::move(trace_it->second));
-  _new_traces.erase(trace_it);
-  unlock();
 
   return t;
 }
@@ -61,12 +48,6 @@ Trace *TraceSet::get(unsigned trace_id) {
     return ret;
   }
 
-  it = _new_traces.find(trace_id);
-  if (it != _new_traces.end()) {
-    auto *ret = it->second.get();
-    return ret;
-  }
-
   return nullptr;
 }
 
@@ -82,26 +63,8 @@ bool TraceSet::hasTrace(unsigned trace_id) {
 size_t TraceSet::size() {
   size_t ret;
   lock();
-  ret = _traces.size() + _new_traces.size();
+  ret = _traces.size();
   unlock();
 
   return ret;
-}
-
-bool TraceSet::allTracesFinished() {
-  lock();
-  if (_new_traces.size() > 0) {
-    unlock();
-    return false;
-  }
-
-  for (auto &it : _traces) {
-    if (!it.second->finished()) {
-      unlock();
-      return false;
-    }
-  }
-
-  unlock();
-  return true;
 }

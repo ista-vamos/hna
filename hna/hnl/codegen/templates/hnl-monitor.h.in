@@ -48,7 +48,6 @@ public:
   void extendTrace(unsigned trace_id, const Event &e);
   void traceFinished(unsigned trace_id);
   void noFutureUpdates();
-  bool allTracesFinished();
   bool hasTrace(unsigned trace_id);
 
   /// This method calls `step` for the function traces generators

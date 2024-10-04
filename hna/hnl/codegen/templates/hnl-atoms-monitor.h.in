@@ -52,13 +52,16 @@ protected:
   @input_traces@
 
   // check for new traces and create HNLInstances for them if there are some
-  bool addNewTraces();
+  void addNewTraces();
 
   void deleteAtomMonitor(AtomMonitor *);
   void condenseWbg();
 
   Verdict updateInstance(HNLInstance *instance, Verdict verdict);
   Verdict getFinishedVerdict(const AtomIdentifier& id);
+
+  bool _inputs_finished{false};
+  bool inputs_finished();
 
   CmdArgs *_cmd;
 

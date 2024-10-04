@@ -10,13 +10,9 @@
 #include "functions.h"
 #include "hnl-monitor-ctors-dtors.h"
 
-bool HNLMonitor::addNewTraces() {
+void HNLMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
-
-  assert(false && "TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!");
-  abort(); // TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!
-  //return traces.finished();
 }
 
 static inline Verdict negate_verdict(Verdict v) {
@@ -49,16 +45,26 @@ Verdict HNLMonitor::step() {
       condenseWbg();
   }
 
-  bool traces_finished = addNewTraces();
-  bool finished = traces_finished && _instances.empty();
+  addNewTraces();
+  bool finished = inputs_finished() && _instances.empty();
 
   if (finished) {
-      assert(_instances.empty());
       return Verdict::TRUE;
   }
 
   return Verdict::UNKNOWN;
 }
+
+bool HNLMonitor::inputs_finished() {
+    if (_inputs_finished)
+        return true;
+
+    @inputs_finished@
+
+    _inputs_finished = true;
+    return true;
+}
+
 
 void HNLMonitor::condenseWbg() {
     if (_instances.empty())

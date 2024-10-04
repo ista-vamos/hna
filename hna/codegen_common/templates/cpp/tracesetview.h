@@ -28,26 +28,21 @@ class TraceSetView {
   // concurrently with iterating over _traces
   Trace *get(unsigned trace_id);
 
+  // when the trace view is a view of a TraceSet,
+  // then adding and getting new traces is concurrent
+  // and we need to lock it
+  std::mutex _mtx;
+
+  void lock() { _mtx.lock(); }
+  void unlock() { _mtx.unlock(); }
+
 public:
   TraceSetView() = default;
   ~TraceSetView();
   TraceSetView(TraceSetBase &);
   TraceSetView(Trace *);
 
-  bool finished() const {
-    if (!_new_traces.empty()) {
-      return false;
-    }
-
-    if (traceset) {
-      assert(!_traceset_destroyed);
-      return traceset->finished();
-    }
-
-    assert(_traces.size() != 0);
-    assert(_traces.size() == 1);
-    return _traces.begin()->second->finished();
-  }
+  bool finished();
 
   // Announce a new trace in this SharedTraceSet.
   void newTrace(unsigned trace_id, Trace *);
@@ -65,7 +60,7 @@ public:
   void traceSetDestroyed();
 
   // check if the finished flag is set for all the traces
-  bool allTracesFinished();
+  // bool allTracesFinished();
 
   bool hasTrace(unsigned trace_id);
 

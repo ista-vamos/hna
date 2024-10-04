@@ -2,8 +2,6 @@
 
 #include "tracesetview.h"
 
-// NOTE: we do not lock anything as there should be no concurrency here.
-
 TraceSetView::TraceSetView(TraceSetBase &S) : traceset(&S) {
   // register this view so that we'll get updated on new traces
   S.addView(this);
@@ -27,23 +25,23 @@ void TraceSetView::traceSetDestroyed() { _traceset_destroyed = true; }
 TraceSetView::TraceSetView(Trace *t) { newTrace(t->id(), t); }
 
 void TraceSetView::newTrace(unsigned trace_id, Trace *tr) {
-  //_traces_mtx.lock();
+  lock();
   assert(_traces.count(trace_id) == 0);
   _new_traces.emplace(trace_id, tr);
-  //_traces_mtx.unlock();
+  unlock();
 }
 
 Trace *TraceSetView::getNewTrace() {
   Trace *t = nullptr;
 
-  //_traces_mtx.lock();
+  lock();
   auto trace_it = _new_traces.begin();
   if (trace_it != _new_traces.end()) {
     t = trace_it->second;
     _traces.emplace(t->id(), t);
     _new_traces.erase(trace_it);
   }
-  //_traces_mtx.unlock();
+  unlock();
 
   return t;
 }
@@ -66,27 +64,48 @@ Trace *TraceSetView::get(unsigned trace_id) {
 
 bool TraceSetView::hasTrace(unsigned trace_id) {
   bool ret;
-  //_traces_mtx.lock();
+  lock();
   ret = (get(trace_id) != nullptr);
-  //_traces_mtx.unlock();
+  unlock();
 
   return ret;
 }
 
+bool TraceSetView::finished() {
+    lock();
+    bool no_new_traces = _new_traces.empty();
+    unlock();
+
+    if (!no_new_traces) {
+      return false;
+    }
+
+    if (traceset) {
+      assert(!_traceset_destroyed);
+      return traceset->finished();
+    }
+
+    assert(_traces.size() != 0);
+    assert(_traces.size() == 1);
+    return _traces.begin()->second->finished();
+  }
+
+/*
 bool TraceSetView::allTracesFinished() {
-  //_traces_mtx.lock();
+  lock();
   if (_new_traces.size() > 0) {
-    //_traces_mtx.unlock();
+    unlock();
     return false;
   }
 
   for (auto &it : _traces) {
     if (!it.second->finished()) {
-      //_traces_mtx.unlock();
+      unlock();
       return false;
     }
   }
 
-  //_traces_mtx.unlock();
+  unlock();
   return true;
 }
+*/

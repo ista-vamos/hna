@@ -45,12 +45,3 @@ bool SharedTraceSet::hasTrace(unsigned trace_id) {
   return get(trace_id) != nullptr;
 }
 
-bool SharedTraceSet::allTracesFinished() {
-  for (auto &it : _traces) {
-    if (!it.second->finished()) {
-      return false;
-    }
-  }
-
-  return true;
-}

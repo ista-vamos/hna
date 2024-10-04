@@ -242,6 +242,7 @@ class CodeGenCpp(CodeGenCpp):
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
         ctors_dtors = self._traces_ctors_dtors(formula)
+        inputs_finished = self._inputs_finished(formula)
 
         values = {
             "@monitor_name@": self.name(),
@@ -250,6 +251,7 @@ class CodeGenCpp(CodeGenCpp):
             "@namespace_start@": self.namespace_start(),
             "@namespace_end@": self.namespace_end(),
             "@input_traces@": input_traces,
+            "@inputs_finished@": inputs_finished,
             "@ctors_dtors@": "\n".join(ctors_dtors),
             "@process_submonitor_verdict@": (
                 "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""

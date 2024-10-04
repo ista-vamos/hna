@@ -306,6 +306,7 @@ class CodeGenCpp(CodeGen):
             wr(
                 f"  AllTraceSets(TraceSet& traces{', ' if fun_args else ''}{fun_args}) : traces(traces) {',' if fun_init else ''} {fun_init} {{}}\n"
             )
+
             wr("};\n\n")
 
             wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
@@ -409,9 +410,8 @@ class CodeGenCpp(CodeGen):
 
     def _functions_mon_cpp_str(self, functions):
         step = "\n".join((f"function_{fun.name}->step();" for fun in functions))
-        finished = [" // check if also the function traces generators finished"] + [
-            f"finished &= function_{fun.name}->allTracesFinished();"
-            for fun in functions
+        finished = [
+            f"_inputs_finished &= function_{fun.name}->finished();" for fun in functions
         ]
         return step, "\n".join(finished)
 
