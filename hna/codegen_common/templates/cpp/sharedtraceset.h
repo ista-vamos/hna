@@ -36,7 +36,7 @@ public:
   bool finished() override { return _traces_finished; }
 
   // check if the finished flag is set for all the traces
-  bool allTracesFinished();
+  // bool allTracesFinished();
 
   bool hasTrace(unsigned trace_id);
 };

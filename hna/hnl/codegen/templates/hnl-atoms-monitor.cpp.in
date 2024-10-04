@@ -27,12 +27,9 @@ static inline Verdict do_step(AtomMonitor *M) {
 #include "hnl-monitor-ctors-dtors.h"
 
 
-bool HNLMonitor::addNewTraces() {
+void HNLMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
-
-  assert(false && "TODO: HERE WE MUST CHECK FINISHED OF ALL INPUT TRACE SETS!");
-  // return traces.finished();
 }
 
 Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
@@ -121,7 +118,7 @@ Verdict HNLMonitor::step() {
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
 #endif // !MEASURE_CPUTIME
 
-  bool traces_finished = addNewTraces();
+  addNewTraces();
 
 #ifdef MEASURE_CPUTIME
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
@@ -131,7 +128,7 @@ Verdict HNLMonitor::step() {
   stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
 #endif // !MEASURE_CPUTIME
 
-  bool finished = traces_finished && _monitors_wbg.empty();//_instances.empty();
+  bool finished = inputs_finished() && _monitors_wbg.empty();
 
   if (finished) {
 #ifdef CACHE_ATOMS_RESULTS
@@ -193,17 +190,16 @@ void HNLMonitor::removeInstance(HNLInstance *instance) {
     delete instance;
 }
 
-/*
-Verdict HNLMonitor::getFinishedVerdict(const AtomIdentifier& id) {
-  auto it = _finished_atoms.find(id);
-  if (it == _finished_atoms.end()) {
-      return Verdict::UNKNOWN;
-  }
+bool HNLMonitor::inputs_finished() {
+    if (_inputs_finished)
+        return true;
 
-  assert (it->second.verdict() != Verdict::UNKNOWN);
-  return it->second.verdict();
+    @inputs_finished@
+
+    _inputs_finished = true;
+    return true;
 }
-*/
+
 
 void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
     delete m;

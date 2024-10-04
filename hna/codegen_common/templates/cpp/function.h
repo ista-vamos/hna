@@ -8,7 +8,7 @@ public:
   virtual ~Function() {}
 
   virtual void step() = 0;
-  virtual bool allTracesFinished() const = 0;
+  virtual bool finished() const = 0;
 };
 
 #endif // HNL_FUNCTION_H_

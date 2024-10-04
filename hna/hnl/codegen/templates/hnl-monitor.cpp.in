@@ -33,14 +33,6 @@ void HNLMonitor::noFutureUpdates() {
     _traces.noFutureUpdates();
 }
 
-bool HNLMonitor::allTracesFinished() {
-    bool finished =  _traces.allTracesFinished();
-    if (finished) {
-        @functions_finished@
-    }
-    return finished;
-}
-
 bool HNLMonitor::hasTrace(unsigned trace_id) {
     return _traces.hasTrace(trace_id);
 }
