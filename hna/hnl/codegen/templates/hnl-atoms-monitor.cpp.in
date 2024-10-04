@@ -86,6 +86,8 @@ Verdict HNLMonitor::step() {
           for (auto it = atom_monitor->used_by_begin(),
                     et = atom_monitor->used_by_end(); it != et; ++it) {
               if (updateInstance(*it, verdict) == Verdict::FALSE) {
+                  // FIXME: we leak memory (which is bad, because this FALSE may not be the final result
+                  // and the monitors may run further)
                   return Verdict::FALSE;
               }
           }

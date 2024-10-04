@@ -38,6 +38,11 @@ Verdict HNLMonitor::step() {
           ++empty_slots;
 
           @process_submonitor_verdict@
+          if (verdict == Verdict::FALSE) {
+              // FIXME: we leak memory (which is bad, because this FALSE may not be the final result
+              // and the monitors may run further)
+              return verdict;
+          }
       }
   }
 
