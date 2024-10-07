@@ -16,8 +16,8 @@ class CodeGenCpp(CodeGen):
     The main function to be called is `generate`.
     """
 
-    def __init__(self, args, ctx):
-        super().__init__(args, ctx)
+    def __init__(self, args, ctx, name="hna-monitor"):
+        super().__init__(name, args, ctx)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
@@ -41,7 +41,7 @@ class CodeGenCpp(CodeGen):
         else:
             FIXME(f, msg, only_comment=True)
 
-    def _copy_files(self):
+    def copy_files(self):
         # copy the source files given on command line
         for f in self.args.cpp_files:
             self.copy_file(f)
@@ -68,11 +68,12 @@ class CodeGenCpp(CodeGen):
             "monitor.h",
             "atom-base.h",
             "atom-evaluation-state.h",
-            "hnl-monitor.h.in",
             "function.h",
             "stream.h",
             "trace.h",
             "trace.cpp",
+            "tracesetbase.h",
+            "tracesetbase.cpp",
             "traceset.h",
             "traceset.cpp",
             "tracesetview.h",
@@ -373,7 +374,7 @@ class CodeGenCpp(CodeGen):
             wr("#pragma once\n\n")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
-                wr(f'#include "hnl-{state_id}/hnl-monitor.h.in"\n')
+                wr(f'#include "hnl-{state_id}/hnl-monitor.h"\n')
 
         with self.new_file("slices-tree-ctor.h") as f:
             wr = f.write
@@ -471,18 +472,18 @@ class CodeGenCpp(CodeGen):
             cmake_subdirs.append(subdir)
             monitor_names.append(monitor_name)
 
-            embedding_data = {
-                "monitor_name": monitor_name,
-                "tests": True,
-            }
             hnl_codegen = HNLCodeGenCpp(
-                self.args, ctx, f"{self.out_dir}/{subdir}", namespace=f"hnl_{hnl_id}"
+                self.args,
+                ctx,
+                out_dir=f"{self.out_dir}/{subdir}",
+                namespace=f"hnl_{hnl_id}",
+                name=monitor_name,
             )
-            hnl_codegen.generate_embedded(state.formula, alphabet, embedding_data)
+            hnl_codegen.generate(state.formula, alphabet, embedded=True)
 
         self._generate_monitor(hna)
 
-        self._copy_files()
+        self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
         self._generate_cmake(cmake_subdirs, monitor_names)
