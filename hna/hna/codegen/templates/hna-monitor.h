@@ -6,7 +6,7 @@
 #include <vector>
 #include <mutex>
 
-#include "hnl-monitor-base.h"
+#include "monitor.h"
 #include "trace.h"
 #include "traceset.h"
 #include "verdict.h"
@@ -21,7 +21,7 @@
 // XXX: in this case using virtual methods could be actually
 // very similar in speed, maybe do that to simplify the code?
 struct SliceTreeNode {
-  std::unique_ptr<HNLMonitorBase> monitor;
+  std::unique_ptr<::Monitor> monitor;
   HNANodeType type;
 
   ~SliceTreeNode(){
@@ -31,7 +31,7 @@ struct SliceTreeNode {
   }
 
   SliceTreeNode(SliceTreeNode &&) = default;
-  SliceTreeNode(HNLMonitorBase *m, HNANodeType ty) : monitor(m), type(ty) {
+  SliceTreeNode(::Monitor *m, HNANodeType ty) : monitor(m), type(ty) {
     assert(type != HNANodeType::INVALID && "Invalid node type");
   }
 

@@ -37,8 +37,10 @@ class CodeGenCpp(CodeGen):
     For actual monitors, there are other codegens.
     """
 
-    def __init__(self, args, ctx, out_dir: str = None, namespace: str = None):
-        super().__init__("monitor", args, ctx, out_dir, namespace)
+    def __init__(
+        self, args, ctx, out_dir: str = None, namespace: str = None, name="monitor"
+    ):
+        super().__init__(name, args, ctx, out_dir, namespace)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
@@ -84,7 +86,7 @@ class CodeGenCpp(CodeGen):
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(self, overwrite_keys=None, embedding_data=None):
+    def generate_cmake(self, overwrite_keys=None, embedded=False):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -93,9 +95,6 @@ class CodeGenCpp(CodeGen):
         build_type = self.args.build_type
         if not build_type:
             build_type = '"Debug"' if self.args.debug else "Release"
-
-        if embedding_data is not None:
-            raise NotImplementedError("HERE")
 
         values = {
             "@vamos-buffers_DIR@": vamos_buffers_DIR,
@@ -110,6 +109,7 @@ class CodeGenCpp(CodeGen):
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@monitor_name@": self.name(),
+            "@top_monitor_dir@": self.out_dir,
             "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
             "@submonitors@": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
@@ -118,7 +118,7 @@ class CodeGenCpp(CodeGen):
         if overwrite_keys:
             values.update(overwrite_keys)
 
-        if embedding_data is not None:
+        if embedded:
             cmakelists = "CMakeLists-top-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-top.txt.in"
@@ -311,7 +311,9 @@ class CodeGenCpp(CodeGen):
 
             wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
 
-    def generate(self, formula: PrenexFormula, alphabet=None):
+    def generate(
+        self, formula: PrenexFormula, alphabet=None, embedded: bool = False
+    ) -> None:
         """
         The top-level function to generate code
         """
@@ -373,10 +375,11 @@ class CodeGenCpp(CodeGen):
         self.generate_monitor(formula)
         self.generate_main()
 
-        self.copy_files()
+        if not embedded:
+            self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake()
+        self.generate_cmake(embedded=embedded)
 
         self.format_generated_code()
 
