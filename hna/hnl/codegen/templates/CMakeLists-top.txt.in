@@ -8,6 +8,7 @@ set(vamos-buffers_DIR @vamos-buffers_DIR@)
 find_package(vamos-buffers REQUIRED)
 
 set(monitor_name "@monitor_name@")
+set(top_monitor_dir "@top_monitor_dir@")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

@@ -1,0 +1,21 @@
+# template: CMakeLists-top-embedded.txt.in
+
+set(monitor_name "@monitor_name@")
+set(top_monitor_dir "@top_monitor_dir@")
+
+set(LIBRARY_NAME "top${monitor_name}")
+add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${top_monitor_dir})
+target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
+target_link_libraries(${LIBRARY_NAME} PUBLIC @submonitors_libs@  traceset trace events)
+
+if (BUILD_HNL_EXE)
+add_executable(${monitor_name} main.cpp cmd.cpp @additional_sources@)
+target_link_libraries(${monitor_name} ${LIBRARY_NAME} pthread)
+target_include_directories(${monitor_name} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
+target_include_directories(${monitor_name} PRIVATE ${CMAKE_SOURCE_DIR})
+target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
+endif()
+
+@submonitors@
