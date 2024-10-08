@@ -108,5 +108,6 @@ and `--debug`.
 
 ### Generting code is slow
 
-The code generator is filled with different assertions, some of them are pretty expensive.
-If you experience a problem with speed generation, try running the generators with `python -OO` or using PyPy.
+The code generator is filled with different assertions, some of them are pretty
+expensive. If you experience a problem with the speed of the code generation,
+try running the scripts with `python -OO` or using PyPy.
