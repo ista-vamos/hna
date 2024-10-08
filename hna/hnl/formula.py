@@ -309,8 +309,8 @@ class PrenexFormula(Formula):
         Q = self.quantifiers()
         if not Q:
             return False
-        t = type(Q[0])
-        return any((t != type(q) for q in Q))
+        t = Q[0].quantifier_type()
+        return any((t != q.quantifier_type() for q in Q))
 
     def negate(self):
         return PrenexFormula(
@@ -825,6 +825,14 @@ class Quantifier(Formula):
         super().__init__([formula] if formula is not None else [])
         self.var = var
 
+    def type_symbol(self) -> str:
+        raise NotImplementedError("Must be overridden by child classes")
+
+    def quantifier_type(self):
+        # Here "T" stands for traces (observations). Since the string for any traces coming from functions
+        # will contain '@', '(', and ')', there should be no conflict
+        return (self.type_symbol(), "T")
+
     def quantifiers(self) -> List["Quantifier"]:
         return [self]
 
@@ -889,6 +897,9 @@ class ExistsFromFun(Exists):
         assert not self.children, self.children
         return ForAllFromFun(self.var, self.fun)
 
+    def quantifier_type(self):
+        return (self.type_symbol(), str(self.fun))
+
     @cached_str
     def __str__(self):
         if self.children:
@@ -911,6 +922,9 @@ class ForAllFromFun(ForAll):
         """
         assert not self.children, self.children
         return ExistsFromFun(self.var, self.fun)
+
+    def quantifier_type(self):
+        return (self.type_symbol(), str(self.fun))
 
     @cached_str
     def __str__(self):

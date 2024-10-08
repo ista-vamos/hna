@@ -213,6 +213,8 @@ class CodeGenCpp(CodeGenCpp):
         has_submonitors = sub_formula.has_different_quantifiers()
         nested_out_dir = f"{self.out_dir}/submonitor"
 
+        print("XXX", sub_formula, has_submonitors)
+
         if isinstance(sub_formula.quantifier_prefix[0], Exists):
             sub_formula = sub_formula.negate()
 
@@ -256,6 +258,7 @@ class CodeGenCpp(CodeGenCpp):
             "@process_submonitor_verdict@": (
                 "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""
             ),
+            "@info@": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)

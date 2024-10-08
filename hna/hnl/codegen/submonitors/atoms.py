@@ -1224,6 +1224,7 @@ class CodeGenCpp(CodeGenCpp):
             "@input_traces@": input_traces,
             "@inputs_finished@": inputs_finished,
             "@ctors_dtors@": "\n".join(ctors_dtors),
+            "@info@": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)
