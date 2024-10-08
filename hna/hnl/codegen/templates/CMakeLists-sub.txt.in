@@ -20,9 +20,4 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC @submonitors_libs@  traceset trace 
 # target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
 # endif()
 
-if (ENABLE_TESTS)
-    #add_subdirectory(tests EXCLUDE_FROM_ALL)
-    message(WARNING "ENABLE sub-monitors tests!")
-endif()
-
 @ADD_NESTED_MONITORS@
