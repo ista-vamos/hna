@@ -1,0 +1,40 @@
+#include "slice-tree-node.h"
+#include "hna-monitor.h"
+
+SliceTreeNode::~SliceTreeNode() {
+// we need to cast the unique_ptr to the right type
+// so that the right dtor is called
+#include "slice-tree-node-dtor.h"
+}
+
+SliceTreeNode *HNAMonitor::getOrCreateSlice(SliceTreeNode *current_node,
+                                            unsigned trace_id,
+                                            const ActionEvent &e) {
+  // get successor node
+  auto *succ = _slices_tree.getSuccessor(current_node, e);
+  if (!succ) {
+    succ = _slices_tree.addSlice(current_node, e);
+    if (!succ) {
+      return nullptr;
+    }
+
+    ++stats.num_hnl_monitors;
+  }
+
+  assert(!succ->hasTrace(trace_id));
+  succ->newTrace(trace_id);
+
+  return succ;
+}
+
+void SliceTreeNode::newTrace(unsigned trace_id) { monitor->newTrace(trace_id); }
+
+void SliceTreeNode::traceFinished(unsigned trace_id) { monitor->traceFinished(trace_id); }
+
+void SliceTreeNode::extendTrace(unsigned trace_id, const Event &ev) {
+  monitor->extendTrace(trace_id, ev);
+}
+
+void SliceTreeNode::noFutureUpdates() { monitor->noFutureUpdates(); }
+
+bool SliceTreeNode::hasTrace(unsigned trace_id) { return monitor->hasTrace(trace_id); }
