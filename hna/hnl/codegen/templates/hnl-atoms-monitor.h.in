@@ -36,6 +36,11 @@
 @namespace_start@
 
 
+///
+// Monitor for monitoring the body of an HNL formula
+//  preceded by universal quantification.
+//
+// @info@
 class HNLMonitor : public ::Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors

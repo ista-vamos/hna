@@ -450,6 +450,7 @@ class CodeGenCpp(CodeGen):
             "@functions_step@": funs_step,
             "@functions_finished@": funs_finished,
             "@alltracesets_init@": alltracesets_init,
+            "@info@": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)

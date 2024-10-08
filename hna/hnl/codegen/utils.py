@@ -12,10 +12,10 @@ def _same_quantifiers_prefix(formula: PrenexFormula):
     if not quantifiers:
         return [], []
 
-    ty = type(quantifiers[0])
+    ty = quantifiers[0].quantifier_type()
     same, rest = [], []
     for n, q in enumerate(quantifiers):
-        if type(q) == ty:
+        if q.quantifier_type() == ty:
             same.append(q)
         else:
             rest = formula.quantifier_prefix[n:]
