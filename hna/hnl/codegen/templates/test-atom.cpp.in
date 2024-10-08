@@ -4,7 +4,7 @@
 #include "trace.h"
 #include "verdict.h"
 #include "atom-monitor.h"
-#include "hnl-instance.h"
+#include "instance.h"
 #include "atom-@ATOM_NUM@.h"
 
 @namespace_using@
@@ -18,7 +18,7 @@ int main() {
   // Generated variable `Trace *trace1, *trace2, ...`
   @TRACE@
 
-  HNLInstance instance{@TRACE_VARIABLES@, /* NOT USED */ ATOM_@ATOM_NUM@};
+  Instance instance{@TRACE_VARIABLES@, /* NOT USED */ ATOM_@ATOM_NUM@};
   AtomMonitor@ATOM_NUM@ M(instance);
 
   size_t steps = 0;

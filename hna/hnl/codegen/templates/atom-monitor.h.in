@@ -2,12 +2,12 @@
 #define ATOM_MONITOR__@monitor_name@
 
 #include "atom-base.h"
-#include "hnl-instance.h"
+#include "instance.h"
 #include "atom-identifier.h"
 
 @namespace_start@
 
-class AtomMonitor : public AtomBase<HNLInstance> {
+class AtomMonitor : public AtomBase<Instance> {
   const AtomIdentifier _id;
 
 protected:
