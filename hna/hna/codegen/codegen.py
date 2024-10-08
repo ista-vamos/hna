@@ -47,11 +47,7 @@ class CodeGenCpp(CodeGen):
             self.copy_file(f)
 
         # copy the files specific for HNAs
-        files = [
-            "main.cpp",
-            "hna-monitor.h",
-            "hna-monitor.cpp",
-        ]
+        files = ["main.cpp"]
 
         overwrite_file = self.args.overwrite_file
         for f in files:
@@ -64,8 +60,8 @@ class CodeGenCpp(CodeGen):
     def _copy_common_templates(self):
         # copy the files shared between HNAs and HNLs
         files = [
-            #
             "monitor.h",
+            "monitor-with-traces.h",
             "atom-base.h",
             "atom-evaluation-state.h",
             "function.h",
@@ -313,7 +309,7 @@ class CodeGenCpp(CodeGen):
                     )
 
     def _gen_create_hnl_monitor(self, hna):
-        with self.new_file("create-hnl-monitor.h.in") as f:
+        with self.new_file("create-hnl-monitor.h") as f:
             wr = f.write
             dump_codegen_position(wr)
             wr("HNLMonitorBase *createHNLMonitor(HNANodeType node) {")
@@ -354,6 +350,13 @@ class CodeGenCpp(CodeGen):
                 )
             wr(" default: abort();\n")
             wr(" };\n")
+
+    def _gen_hnl_monitors_decls(self, hna):
+        lines = []
+        for state in hna.states():
+            state_id = hna.get_state_id(state)
+            lines.append(f"namespace hnl_{state_id} {{ class HNLMonitor; }}")
+        return "\n".join(lines)
 
     def _generate_monitor(self, hna):
         with self.new_file("hna_node_types.h") as f:
@@ -396,6 +399,11 @@ class CodeGenCpp(CodeGen):
         self._gen_create_hnl_monitor(hna)
         self._gen_hna_transitions(hna)
         self._gen_do_step(hna)
+
+        values = {"@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna)}
+
+        self.gen_file("hna-monitor.h.in", "hna-monitor.h", values)
+        self.gen_file("hna-monitor.cpp.in", "hna-monitor.cpp", values)
 
     def _gen_hna_transitions(self, hna):
         with self.new_file("hna-next-slice.h") as f:
