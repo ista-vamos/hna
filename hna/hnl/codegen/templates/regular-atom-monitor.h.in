@@ -2,7 +2,6 @@
 #define REGULAR_ATOM_MONITOR__@monitor_name@
 
 #include "verdict.h"
-#include "hnl-instance.h"
 #include "atom-monitor.h"
 #include "atom-evaluation-state.h"
 

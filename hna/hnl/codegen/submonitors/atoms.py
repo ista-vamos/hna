@@ -309,7 +309,7 @@ class CodeGenCpp(CodeGenCpp):
             )
 
     def _generate_hnlinstances(self, formula):
-        with self.new_file("hnl-instance.h") as f:
+        with self.new_file("instance.h") as f:
             wr = f.write
             wr(
                 f"""
@@ -327,7 +327,7 @@ class CodeGenCpp(CodeGenCpp):
 
             wr("class AtomMonitor;\n\n")
             dump_codegen_position(wr)
-            wr("struct HNLInstance {\n")
+            wr("struct Instance {\n")
             wr("  /* variable traces */\n")
             for q in formula.quantifier_prefix:
                 wr(f"  Trace *{q.var};\n")
@@ -342,7 +342,7 @@ class CodeGenCpp(CodeGenCpp):
                 f"Trace *{q.var}"
                 for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
             )
-            wr(f"  HNLInstance({', '.join(args)}, HNLEvaluationState init_state)\n  : ")
+            wr(f"  Instance({', '.join(args)}, HNLEvaluationState init_state)\n  : ")
 
             wr(
                 ", ".join(
@@ -392,13 +392,13 @@ class CodeGenCpp(CodeGenCpp):
         )
         wr(
             f"""
-           auto *instance = new HNLInstance{{{args}, INITIAL_ATOM}};
+           auto *instance = new Instance{{{args}, INITIAL_ATOM}};
            ++stats.num_instances;
 
            instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
 
            #ifdef DEBUG_PRINTS
-           std::cerr << "HNLInstance[init, " << {print_args} << "]\\n";
+           std::cerr << "Instance[init, " << {print_args} << "]\\n";
            #endif /* !DEBUG_PRINTS */
         """
         )
@@ -529,7 +529,7 @@ class CodeGenCpp(CodeGenCpp):
                 identifier += ",0"
         identifier += "}"
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st, Trace *lt, Trace *rt) \n  :"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, HNLEvaluationState st, Trace *lt, Trace *rt) \n  :"
             f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
         )
         assert (
@@ -551,7 +551,7 @@ class CodeGenCpp(CodeGenCpp):
         identifier += "}"
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{\n\n"
         )
         assert (
             len(automaton.initial_states()) == 1
@@ -757,9 +757,9 @@ class CodeGenCpp(CodeGenCpp):
             )
         wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
         wrh("public:\n")
-        wrh(f"AtomMonitor{num}(const HNLInstance& instance);\n\n")
+        wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
         wrh(
-            f"AtomMonitor{num}(const HNLInstance& instance, HNLEvaluationState st, Trace *lt, Trace *rt);\n\n"
+            f"AtomMonitor{num}(const Instance& instance, HNLEvaluationState st, Trace *lt, Trace *rt);\n\n"
         )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
@@ -790,7 +790,7 @@ class CodeGenCpp(CodeGenCpp):
         wrh(
             f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
             "public:\n"
-            f"  AtomMonitor{num}(const HNLInstance&);\n"
+            f"  AtomMonitor{num}(const Instance&);\n"
             f"}};\n"
         )
 
@@ -804,7 +804,7 @@ class CodeGenCpp(CodeGenCpp):
 
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const HNLInstance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
         )
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):

@@ -29,7 +29,7 @@
 #include "monitor.h"
 
 /* generated */
-#include "hnl-instance.h"
+#include "instance.h"
 #include "atom-identifier.h"
 #include "alltracesets.h"
 
@@ -56,13 +56,13 @@ protected:
 
   @input_traces@
 
-  // check for new traces and create HNLInstances for them if there are some
+  // check for new traces and create Instances for them if there are some
   void addNewTraces();
 
   void deleteAtomMonitor(AtomMonitor *);
   void condenseWbg();
 
-  Verdict updateInstance(HNLInstance *instance, Verdict verdict);
+  Verdict updateInstance(Instance *instance, Verdict verdict);
   Verdict getFinishedVerdict(const AtomIdentifier& id);
 
   bool _inputs_finished{false};
@@ -75,8 +75,8 @@ public:
 
   Verdict step();
 
-  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance&);
-  void removeInstance(HNLInstance *instance);
+  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, Instance&);
+  void removeInstance(Instance *instance);
 
   // statistics
   struct {
