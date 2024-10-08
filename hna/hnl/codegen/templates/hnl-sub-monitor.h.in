@@ -22,6 +22,8 @@
 // In cases when the formula is `forall ..., exists ...: F`,
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
+//
+// @info@
 class HNLMonitor : public ::Monitor {
   const AllTraceSets& TS;
 

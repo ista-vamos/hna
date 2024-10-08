@@ -18,6 +18,8 @@
 
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
+//
+// @info@
 class HNLMonitor : public ::MonitorWithTraces {
   CmdArgs *_cmd;
 
