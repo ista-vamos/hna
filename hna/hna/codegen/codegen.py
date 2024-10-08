@@ -86,7 +86,7 @@ class CodeGenCpp(CodeGen):
             if f not in overwrite_file:
                 self.copy_file(f, from_dir=self.common_templates_path)
 
-    def _generate_cmake(self, add_subdirs, monitor_names):
+    def _generate_cmake(self, subdirs, monitor_names):
         from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
@@ -109,12 +109,13 @@ class CodeGenCpp(CodeGen):
                 "@additional_cflags@": " ".join((d for d in self.args.cflags)),
                 "@CMAKE_BUILD_TYPE@": build_type,
                 "@ADD_SUBDIRS@": "".join(
-                    f"add_subdirectory({subdir})\n" for subdir in add_subdirs
+                    f"add_subdirectory({subdir})\n" for subdir in subdirs
                 ),
                 "@LINK_HNL_MONITORS@": "".join(
                     f"target_link_libraries(monitor PUBLIC hnl{monitor_name} atoms{monitor_name})\n"
                     for monitor_name in monitor_names
                 ),
+                "@hnl_subdirs@": " ".join(subdirs),
             },
         )
 
@@ -312,12 +313,12 @@ class CodeGenCpp(CodeGen):
         with self.new_file("create-hnl-monitor.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("HNLMonitorBase *createHNLMonitor(HNANodeType node) {")
+            wr("MonitorWithTraces *createHNLMonitor(HNANodeType node) {")
             wr(" switch (node) {")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
                 wr(
-                    f"case HNANodeType::NODE_{state_id}: return new hnl_{state_id}::HNLMonitor();\n"
+                    f"case HNANodeType::NODE_{state_id}: return hnl_{state_id}::new_monitor();\n"
                 )
             wr(" default: abort();\n")
             wr(" };\n")
@@ -332,11 +333,38 @@ class CodeGenCpp(CodeGen):
             for state in hna.states():
                 state_id = hna.get_state_id(state)
                 wr(
-                    f"case HNANodeType::NODE_{state_id}: return static_cast<hnl_{state_id}::HNLMonitor *>(node->monitor.get())->step();\n"
+                    f"case HNANodeType::NODE_{state_id}: return hnl_{state_id}::step_monitor(node);\n"
                 )
-            wr(" default: abort();\n")
+                wr(" default: abort();\n")
             wr(" };\n")
             wr("}\n")
+
+        for state in hna.states():
+            state_id = hna.get_state_id(state)
+            with self.new_file(f"hnl-{state_id}.cpp") as f:
+                dump_codegen_position(f)
+                wr = f.write
+
+                wr(f'#include "verdict.h"\n\n')
+                wr(f'#include "monitor.h"\n')
+                wr(f'#include "hnl-monitor.h"\n\n')
+                wr(f'#include "hna-monitor.h"\n\n')
+
+                wr(f"namespace hnl_{state_id} {{")
+                wr(f"Verdict step_monitor(SliceTreeNode *node) {{")
+                wr(
+                    f"  return static_cast <HNLMonitor * > (node->monitor.get())->step();"
+                )
+                wr("}\n\n")
+
+                wr(f"MonitorWithTraces *new_monitor() {{")
+                wr(f"  return new HNLMonitor();")
+                wr("}\n\n")
+
+                wr(f"void delete_monitor(Monitor *M) {{")
+                wr(f"  delete static_cast<HNLMonitor*>(M);")
+                wr("}\n\n")
+                wr(f"}} /* namespace hnl_{state_id} */")
 
     def _gen_slice_node_dtor(self, hna):
         with self.new_file("slice-tree-node-dtor.h") as f:
@@ -346,7 +374,7 @@ class CodeGenCpp(CodeGen):
             for state in hna.states():
                 state_id = hna.get_state_id(state)
                 wr(
-                    f"case HNANodeType::NODE_{state_id}: delete static_cast<hnl_{state_id}::HNLMonitor *>(monitor.release()); break;\n"
+                    f"case HNANodeType::NODE_{state_id}: hnl_{state_id}::delete_monitor(monitor.release()); break;\n"
                 )
             wr(" default: abort();\n")
             wr(" };\n")
@@ -355,7 +383,15 @@ class CodeGenCpp(CodeGen):
         lines = []
         for state in hna.states():
             state_id = hna.get_state_id(state)
-            lines.append(f"namespace hnl_{state_id} {{ class HNLMonitor; }}")
+            lines.append(
+                f"""
+            namespace hnl_{state_id} {{
+                class HNLMonitor;
+                Verdict step_monitor(SliceTreeNode*);
+                MonitorWithTraces *new_monitor();
+                void delete_monitor(Monitor *M);
+            }}"""
+            )
         return "\n".join(lines)
 
     def _generate_monitor(self, hna):
@@ -387,7 +423,7 @@ class CodeGenCpp(CodeGen):
             init_id = hna.get_state_id(hna.initial_states()[0])
             wr(
                 f"""
-                SlicesTree() : root(new hnl_{init_id}::HNLMonitor(), HNANodeType::NODE_{init_id}) {{
+                SlicesTree() : root(hnl_{init_id}::new_monitor(), HNANodeType::NODE_{init_id}) {{
                     /* _monitors.push_back(root.monitor.get()); */
                     _nodes.push_back(&root);
                     }}\n
@@ -400,7 +436,9 @@ class CodeGenCpp(CodeGen):
         self._gen_hna_transitions(hna)
         self._gen_do_step(hna)
 
-        values = {"@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna)}
+        values = {
+            "@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna),
+        }
 
         self.gen_file("hna-monitor.h.in", "hna-monitor.h", values)
         self.gen_file("hna-monitor.cpp.in", "hna-monitor.cpp", values)
