@@ -1,0 +1,86 @@
+#ifndef HNA_SLICE_TREE_H_
+#define HNA_SLICE_TREE_H_
+
+#include <map>
+#include <vector>
+#include <mutex>
+
+#include "slice-tree-node.h"
+
+@hnl_monitors_decls@
+
+class SlicesTree {
+  SliceTreeNode root;
+  // We do not necessarily need this, but iterating over the vector
+  // is faster (and easier) than iterating over _edges + root.
+  // std::vector<Monitor *> _monitors;
+  std::vector<SliceTreeNode *> _nodes;
+  std::vector<SliceTreeNode *> _new_nodes;
+
+  // map hnl monitors (they are nodes) to (action, hnlmonitor) pairs
+  std::map<SliceTreeNode *, std::map<ActionEventType, SliceTreeNode>> _edges;
+
+  std::mutex _mtx;
+
+  void lock() { _mtx.lock(); }
+  void unlock() { _mtx.unlock(); }
+
+public:
+#include "create-hnl-monitor.h"
+#include "hna-next-slice.h"
+#include "slices-tree-ctor.h"
+
+  SliceTreeNode &getRoot() { return root; };
+
+  SliceTreeNode *getSuccessor(SliceTreeNode *node, const ActionEvent &ev) {
+    auto it = _edges.find(node);
+    if (it == _edges.end()) {
+      return nullptr;
+    }
+
+    assert(ev.isAction());
+    auto iit = it->second.find(ev.type);
+    if (iit == it->second.end()) {
+      return nullptr;
+    }
+
+    return &iit->second;
+  }
+
+  SliceTreeNode *addSlice(SliceTreeNode *node, const ActionEvent &ev) {
+    assert(!getSuccessor(node, ev));
+    assert(ev.isAction());
+    auto next_node = nextSliceTreeNode(node->type, ev.type);
+    if (next_node == HNANodeType::INVALID) {
+      return nullptr;
+    }
+
+    auto *hnl_monitor = createHNLMonitor(next_node);
+
+    lock();
+    auto &slice =
+        _edges[node]
+            .emplace(ev.type,
+                     SliceTreeNode{hnl_monitor, next_node})
+            .first->second;
+    // _monitors.push_back(slice.monitor.get());
+    _new_nodes.push_back(&slice);
+    unlock();
+
+    return &slice;
+  }
+
+  void ensureNodes() {
+      lock();
+      if (!_new_nodes.empty()) {
+          _nodes.insert(_nodes.begin(), _new_nodes.begin(), _new_nodes.end());
+          _new_nodes.clear();
+      }
+      unlock();
+  }
+
+  auto begin() -> auto { return _nodes.begin(); }
+  auto end() -> auto { return _nodes.end(); }
+};
+
+#endif // HNA_SLICE_TREE_H_

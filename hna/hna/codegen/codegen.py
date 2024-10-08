@@ -47,7 +47,7 @@ class CodeGenCpp(CodeGen):
             self.copy_file(f)
 
         # copy the files specific for HNAs
-        files = ["main.cpp"]
+        files = ["slice-tree-node.h", "main.cpp"]
 
         overwrite_file = self.args.overwrite_file
         for f in files:
@@ -443,6 +443,8 @@ class CodeGenCpp(CodeGen):
             "@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna),
         }
 
+        self.gen_file("slice-tree.h.in", "slice-tree.h", values)
+        self.gen_file("slice-tree-node.cpp.in", "slice-tree-node.cpp", values)
         self.gen_file("hna-monitor.h.in", "hna-monitor.h", values)
         self.gen_file("hna-monitor.cpp.in", "hna-monitor.cpp", values)
 

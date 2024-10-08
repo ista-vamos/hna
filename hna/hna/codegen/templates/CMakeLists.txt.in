@@ -88,7 +88,7 @@ foreach (hnl_id @hnl_ids@)
     list(APPEND HNL_AUX_LIBS ${libname})
 endforeach()
 
-add_library(hnamonitor STATIC hna-monitor.cpp)
+add_library(hnamonitor STATIC hna-monitor.cpp slice-tree-node.cpp)
 target_include_directories(hnamonitor PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(hnamonitor PUBLIC traceset trace events ${HNL_AUX_LIBS})
 
