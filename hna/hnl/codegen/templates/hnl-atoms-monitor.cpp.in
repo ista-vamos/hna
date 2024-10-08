@@ -32,7 +32,7 @@ void HNLMonitor::addNewTraces() {
   #include "create-instances.h"
 }
 
-Verdict HNLMonitor::updateInstance(HNLInstance *instance, Verdict verdict) {
+Verdict HNLMonitor::updateInstance(Instance *instance, Verdict verdict) {
     // FIXME: generate the code that branches on instance->state and verdict
     // instead of having statically compiled BDD in the data segment.
     // (less reads from memory)
@@ -143,7 +143,7 @@ Verdict HNLMonitor::step() {
   return Verdict::UNKNOWN;
 }
 
-AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLInstance& instance) {
+AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, Instance& instance) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
     AtomMonitor *monitor{nullptr};
@@ -188,7 +188,7 @@ AtomMonitor *HNLMonitor::createAtomMonitor(HNLEvaluationState monitor_type, HNLI
     return monitor;
 }
 
-void HNLMonitor::removeInstance(HNLInstance *instance) {
+void HNLMonitor::removeInstance(Instance *instance) {
     delete instance;
 }
 

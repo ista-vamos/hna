@@ -34,10 +34,6 @@ class HNAMonitor : public Monitor {
   Verdict _result{Verdict::UNKNOWN};
 
 public:
-  /*
-   AtomMonitor *createAtomMonitor(Action monitor_type, HNLInstance&);
-   void removeInstance(HNLInstance *instance);
-   */
 
   // adding and extending traces
   void newTrace(unsigned id);
