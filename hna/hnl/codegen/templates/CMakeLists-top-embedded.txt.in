@@ -18,4 +18,10 @@ target_include_directories(${monitor_name} PRIVATE ${CMAKE_SOURCE_DIR})
 target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
 endif()
 
+if (ENABLE_TESTS)
+add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+enable_testing()
+endif()
+
+
 @submonitors@

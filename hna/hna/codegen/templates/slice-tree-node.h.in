@@ -6,7 +6,8 @@
 
 #include "monitor-with-traces.h"
 #include "events.h"
-#include "hna_node_types.h"
+
+@hna_node_types@
 
 // Monitor + its type. We generate code that uses
 // static_cast where the particular type of the monitor is needed
