@@ -16,8 +16,6 @@
 #include "events.h"
 #include "hna_node_types.h"
 
-@hnl_monitors_decls@
-
 // Monitor + its type. We generate code that uses
 // static_cast where the particular type of the monitor is needed
 // XXX: in this case using virtual methods could be actually
@@ -39,6 +37,8 @@ struct SliceTreeNode {
   void noFutureUpdates();
   bool hasTrace(unsigned trace_id);
 };
+
+@hnl_monitors_decls@
 
 class SlicesTree {
   SliceTreeNode root;
