@@ -86,7 +86,7 @@ class CodeGenCpp(CodeGen):
             if f not in overwrite_file:
                 self.copy_file(f, from_dir=self.common_templates_path)
 
-    def _generate_cmake(self, subdirs, monitor_names):
+    def _generate_cmake(self, hna, subdirs, monitor_names):
         from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
@@ -112,10 +112,13 @@ class CodeGenCpp(CodeGen):
                     f"add_subdirectory({subdir})\n" for subdir in subdirs
                 ),
                 "@LINK_HNL_MONITORS@": "".join(
-                    f"target_link_libraries(monitor PUBLIC hnl{monitor_name} atoms{monitor_name})\n"
+                    f"target_link_libraries(monitor PUBLIC top{monitor_name})\n"
                     for monitor_name in monitor_names
                 ),
-                "@hnl_subdirs@": " ".join(subdirs),
+                # "@hnl_subdirs@": " ".join(subdirs),
+                "@hnl_ids@": " ".join(
+                    (str(hna.get_state_id(state)) for state in hna.states())
+                ),
             },
         )
 
@@ -532,7 +535,7 @@ class CodeGenCpp(CodeGen):
         self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self._generate_cmake(cmake_subdirs, monitor_names)
+        self._generate_cmake(hna, cmake_subdirs, monitor_names)
 
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception
