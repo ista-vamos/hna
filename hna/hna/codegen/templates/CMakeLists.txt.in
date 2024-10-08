@@ -78,9 +78,17 @@ add_library(events STATIC events.cpp)
 add_library(trace STATIC trace.cpp)
 add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp)
 
+
+foreach (hnl @hnl_subdirs@)
+    add_library(hna${hnl} STATIC ${hnl}.cpp)
+    target_include_directories(hna${hnl} PRIVATE "${CMAKE_SOURCE_DIR}/${hnl}")
+    target_include_directories(hna${hnl} PRIVATE ${CMAKE_SOURCE_DIR})
+    list(APPEND HNL_AUX_LIBS hna${hnl})
+endforeach()
+
 add_library(hnamonitor STATIC hna-monitor.cpp)
 target_include_directories(hnamonitor PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(hnamonitor PUBLIC traceset trace events)
+target_link_libraries(hnamonitor PUBLIC traceset trace events ${HNL_AUX_LIBS})
 
 add_executable(monitor main.cpp cmd.cpp @additional_sources@)
 target_link_libraries(monitor PUBLIC hnamonitor)

@@ -287,13 +287,16 @@ class CodeGenCpp(CodeGen):
             wr(f"#define HNL_ALLTRACESETS__{self.name()}\n\n")
 
             wr('#include "traceset.h"\n')
+
             for fun in functions:
                 wr(f'#include "function-{fun.name}.h"\n')
 
             wr("\n")
 
+            wr(self.namespace_start())
+
             wr(
-                "/* An object passed to monitors with references to traces and functions */\n"
+                "\n\n/* An object passed to monitors with references to traces and functions */\n"
             )
             wr("struct AllTraceSets {\n")
             wr(" TraceSet& traces;")
@@ -309,6 +312,8 @@ class CodeGenCpp(CodeGen):
             )
 
             wr("};\n\n")
+
+            wr(self.namespace_end())
 
             wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
 
