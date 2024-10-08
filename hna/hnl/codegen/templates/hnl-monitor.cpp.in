@@ -16,25 +16,4 @@ Verdict HNLMonitor::step() {
     return _monitor.step();
 }
 
-// adding and extending traces
-void HNLMonitor::newTrace(unsigned trace_id) {
-    _traces.newTrace(trace_id);
-}
-
-void HNLMonitor::traceFinished(unsigned trace_id) {
-    _traces.traceFinished(trace_id);
-}
-
-void HNLMonitor::extendTrace(unsigned trace_id, const Event &e) {
-  _traces.extendTrace(trace_id, e);
-}
-
-void HNLMonitor::noFutureUpdates() {
-    _traces.noFutureUpdates();
-}
-
-bool HNLMonitor::hasTrace(unsigned trace_id) {
-    return _traces.hasTrace(trace_id);
-}
-
 @namespace_end@

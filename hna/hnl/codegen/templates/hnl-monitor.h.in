@@ -5,7 +5,7 @@
 
 #include <memory>
 
-#include "monitor.h"
+#include "monitor-with-traces.h"
 #include "traceset.h"
 #include "function.h"
 #include "cmd.h"
@@ -18,10 +18,7 @@
 
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
-class HNLMonitor : public ::Monitor {
-  // All traces for this monitor (and submonitors).
-  // The submonitors will have only a view of this container
-  TraceSet _traces;
+class HNLMonitor : public ::MonitorWithTraces {
   CmdArgs *_cmd;
 
   @functions@
@@ -40,15 +37,6 @@ public:
       @functions_init@,
       allTraceSets(@alltracesets_init@),
       _monitor(allTraceSets) {}
-
-  //virtual ~HNLMonitor() {}
-
-  // adding and extending traces
-  void newTrace(unsigned trace_id);
-  void extendTrace(unsigned trace_id, const Event &e);
-  void traceFinished(unsigned trace_id);
-  void noFutureUpdates();
-  bool hasTrace(unsigned trace_id);
 
   /// This method calls `step` for the function traces generators
   //  and then calls `step` of `_monitor`.

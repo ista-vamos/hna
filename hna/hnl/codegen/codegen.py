@@ -63,6 +63,7 @@ class CodeGenCpp(CodeGen):
         # copy common templates
         files = [
             "monitor.h",
+            "monitor-with-traces.h",
             "cmd.h",
             "cmd.cpp",
             "stream.h",
