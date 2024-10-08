@@ -47,7 +47,7 @@ class CodeGenCpp(CodeGen):
             self.copy_file(f)
 
         # copy the files specific for HNAs
-        files = ["slice-tree-node.h", "main.cpp"]
+        files = ["main.cpp"]
 
         overwrite_file = self.args.overwrite_file
         for f in files:
@@ -370,17 +370,15 @@ class CodeGenCpp(CodeGen):
                 wr(f"}} /* namespace hnl_{state_id} */")
 
     def _gen_slice_node_dtor(self, hna):
-        with self.new_file("slice-tree-node-dtor.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-            wr(" switch (type) {")
-            for state in hna.states():
-                state_id = hna.get_state_id(state)
-                wr(
-                    f"case HNANodeType::NODE_{state_id}: hnl_{state_id}::delete_monitor(monitor.release()); break;\n"
-                )
-            wr(" default: abort();\n")
-            wr(" };\n")
+        lines = [" switch (type) {"]
+        for state in hna.states():
+            state_id = hna.get_state_id(state)
+            lines.append(
+                f"case HNANodeType::NODE_{state_id}: hnl_{state_id}::delete_monitor(monitor.release()); break;"
+            )
+        lines.append(" default: abort();\n")
+        lines.append(" };\n")
+        return "\n".join(lines)
 
     def _gen_hnl_monitors_decls(self, hna):
         lines = []
@@ -397,26 +395,15 @@ class CodeGenCpp(CodeGen):
             )
         return "\n".join(lines)
 
+    def _gen_hna_node_types(self, hna):
+        lines = ["enum class HNANodeType {", "  INVALID = -1,"]
+        for state in hna.states():
+            state_id = hna.get_state_id(state)
+            lines.append(f"  NODE_{state_id} = {state_id},")
+        lines.append("};")
+        return "\n".join(lines)
+
     def _generate_monitor(self, hna):
-        with self.new_file("hna_node_types.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-
-            wr("enum class HNANodeType {\n")
-            wr(f"INVALID = -1,\n")
-            for state in hna.states():
-                state_id = hna.get_state_id(state)
-                wr(f"NODE_{state_id} = {state_id},\n")
-            wr("};\n")
-
-        with self.new_file("hnl-monitors.h") as f:
-            wr = f.write
-            dump_codegen_position(wr)
-
-            wr("#pragma once\n\n")
-            for state in hna.states():
-                state_id = hna.get_state_id(state)
-                wr(f'#include "hnl-{state_id}/hnl-monitor.h"\n')
 
         with self.new_file("slices-tree-ctor.h") as f:
             wr = f.write
@@ -433,17 +420,18 @@ class CodeGenCpp(CodeGen):
                 """
             )
 
-        self._gen_slice_node_dtor(hna)
-
         self._gen_create_hnl_monitor(hna)
         self._gen_hna_transitions(hna)
         self._gen_do_step(hna)
 
         values = {
             "@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna),
+            "@hna_node_types@": self._gen_hna_node_types(hna),
+            "@slice_tree_node_dtor@": self._gen_slice_node_dtor(hna),
         }
 
         self.gen_file("slice-tree.h.in", "slice-tree.h", values)
+        self.gen_file("slice-tree-node.h.in", "slice-tree-node.h", values)
         self.gen_file("slice-tree-node.cpp.in", "slice-tree-node.cpp", values)
         self.gen_file("hna-monitor.h.in", "hna-monitor.h", values)
         self.gen_file("hna-monitor.cpp.in", "hna-monitor.cpp", values)
