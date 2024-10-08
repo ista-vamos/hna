@@ -21,8 +21,11 @@ class CodeGenCpp(CodeGen):
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
+        embedded: bool = False,
     ):
-        super().__init__(name, args, ctx, out_dir=out_dir, namespace=namespace)
+        super().__init__(
+            name, args, ctx, out_dir=out_dir, namespace=namespace, embedded=embedded
+        )
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)

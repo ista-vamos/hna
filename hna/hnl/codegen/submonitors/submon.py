@@ -26,10 +26,13 @@ class CodeGenCpp(CodeGenCpp):
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
+        embedded: bool = False,
     ):
-        super().__init__(name, args, ctx, fixed_quantifiers, out_dir, namespace)
+        super().__init__(
+            name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
+        )
 
-    def generate_cmake(self, overwrite_keys=None, embedded=False):
+    def generate_cmake(self, overwrite_keys=None):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -63,7 +66,7 @@ class CodeGenCpp(CodeGenCpp):
         if overwrite_keys:
             values.update(overwrite_keys)
 
-        if embedded:
+        if self._embedded:
             cmakelists = "CMakeLists-sub-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-sub.txt.in"
@@ -159,7 +162,7 @@ class CodeGenCpp(CodeGenCpp):
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
 
-    def generate(self, formula):
+    def generate(self, formula, gen_tests=True):
         """
         The top-level function to generate code
         """
@@ -170,26 +173,7 @@ class CodeGenCpp(CodeGenCpp):
         self.generate_monitor(top_formula, negate_submonitor_result)
         self.generate_submonitors(sub_formula, fixed_quantifiers)
 
-        # cmake generation should go at the end so that
-        # it knows all the generated files
-        self.generate_cmake()
-
-        self.format_generated_code()
-
-    def generate_embedded(self, formula, gen_main=False, gen_tests=True):
-        """
-        The top-level function to generate code as an embedded CMake project
-        """
-        top_formula, sub_formula, fixed_quantifiers = _split_formula(formula)
-        negate_submonitor_result = isinstance(sub_formula.quantifier_prefix[0], Exists)
-
-        self.generate_monitor(top_formula, negate_submonitor_result)
-        self.generate_submonitors(sub_formula, fixed_quantifiers)
-
-        # if gen_tests:
-        #    self.generate_tests(self.args.alphabet)
-
-        if gen_main:
+        if not self._embedded:
             self.gen_file(
                 "main.cpp.in",
                 "main.cpp",
@@ -202,10 +186,7 @@ class CodeGenCpp(CodeGenCpp):
 
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake(
-            # overwrite_keys={"@monitor_name@": f'"{embedding_data["monitor_name"]}"'},
-            embedded=True,
-        )
+        self.generate_cmake()
 
         self.format_generated_code()
 
@@ -226,6 +207,7 @@ class CodeGenCpp(CodeGenCpp):
                 fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
                 out_dir=nested_out_dir,
                 namespace=self.sub_namespace(),
+                embedded=True,
             )
         else:
             nested_cg = CodeGenCppAtomsMon(
@@ -235,8 +217,9 @@ class CodeGenCpp(CodeGenCpp):
                 fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
                 out_dir=nested_out_dir,
                 namespace=self.sub_namespace(),
+                embedded=True,
             )
-        nested_cg.generate_embedded(sub_formula)
+        nested_cg.generate(sub_formula)
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
     def generate_monitor(self, formula, negate_submonitor_result=False):

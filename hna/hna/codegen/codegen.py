@@ -527,8 +527,9 @@ class CodeGenCpp(CodeGen):
                 out_dir=f"{self.out_dir}/{subdir}",
                 namespace=f"hnl_{hnl_id}",
                 name=monitor_name,
+                embedded=True,
             )
-            hnl_codegen.generate(state.formula, alphabet, embedded=True)
+            hnl_codegen.generate(state.formula, alphabet)
 
         self._generate_monitor(hna)
 
@@ -537,11 +538,4 @@ class CodeGenCpp(CodeGen):
         # it knows all the generated files
         self._generate_cmake(hna, cmake_subdirs, monitor_names)
 
-        # format the files if we have clang-format
-        # FIXME: check clang-format properly instead of catching the exception
-        try:
-            for path in listdir(self.out_dir):
-                if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i", f"{self.out_dir}/{path}"])
-        except FileNotFoundError:
-            pass
+        self.format_generated_code()

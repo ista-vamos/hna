@@ -6,7 +6,13 @@ from vamos_common.codegen.codegen import CodeGen as CG
 
 class CodeGen(CG):
     def __init__(
-        self, name: str, args, ctx, out_dir: str = None, namespace: str = None
+        self,
+        name: str,
+        args,
+        ctx,
+        out_dir: str = None,
+        namespace: str = None,
+        embedded=False,
     ):
         super().__init__(args, ctx, out_dir)
 
@@ -18,6 +24,8 @@ class CodeGen(CG):
 
         self._name = name
         self._namespace = namespace
+        # is this code a subdirectory of a top-level cmake-based project?
+        self._embedded = embedded
 
         self._add_gen_files = []
         self._submonitors = []

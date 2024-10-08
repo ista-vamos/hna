@@ -38,9 +38,15 @@ class CodeGenCpp(CodeGen):
     """
 
     def __init__(
-        self, args, ctx, out_dir: str = None, namespace: str = None, name="monitor"
+        self,
+        args,
+        ctx,
+        out_dir: str = None,
+        namespace: str = None,
+        name="monitor",
+        embedded=False,
     ):
-        super().__init__(name, args, ctx, out_dir, namespace)
+        super().__init__(name, args, ctx, out_dir, namespace, embedded)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
@@ -87,7 +93,7 @@ class CodeGenCpp(CodeGen):
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(self, overwrite_keys=None, embedded=False):
+    def generate_cmake(self, overwrite_keys=None):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -119,7 +125,7 @@ class CodeGenCpp(CodeGen):
         if overwrite_keys:
             values.update(overwrite_keys)
 
-        if embedded:
+        if self._embedded:
             cmakelists = "CMakeLists-top-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-top.txt.in"
@@ -317,19 +323,19 @@ class CodeGenCpp(CodeGen):
 
             wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
 
-    def generate(
-        self, formula: PrenexFormula, alphabet=None, embedded: bool = False
-    ) -> None:
+    def generate(self, formula: PrenexFormula, alphabet=None) -> None:
         """
         The top-level function to generate code
         """
 
         self.args.alphabet = alphabet or self._get_alphabet(formula)
 
-        self._generate_events()
+        if not self._embedded:
+            if self.args.gen_csv_reader:
+                self._generate_csv_reader()
 
-        if self.args.gen_csv_reader:
-            self._generate_csv_reader()
+            self._generate_events()
+            self.generate_main()
 
         functions_instances = formula.functions()
         functions = list(set(functions_instances))
@@ -364,6 +370,7 @@ class CodeGenCpp(CodeGen):
                 self.ctx,
                 out_dir=nested_out_dir,
                 namespace=nested_namespace,
+                embedded=True,
             )
         else:
             codegen = CodeGenCppAtomsMon(
@@ -372,20 +379,20 @@ class CodeGenCpp(CodeGen):
                 self.ctx,
                 out_dir=nested_out_dir,
                 namespace=nested_namespace,
+                embedded=True,
             )
 
         # FIXME: do this more elegantly, this is more or less a hack
         self.args.out_dir_overwrite = False
-        codegen.generate_embedded(formula)
+        codegen.generate(formula)
 
         self.generate_monitor(formula)
-        self.generate_main()
 
-        if not embedded:
+        if not self._embedded:
             self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake(embedded=embedded)
+        self.generate_cmake()
 
         self.format_generated_code()
 
