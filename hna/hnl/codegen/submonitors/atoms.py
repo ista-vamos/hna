@@ -111,8 +111,11 @@ class CodeGenCpp(CodeGenCpp):
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
+        embedded: bool = False,
     ):
-        super().__init__(name, args, ctx, fixed_quantifiers, out_dir, namespace)
+        super().__init__(
+            name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
+        )
 
         self.BDD = None
         self._bdd_nodes = []
@@ -151,7 +154,7 @@ class CodeGenCpp(CodeGenCpp):
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(self, overwrite_keys=None, embedded=False):
+    def generate_cmake(self, overwrite_keys=None):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -186,7 +189,7 @@ class CodeGenCpp(CodeGenCpp):
         if overwrite_keys:
             values.update(overwrite_keys)
 
-        if embedded:
+        if self._embedded:
             cmakelists = "CMakeLists-atoms-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-atoms.txt.in"
@@ -1146,66 +1149,38 @@ class CodeGenCpp(CodeGenCpp):
             },
         )
 
-    def generate(self, formula, alphabet=None):
+    def generate(self, formula, alphabet=None, gen_tests=True):
         """
         The top-level method to generate code
         """
-
         alphabet = alphabet or self.args.alphabet
 
         self.generate_monitor(formula, alphabet)
-        self.generate_tests()
+        if gen_tests:
+            self.generate_tests()
 
-        self.gen_file(
-            "main.cpp.in",
-            "main.cpp",
-            {
-                "@namespace_using@": (
-                    f"using namespace {self._namespace};" if self._namespace else ""
-                )
-            },
-        )
+        if self._embedded:
+            from_dir = self.common_templates_path
+            for f in ("atom-base.h", "atom-evaluation-state.h"):
+                if f not in self.args.overwrite_file:
+                    self.copy_file(f, from_dir=from_dir)
+        else:
+            self.copy_files()
 
-        self.copy_files()
+            self.gen_file(
+                "main.cpp.in",
+                "main.cpp",
+                {
+                    "@namespace_using@": (
+                        f"using namespace {self._namespace};" if self._namespace else ""
+                    )
+                },
+            )
+
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake()
 
-        self.format_generated_code()
-
-    def generate_embedded(self, formula, alphabet=None, gen_tests=True):
-        """
-        The top-level method to generate code
-        """
-
-        alphabet = alphabet or self.args.alphabet
-
-        self.generate_monitor(formula, alphabet)
-
-        if gen_tests:
-            self.generate_tests()
-
-        self.gen_file(
-            "main.cpp.in",
-            "main.cpp",
-            {
-                "@namespace_using@": (
-                    f"using namespace {self._namespace};" if self._namespace else ""
-                )
-            },
-        )
-
-        from_dir = self.common_templates_path
-        for f in ("atom-base.h", "atom-evaluation-state.h"):
-            if f not in self.args.overwrite_file:
-                self.copy_file(f, from_dir=from_dir)
-
-        # cmake generation should go at the end so that
-        # it knows all the generated files
-        self.generate_cmake(
-            # overwrite_keys={"@monitor_name@": f'"{embedding_data["monitor_name"]}"'},
-            embedded=True,
-        )
         self.format_generated_code()
 
     def generate_monitor(self, formula: PrenexFormula, alphabet):
