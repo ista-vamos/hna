@@ -76,14 +76,16 @@ get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
 
 add_library(events STATIC events.cpp)
 add_library(trace STATIC trace.cpp)
-add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp)
+add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp tracesetbase.cpp)
 
 
-foreach (hnl @hnl_subdirs@)
-    add_library(hna${hnl} STATIC ${hnl}.cpp)
-    target_include_directories(hna${hnl} PRIVATE "${CMAKE_SOURCE_DIR}/${hnl}")
-    target_include_directories(hna${hnl} PRIVATE ${CMAKE_SOURCE_DIR})
-    list(APPEND HNL_AUX_LIBS hna${hnl})
+foreach (hnl_id @hnl_ids@)
+    set(libname "hna-hnl_${hnl_id}")
+    add_library(${libname} STATIC hnl-${hnl_id}.cpp)
+    target_include_directories(${libname} PRIVATE "${CMAKE_SOURCE_DIR}/hnl-${hnl_id}")
+    target_include_directories(${libname} PRIVATE ${CMAKE_SOURCE_DIR})
+    target_link_libraries(${libname} PUBLIC topmonitor_${hnl_id})
+    list(APPEND HNL_AUX_LIBS ${libname})
 endforeach()
 
 add_library(hnamonitor STATIC hna-monitor.cpp)
