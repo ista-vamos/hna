@@ -287,7 +287,7 @@ class PrenexFormula(Formula):
         )
 
     def functions(self) -> List["Function"]:
-        return [q.fun for q in self.quantifiers() if isinstance(q, ExistsFromFun)]
+        return [q.fun for q in self.quantifiers() if isinstance(q, (ExistsFromFun, ForAllFromFun))]
 
     def substitute(self, S):
         return PrenexFormula(
