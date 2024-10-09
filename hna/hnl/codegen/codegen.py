@@ -345,7 +345,7 @@ class CodeGenCpp(CodeGen):
         self.generate_functions(functions)
         self.generate_alltracesets_class(functions)
 
-        has_quantifier_alternation = formula.has_quantifier_alternation()
+        has_submonitors = formula.has_different_quantifiers()
         # Generate the actual monitors. If there is no quantifier alternation,
         # generate directly the monitor for the body of the formula.
         # Otherwise, generate a monitor that has sub-monitors for the sub-formulas
@@ -363,7 +363,7 @@ class CodeGenCpp(CodeGen):
             }
         ]
 
-        if has_quantifier_alternation:
+        if has_submonitors:
             codegen = CodeGenCppSubMon(
                 submon_name,
                 self.args,
