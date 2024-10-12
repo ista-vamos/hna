@@ -39,6 +39,8 @@ public:
   // bool allTracesFinished();
 
   bool hasTrace(unsigned trace_id);
+
+  size_t size() const { return _traces.size(); }
 };
 
 #endif
