@@ -79,6 +79,13 @@ def create_cmdargs_parser(out_dir):
     )
 
     parser.add_argument(
+        "--logic",
+        action="store",
+        default="shl",
+        help="Set the logic to use: ehl, shl (default).",
+    )
+
+    parser.add_argument(
         "--overwrite-file",
         action="append",
         default=[],

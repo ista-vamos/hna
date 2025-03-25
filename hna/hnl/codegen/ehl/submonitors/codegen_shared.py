@@ -10,7 +10,7 @@ from hna.hnl.formula import ForAllFromFun
 
 class CodeGenCpp(CodeGen):
     """
-    Shared methods for CodeGen from atoms.py and submon.py
+    Shared methods for CodeGen from atoms_ehl.py and submon.py
     """
 
     def __init__(

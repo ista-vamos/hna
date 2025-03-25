@@ -10,7 +10,7 @@ from hna.hnl.formula import (
     Function,
     PrenexFormula,
 )
-from hna.hnl.codegen.ehl.submonitors.atoms import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.ehl.submonitors.atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
 from hna.hnl.codegen.ehl.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
@@ -53,6 +53,10 @@ def check_formula(formula, args):
             )
 
 
+def has_alphabet(alphabet, data) -> bool:
+    return bool(alphabet) or get_num_range(data) is not None
+
+
 class CodeGenCpp(CodeGen):
     """
     Class for generating monitors in C++.
@@ -60,7 +64,7 @@ class CodeGenCpp(CodeGen):
 
     This particular class takes care of creating `main.cpp` and files
     shared with all the (sub-)monitors.
-    For actual monitors, there are other codegens.
+    For actual monitors, there are other codegens (used by this class).
     """
 
     def __init__(
@@ -364,7 +368,11 @@ class CodeGenCpp(CodeGen):
 
         check_formula(formula, self.args)
 
-        self.args.alphabet = alphabet or self._get_alphabet()
+        if self.args.logic == "ehl":
+            if not has_alphabet(alphabet, self.args.data):
+                raise RuntimeError("No finite alphabet given, cannot use eHL logic.")
+
+            self.args.alphabet = alphabet or self._get_alphabet()
 
         if not self._embedded:
             if self.args.gen_csv_reader:
