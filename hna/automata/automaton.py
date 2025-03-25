@@ -1,5 +1,3 @@
-from sys import stdout
-
 from hna.automata.transition_system import (
     State,
     TransitionSystem,
