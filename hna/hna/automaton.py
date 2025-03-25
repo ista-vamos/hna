@@ -1,4 +1,5 @@
-from hna.automata.automaton import Automaton, State
+from hna.automata.automaton import Automaton
+from hna.automata.transition_system import State
 
 
 class HypernodeState(State):
@@ -6,8 +7,8 @@ class HypernodeState(State):
         super().__init__(label)
         self.formula = formula
 
-    def dot_label(self):
-        return f"{self.label()} | {self.formula}"
+    def dot_name(self):
+        return f"{self.name()} | {self.formula}"
 
 
 class HyperNodeAutomaton(Automaton):
@@ -19,5 +20,5 @@ class HyperNodeAutomaton(Automaton):
         return self._actions
 
     def add_transition(self, t):
-        self._actions.add(t.label)
+        self._actions.add(t.name)
         super().add_transition(t)

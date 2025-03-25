@@ -59,7 +59,7 @@ def path_is_accepting(A: Automaton, path: list) -> bool:
             t
             for _, tt in A.transitions(state, default=dict()).items()
             for t in tt
-            if t.label[0].is_epsilon() and t.label[1].is_epsilon()
+            if t.name[0].is_epsilon() and t.name[1].is_epsilon()
         ]
         priorities = list(set(t.priority for t in epsilonT))
         priorities.sort(reverse=True)
@@ -926,10 +926,10 @@ class CodeGenCpp(CodeGenCpp):
             wrcpp(
                 f" /* {t} */\n "
                 "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                f' std::cerr << "  -- {lvar} = {t.name[0]}; {rvar} = {t.name[1]} -->\\n";\n'
                 "#endif /* !DEBUG_PRINTS */\n"
             )
-            wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{\n")
+            wrcpp(f" if (ev1->{lvar} == {t.name[0]}) {{\n")
             wrcpp(
                 f"   matched = true;\n "
                 f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
@@ -957,10 +957,10 @@ class CodeGenCpp(CodeGenCpp):
             wrcpp(
                 f" /* {t} */\n "
                 "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
+                f' std::cerr << "  -- {lvar} = {t.name[0]}; {rvar} = {t.name[1]} -->\\n";\n'
                 "#endif /* !DEBUG_PRINTS */\n"
             )
-            wrcpp(f" if (ev2->{rvar} == {t.label[1]}) {{\n")
+            wrcpp(f" if (ev2->{rvar} == {t.name[1]}) {{\n")
             wrcpp(
                 f"   matched = true;\n "
                 f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "

@@ -1,6 +1,7 @@
 from itertools import chain
 
-from hna.automata.automaton import Automaton, State, Transition
+from hna.automata.automaton import Automaton
+from ..automata.transition_system import State, Transition
 from .formula import EPSILON, Constant, EPSILON_CONSTANT
 
 
@@ -67,10 +68,10 @@ def compose_automata(A1: Automaton, A2: Automaton, alphabet, prune=True) -> Auto
     for i1 in A1.initial_states():
         for i2 in A2.initial_states():
             # prune surely non-accepting states
-            if prune and i2.label() == EPSILON and not i1.nullable():
+            if prune and i2.name() == EPSILON and not i1.nullable():
                 continue
-            new_states.add((i1.label(), i2.label()))
-            state = State(TupleLabel((i1.label(), i2.label())))
+            new_states.add((i1.name(), i2.name()))
+            state = State(TupleLabel((i1.name(), i2.name())))
             A.add_state(state)
             A.add_init(state)
             if A1.is_accepting(i1):
@@ -85,7 +86,7 @@ def compose_automata(A1: Automaton, A2: Automaton, alphabet, prune=True) -> Auto
         for a, a2 in gen_letter_pairs(alphabet):
             for t1 in A1.transitions(ns1, a, default=()):
                 for t2 in A2.transitions(ns2, a2, default=()):
-                    next_state = (t1.target.label(), t2.target.label())
+                    next_state = (t1.target.name(), t2.target.name())
                     # prune surely non-accepting states
                     if (
                         prune
@@ -142,7 +143,7 @@ def to_priority_automaton(A: Automaton) -> Automaton:
             l0 = l0.remove_rep()
             l1 = l1.remove_rep()
 
-            source_label = t.source.label()
+            source_label = t.source.name()
             s = O.get_or_create_state(
                 TupleLabel((source_label[0], source_label[1], l0, l1))
             )
@@ -165,7 +166,7 @@ def to_priority_automaton(A: Automaton) -> Automaton:
             assert not l0.is_epsilon()
             l0 = l0.remove_rep()
 
-            source_label = t.source.label()
+            source_label = t.source.name()
             s = O.get_or_create_state(
                 TupleLabel((source_label[0], source_label[1], l0))
             )
@@ -184,7 +185,7 @@ def to_priority_automaton(A: Automaton) -> Automaton:
             l1 = l1.remove_rep()
 
             # create the new middle state
-            source_label = t.source.label()
+            source_label = t.source.name()
             s = O.get_or_create_state(
                 TupleLabel((source_label[0], source_label[1], l1))
             )

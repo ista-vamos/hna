@@ -5,7 +5,7 @@ from yaml import safe_load as yaml_load
 
 from .transformers import transform_ast
 from ..automaton import HyperNodeAutomaton, HypernodeState
-from ...automata.automaton import Transition
+from ...automata.transition_system import Transition
 
 
 class LarkParser:
