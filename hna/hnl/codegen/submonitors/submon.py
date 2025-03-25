@@ -7,7 +7,7 @@ from hna.hnl.formula import (
 )
 from .codegen_shared import CodeGenCpp
 from .atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
-from hna.hnl.codegen.ehl.utils import _split_formula
+from hna.hnl.codegen.utils import _split_formula
 
 
 class CodeGenCpp(CodeGenCpp):

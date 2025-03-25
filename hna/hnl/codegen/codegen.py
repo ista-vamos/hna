@@ -1,7 +1,6 @@
 from itertools import chain
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
-from sys import stderr
 
 from hna.codegen_common.codegen import CodeGen
 from hna.codegen_common.utils import dump_codegen_position
@@ -10,8 +9,8 @@ from hna.hnl.formula import (
     Function,
     PrenexFormula,
 )
-from hna.hnl.codegen.ehl.submonitors.atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
-from hna.hnl.codegen.ehl.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
+from hna.hnl.codegen.submonitors.atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):

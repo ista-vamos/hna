@@ -8,7 +8,7 @@ from pyeda.inter import bddvar
 from .codegen_shared import CodeGenCpp
 from hna.automata.automaton import Automaton
 from hna.codegen_common.utils import dump_codegen_position
-from hna.hnl.codegen.ehl.bdd import BDDNode
+from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
     IsPrefix,
     And,
