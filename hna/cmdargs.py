@@ -1,3 +1,4 @@
+from re import match
 import argparse
 from os.path import basename, abspath
 
@@ -53,11 +54,30 @@ def create_cmdargs_parser(out_dir):
         default=[],
         help="Additional C flags for the compiler",
     )
+
+    parser.add_argument(
+        "--data",
+        action="store",
+        help="A comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type. "
+        "This list basically defines the type of the events expected on traces. "
+        "Int C types can be refined with annotations saying the range of numbers, e.g.: `int [8b]` "
+        "meaning int with at most 8-bit values, or `int [0-100]` for numbers between 0 and 100 (limits included)."
+        "Information from this option is used also to generate the reader for CSV files.",
+    )
+
+    parser.add_argument(
+        "--data-funs",
+        action="store",
+        help="NOT IMPLEMENTED. User-defined functions to query data.",
+    )
+
     parser.add_argument(
         "--alphabet",
         action="store",
-        help="Comma-separated list of letter to use as the alphabet",
+        help="A comma separated list of symbols to use as alphabet. The symbols must be storable in the types of data specified by --data "
+        "and will be compared for equality based on that types, not by string equality.",
     )
+
     parser.add_argument(
         "--overwrite-file",
         action="append",
@@ -80,11 +100,6 @@ def create_cmdargs_parser(out_dir):
         "inputs (for testing). See --help of the monitor binary "
         "for instructions on how to use the CSV reader if the monitor has also other inputs.",
     )
-    parser.add_argument(
-        "--csv-header",
-        action="store",
-        help="The header for CSV with types, a comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type",
-    )
 
     parser.add_argument(
         "--reduction",
@@ -94,6 +109,41 @@ def create_cmdargs_parser(out_dir):
     )
 
     return parser
+
+
+def parse_type(ty: str):
+    ty = ty.strip()
+    matched = match("(.+)\s*\[\s*(\d+b|-?\d+\.\.-?\d+)\s*\]", ty)
+    if matched:
+        c_type = matched[1].strip()
+        num_range = None
+        groups_num = len(matched.groups())
+        if groups_num == 2:
+            nums = matched[2].strip()
+            if nums[-1] == "b":
+                bits = int(nums[:-1])
+                if bits > 64:
+                    raise RuntimeError(
+                        f"Was not able to parse data type: {ty}. The bitwidth {bits} is invalid."
+                    )
+                num_range = (
+                    (0, (1 << bits) - 1)
+                    if "unsigned" in c_type
+                    else (-(1 << (bits - 1)), ((1 << (bits - 1)) - 1))
+                )
+            elif ".." in nums:
+                # TODO: we need better input sanitization here
+                a, b = nums.split("..")
+                num_range = (int(a), int(b))
+        return c_type, num_range
+
+    # this is just an incomplete check
+    types = ("int", "char", "long", "float", "double", "_Bool", "bool")
+    if ty not in types:
+        if ty not in (f"{sign} {t}" for t in types for sign in ("signed", "unsigned")):
+            raise RuntimeWarning(f"I do not know this C type: '{ty}', but I proceed.")
+    # this is a C type without range annotations (well, it
+    return ty, None
 
 
 def process_args(args):
@@ -108,11 +158,17 @@ def process_args(args):
     args.cmake_defs = args.D
 
     args.overwrite_file = [basename(f) for f in args.overwrite_file]
-    if args.alphabet:
-        if args.alphabet[-1] == "b" and args.alphabet[:-1].isnumeric():
-            args.alphabet = [str(n) for n in range(0, 2 ** int(args.alphabet[:-1]))]
-        else:
-            args.alphabet = list(map(lambda s: s.strip(), args.alphabet.split(",")))
+    if args.data:
+        types = args.data.split(",")
+        tmp_data = (
+            []
+        )  # we use list to preserve the order of elements because of the CSV files
+        for name_type in types:
+            name, ty = name_type.split(":")
+            tmp_data.append((name.strip(), parse_type(ty)))
+
+        args.data = tmp_data
+
     if args.reduction:
         args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
 

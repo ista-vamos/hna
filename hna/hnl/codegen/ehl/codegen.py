@@ -27,6 +27,32 @@ def _check_functions(functions):
                 )
 
 
+def get_num_range(data: list):
+    """Get the minimum and maximum number of data"""
+    min_n, max_n = None, None
+    for name, ty in data:
+        rng = ty[1]
+        if rng is None:
+            return None
+        if min_n is None or rng[0] < min_n:
+            min_n = rng[0]
+        if max_n is None or rng[0] > max_n:
+            max_n = rng[0]
+
+    return min_n, max_n
+
+
+def check_formula(formula, args):
+    assert not args.data_funs, "Not implemented HERE!"
+
+    field_names = set((x[0] for x in args.data))
+    for t in formula.program_variables():
+        if t.name not in field_names:
+            raise RuntimeError(
+                f"Formula is using data '{t.name}' which I don't know. I know: {field_names}"
+            )
+
+
 class CodeGenCpp(CodeGen):
     """
     Class for generating monitors in C++.
@@ -52,14 +78,6 @@ class CodeGenCpp(CodeGen):
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
-
-        assert (
-            self.args.csv_header
-        ), "Give --csv-header, other methods not supported yet"
-        self._event = [
-            [s.strip() for s in event.split(":")]
-            for event in self.args.csv_header.split(",")
-        ]
 
     def copy_files(self):
         # copy files from the CMD line
@@ -137,12 +155,16 @@ class CodeGenCpp(CodeGen):
             wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
             wr("#include <iostream>\n")
             wr("#include <cstdint>\n\n")
-            # wr("#include <cassert>\n\n")
 
             dump_codegen_position(wr)
             wr("struct Event {\n")
-            for name, ty in self._event:
-                wr(f"  {ty} {name};\n")
+            for name, annot_ty in self.args.data:
+                ty, vals_range = annot_ty
+                wr(f"  {ty} {name};")
+                if vals_range is not None:
+                    wr(f" /* '{name}' in [{vals_range[0]}..{vals_range[1]}] */\n")
+                else:
+                    wr("\n")
             wr("};\n\n")
 
             wr("std::ostream& operator<<(std::ostream& os, const Event& ev);\n")
@@ -156,8 +178,8 @@ class CodeGenCpp(CodeGen):
             dump_codegen_position(wr)
             wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
             wr('  os << "("')
-            for n, field in enumerate(self._event):
-                name, ty = field
+            for n, field in enumerate(self.args.data):
+                name, _ = field
                 if n > 0:
                     wr(f'  << ", "')
                 wr(f'  << "{name} = " << ev.{name}')
@@ -176,9 +198,11 @@ class CodeGenCpp(CodeGen):
         with self.new_file("read_csv_event.h") as f:
             wr = f.write
             wr(f"int ch;\n\n")
-            for n, tmp in enumerate(self._event):
-                name, ty = tmp
-                # wr(f"char action[{max_len_action_name}];\n\n")
+            data = self.args.data  # data in the events
+            for n, tmp in enumerate(data):
+                name, annot_ty = tmp
+                ty, val_range = annot_ty
+
                 wr(f"_stream >> ev.{name};\n")
                 wr("if (_stream.fail()) {")
                 if n == 0:  # assume this is the header
@@ -190,17 +214,27 @@ class CodeGenCpp(CodeGen):
                         "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
                     )
                     wr(f"   _stream >> ev.{name};\n")
-                    wr("    if (_stream.fail()) {")
+                    wr("    if (_stream.fail()) {\n")
                     wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";\n'
                     )
-                    wr("    abort();")
-                    wr("  }")
-                    wr("} else {")
+                    wr("    abort();\n")
+                    wr("  }\n")
+                    if val_range:
+                        wr(
+                            f"  if (ev.{name} < {val_range[0]} || ev.{name} > {val_range[1]}) {{\n"
+                        )
+                        wr(
+                            f'    std::cerr << "The value for column \'{name}\' on line " << _events_num_read + 1 << " is out of range: "\n'
+                            f'              << ev.{name} << " not in  [{val_range[0]}..{val_range[1]}]\\n";\n'
+                        )
+                        wr("    abort();\n")
+                        wr("  }\n")
+                    wr("} else {\n")
                     wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
+                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";\n'
                     )
-                    wr("    abort();")
+                    wr("    abort();\n")
                     wr("}")
                 else:
                     wr(
@@ -208,7 +242,7 @@ class CodeGenCpp(CodeGen):
                     )
                     wr("  abort();")
                 wr("}")
-                if n == len(self._event) - 1:
+                if n == len(data) - 1:
                     wr(
                         f"""
                     while ((ch = _stream.get()) != EOF) {{
@@ -328,7 +362,9 @@ class CodeGenCpp(CodeGen):
         The top-level function to generate code
         """
 
-        self.args.alphabet = alphabet or self._get_alphabet(formula)
+        check_formula(formula, self.args)
+
+        self.args.alphabet = alphabet or self._get_alphabet()
 
         if not self._embedded:
             if self.args.gen_csv_reader:
@@ -396,17 +432,19 @@ class CodeGenCpp(CodeGen):
 
         self.format_generated_code()
 
-    def _get_alphabet(self, formula):
+    def _get_alphabet(self):
         if not self.args.alphabet:
-            print(
-                "No alphabet given, using constants from the formula: ",
-                formula.constants(),
-                file=stderr,
-            )
-            alphabet = formula.constants()
+            data = self.args.data
+            num_range = get_num_range(data)
+            if num_range is None:
+                raise RuntimeError(
+                    "No explicit alphabet given and failed to get a bound on numbers from data"
+                )
+            alphabet = [Constant(str(a)) for a in range(num_range[0], num_range[1] + 1)]
         else:
             alphabet = [Constant(a) for a in self.args.alphabet]
-        assert alphabet, "The alphabet is empty"
+        if not alphabet:
+            raise RuntimeError("The alphabet is empty, eHL needs explicit alphabet.")
         return alphabet
 
     def _functions_mon_h_str(self, functions):

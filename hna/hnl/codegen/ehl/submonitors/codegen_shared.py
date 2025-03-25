@@ -33,10 +33,6 @@ class CodeGenCpp(CodeGen):
         self.templates_path = pathjoin(self_dir, "../templates/")
         self._fixed_quantifiers = fixed_quantifiers
 
-        assert (
-            self.args.csv_header
-        ), "Give --csv-header, other methods not supported yet"
-
     def _generate_create_instances(self, formula):
         _, _, q2set = self.input_tracesets(formula)
 
