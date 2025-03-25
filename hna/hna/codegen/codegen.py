@@ -1,6 +1,5 @@
-from os import readlink, listdir, makedirs
+from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
-from subprocess import run
 
 from hna.codegen_common.codegen import CodeGen
 from hna.codegen_common.utils import dump_codegen_position, FIXME

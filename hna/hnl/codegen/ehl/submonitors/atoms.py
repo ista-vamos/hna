@@ -1,24 +1,20 @@
 import random
 from itertools import chain
-from os import readlink, makedirs
-from os.path import abspath, dirname, islink, join as pathjoin, basename
-from sys import stderr
+from os import makedirs
+from os.path import basename
 
 from pyeda.inter import bddvar
 
 from .codegen_shared import CodeGenCpp
 from hna.automata.automaton import Automaton
 from hna.codegen_common.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode
+from hna.hnl.codegen.ehl.bdd import BDDNode
 from hna.hnl.formula import (
     IsPrefix,
     And,
     Or,
     Not,
-    Constant,
     PrenexFormula,
-    ForAllFromFun,
-    ForAll,
 )
 from hna.hnl.formula2automata import (
     formula_to_automaton,

@@ -10,8 +10,8 @@ from hna.hnl.formula import (
     Function,
     PrenexFormula,
 )
-from hna.hnl.codegen.submonitors.atoms import CodeGenCpp as CodeGenCppAtomsMon
-from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
+from hna.hnl.codegen.ehl.submonitors.atoms import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.ehl.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):

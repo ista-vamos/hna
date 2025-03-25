@@ -2,7 +2,7 @@
 
 import sys
 from multiprocessing import cpu_count
-from os.path import abspath, isfile, basename
+from os.path import isfile, basename
 from subprocess import run
 
 from config import vamos_common_PYTHONPATH

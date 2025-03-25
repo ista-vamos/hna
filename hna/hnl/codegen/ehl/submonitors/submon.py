@@ -1,15 +1,13 @@
 from itertools import chain
-from os import readlink
-from os.path import abspath, dirname, islink, join as pathjoin, basename
+from os.path import basename
 
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.formula import (
-    ForAllFromFun,
     Exists,
 )
 from .codegen_shared import CodeGenCpp
 from .atoms import CodeGenCpp as CodeGenCppAtomsMon
-from hna.hnl.codegen.utils import _split_formula
+from hna.hnl.codegen.ehl.utils import _split_formula
 
 
 class CodeGenCpp(CodeGenCpp):
