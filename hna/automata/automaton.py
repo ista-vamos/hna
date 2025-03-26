@@ -1,6 +1,4 @@
 from hna.automata.transition_system import (
-    State,
-    TransitionSystem,
     AccInitTransitionSystem,
 )
 

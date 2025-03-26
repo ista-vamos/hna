@@ -128,7 +128,7 @@ class TransitionSystem:
         return self._state_to_id[item]
 
     def has_label(self, state, label):
-        """Check if a given state has assigned a given label (label is not the same as the name of the state)"""
+        """Check if a given state has assigned a given label (symbol is not the same as the name of the state)"""
         states_with_label = self.states_with_label(label)
         if states_with_label is None:
             return False
@@ -213,7 +213,8 @@ class AccInitTransitionSystem(TransitionSystem):
     def add_init(self, state):
         assert isinstance(state, State), (state, type(state))
         assert state in self._states.values()
-        self.initial_states().append(state)
+        if state not in self.initial_states():
+            self.initial_states().append(state)
 
     def is_initial(self, state):
         assert isinstance(state, State), (state, type(state))
@@ -225,7 +226,8 @@ class AccInitTransitionSystem(TransitionSystem):
     def add_accepting(self, state):
         assert isinstance(state, State), (state, type(state))
         assert state in self._states.values()
-        self.accepting_states().append(state)
+        if state not in self.accepting_states():
+            self.accepting_states().append(state)
 
     def is_accepting(self, state):
         assert isinstance(state, State), (state, type(state))

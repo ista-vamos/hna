@@ -4,12 +4,12 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from hna.codegen_common.codegen import CodeGen
 from hna.codegen_common.utils import dump_codegen_position
+from hna.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
 from hna.hnl.formula import (
     Constant,
     Function,
     PrenexFormula,
 )
-from hna.hnl.codegen.submonitors.atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
 from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
@@ -416,7 +416,7 @@ class CodeGenCpp(CodeGen):
                 embedded=True,
             )
         else:
-            codegen = CodeGenCppAtomsMon(
+            codegen = get_atoms_codegen(self.args.logic)(
                 submon_name,
                 self.args,
                 self.ctx,

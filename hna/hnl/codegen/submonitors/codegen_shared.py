@@ -1,8 +1,6 @@
-from itertools import chain
-
 from hna.codegen_common.codegen import CodeGen
 from os import readlink
-from os.path import abspath, dirname, islink, join as pathjoin, basename
+from os.path import abspath, dirname, islink, join as pathjoin
 
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.formula import ForAllFromFun
@@ -230,3 +228,5 @@ class CodeGenCpp(CodeGen):
             )
         ] + [f"if (!{q}->finished()) {{ return false; }}" for q in (fixed or ())]
         return "\n".join(lines)
+
+
