@@ -654,19 +654,19 @@ class CodeGenCpp(CodeGenCppAtoms):
         formula = bddnode.formula
         num = bddnode.get_id()
         nformula = formula.rename_variables("v", "v", "t", "t")
-       ## we rename both projections to `v(t)` so that when we have another atom
-       ## that is the same but names of the trace variables, we do not rebuild it
-       #Ap = self._automata.get(nformula)
-       #if Ap:
-       #    print(
-       #        f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
-       #    )
-       #    bddnode.automaton = Ap
+        ## we rename both projections to `v(t)` so that when we have another atom
+        ## that is the same but names of the trace variables, we do not rebuild it
+        # Ap = self._automata.get(nformula)
+        # if Ap:
+        #    print(
+        #        f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
+        #    )
+        #    bddnode.automaton = Ap
 
-       #    if self.args.debug:
-       #        with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
-       #            Ap.to_dot(f)
-       #    return Ap
+        #    if self.args.debug:
+        #        with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
+        #            Ap.to_dot(f)
+        #    return Ap
 
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
@@ -682,18 +682,18 @@ class CodeGenCpp(CodeGenCppAtoms):
             print(f"Hit cache for {nformula.children[1]}")
 
         # NOTE: we do not cache this one
-        #A = transducer_for_prefixing(A1, A2, alphabet)
-        #Ap = to_priority_automaton(A)
+        # A = transducer_for_prefixing(A1, A2, alphabet)
+        # Ap = to_priority_automaton(A)
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:
                 A1.to_dot(f)
             with self.new_dbg_file(f"aut-{num}-rhs.dot") as f:
                 A2.to_dot(f)
-           #with self.new_dbg_file(f"aut-{num}.dot") as f:
-           #    A.to_dot(f)
-           #with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
-           #    Ap.to_dot(f)
+        # with self.new_dbg_file(f"aut-{num}.dot") as f:
+        #    A.to_dot(f)
+        # with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
+        #    Ap.to_dot(f)
 
         # self._aut_to_html(f"aut-{num}-lhs.html", A1)
         # self._aut_to_html(f"aut-{num}-rhs.html", A2)

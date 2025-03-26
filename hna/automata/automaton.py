@@ -20,7 +20,7 @@ class Automaton(AccInitTransitionSystem):
         """
         Return True if the automaton is deterministic, False otherwise
         """
-        for tmap in self._transitions_mapping.values():
+        for tmap in self._transitions_from.values():
             for T in tmap.values():
                 if len(T) > 1:
                     return False

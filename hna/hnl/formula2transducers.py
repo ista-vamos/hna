@@ -1,13 +1,62 @@
-from itertools import chain
-
 from hna.automata.automaton import Automaton
-from ..automata.transducers import SymbolicTransducer, concat_transducers
+from .formula import (
+    Constant,
+    EPSILON_CONSTANT,
+    IsPrefix,
+    StutterReduce,
+    Concat,
+    Iter,
+    ProgramVariable,
+)
+from ..automata.transducers import (
+    SymbolicTransducer,
+    concat_transducers,
+    Constant as TransitionConstant,
+    Eps,
+    iterate_transducer,
+    Var,
+    TransitionLabel,
+)
 from ..automata.transition_system import State, Transition
-from .formula import EPSILON, Constant, EPSILON_CONSTANT, IsPrefix, StutterReduce, Concat
+
+
+def constant_transducer(formula):
+    states = [State("q0"), State("q1")]
+    return SymbolicTransducer(
+        states=states,
+        registers=None,
+        transitions=[
+            Transition(
+                states[0],
+                TransitionLabel(Eps(), [], [], TransitionConstant(formula.value)),
+                states[1],
+            )
+        ],
+        init_states=[states[0]],
+        accepting_states=[states[1]],
+        origin=formula,
+    )
+
+
+def program_variable_transducer(formula):
+    states = [State("q0")]
+    return SymbolicTransducer(
+        states=states,
+        registers=None,
+        transitions=[
+            Transition(
+                states[0], TransitionLabel(Var("x"), [], [], Var("x")), states[0]
+            )
+        ],
+        init_states=states,
+        accepting_states=states,
+        origin=formula,
+    )
 
 
 def stutter_reduce_transducer(T: SymbolicTransducer):
     return T
+
 
 def formula_to_transducer(formula):
     assert not isinstance(formula, IsPrefix), formula
@@ -16,10 +65,21 @@ def formula_to_transducer(formula):
         return stutter_reduce_transducer(formula_to_transducer(formula.children[0]))
 
     if isinstance(formula, Concat):
-        return concat_transducers(formula_to_transducer(formula.children[0]), formula_to_transducer(formula.children[1]))
+        return concat_transducers(
+            formula_to_transducer(formula.children[0]),
+            formula_to_transducer(formula.children[1]),
+        )
 
-    raise NotImplementedError(f'Unhandled formula: {formula}')
+    if isinstance(formula, Iter):
+        return iterate_transducer(formula_to_transducer(formula.children[0]))
 
+    if isinstance(formula, Constant):
+        return constant_transducer(formula)
+
+    if isinstance(formula, ProgramVariable):
+        return program_variable_transducer(formula)
+
+    raise NotImplementedError(f"Unhandled formula: {formula}")
 
 
 def to_priority_automaton(A: Automaton) -> Automaton:

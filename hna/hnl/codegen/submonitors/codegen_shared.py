@@ -228,5 +228,3 @@ class CodeGenCpp(CodeGen):
             )
         ] + [f"if (!{q}->finished()) {{ return false; }}" for q in (fixed or ())]
         return "\n".join(lines)
-
-

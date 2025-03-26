@@ -7,6 +7,7 @@ class State:
     """
 
     def __init__(self, name):
+        assert isinstance(name, str), (name, type(name))
         self._name = name
 
     def name(self):
@@ -27,11 +28,11 @@ class State:
 
 
 class Transition:
-    """
-    Transition of an automaton
-    """
+    """Transition of an automaton"""
 
     def __init__(self, source, label, target, priority=0):
+        assert isinstance(source, State), source
+        assert isinstance(target, State), target
         self._source = source
         self._target = target
         self._label = label
@@ -93,12 +94,10 @@ class TransitionSystem:
         TransitionSystem._id_cnt += 1
         self._id = TransitionSystem._id_cnt
         self._states = {}
-        # use `add_state` so that the states are assigned the ID
-        for s in states or ():
-            self.add_state(s)
-        self._transitions = transitions or []
+        self._transitions = []
         self._labeling = labeling or {}
-        self._transitions_mapping = {}
+        self._transitions_from = {}
+        self._transitions_to = {}
         # we number the states from 0
         self._state_to_id = {}
         self._last_id = 0
@@ -106,6 +105,13 @@ class TransitionSystem:
         # a formula or another automata, etc.
         # NOTE: optional field, may not be set
         self._origin = origin
+
+        # use `add_state` and `add_transition` so that the states are assigned the ID
+        # and states and transitions are copied
+        for s in states or ():
+            self.add_state(s)
+        for t in transitions or ():
+            self.add_transition(t)
 
     def __getitem__(self, item):
         return self._states[item]
@@ -118,17 +124,20 @@ class TransitionSystem:
             f"Class {self} have no __eq__, you can try use get_id() where suitable"
         )
 
-    def get(self, item) -> State:
+    def get(self, label_or_state) -> State:
         """
-        Get the state by its label
+        Get the state by its label, or, if State is given instead of label,
+        get our copy of the state (the state from this TS with the same label)
         """
-        return self._states.get(item)
+        if isinstance(label_or_state, State):
+            label_or_state = label_or_state.name()
+        return self._states.get(label_or_state)
 
     def get_state_id(self, item: State) -> int:
         return self._state_to_id[item]
 
     def has_label(self, state, label):
-        """Check if a given state has assigned a given label (symbol is not the same as the name of the state)"""
+        """Check if a given state has assigned a given label (label is not the same as the name of the state)"""
         states_with_label = self.states_with_label(label)
         if states_with_label is None:
             return False
@@ -141,7 +150,7 @@ class TransitionSystem:
         assert isinstance(state, State), (state, type(state))
         assert (
             state not in self._states.values()
-        ), f"{state} is in [{', '.join(map(str, self._states.values()))}]"
+        ), f"{state} should NOT be in [{', '.join(map(str, self._states.values()))}]"
 
         self._states[state.name()] = state
         self._state_to_id[state] = self._last_id
@@ -160,9 +169,10 @@ class TransitionSystem:
             t not in self._transitions
         ), f"{t} in {', '.join(map(str, self._transitions))}"
         self._transitions.append(t)
-        self._transitions_mapping.setdefault(t.source, {}).setdefault(
-            t.label, []
-        ).append(t)
+        self._transitions_from.setdefault(t.source, {}).setdefault(t.label, []).append(
+            t
+        )
+        self._transitions_to.setdefault(t.target, {}).setdefault(t.label, []).append(t)
 
     def transitions(self, state: State = None, a=None, default=None):
         """
@@ -177,12 +187,23 @@ class TransitionSystem:
         """
         if state is None:
             return self._transitions
-        M = self._transitions_mapping.get(state)
+        M = self._transitions_from.get(state)
         if M is None:
             return default
         if a is None:
             return M
         return M.get(a) or default
+
+    def transitions_to(self, state: State):
+        T = self._transitions_to.get(state)
+        if T is None:
+            return T
+        return [t for vals in T.values() for t in vals]
+
+    def clear_transitions(self):
+        t, tm = self._transitions, self._transitions_from
+        self._transitions, self._transitions_from = [], {}
+        return t, tm
 
     def states(self):
         return list(self._states.values())
@@ -233,6 +254,57 @@ class AccInitTransitionSystem(TransitionSystem):
         assert isinstance(state, State), (state, type(state))
         return self.has_label(state, "accepting")
 
+    def remove_redundant_states_once(self):
+        """Remove unreachable states and states from which no accepting state is reachable"""
+        raise NotImplementedError("Not working yet")
+        # get reachable states
+        queue = self.initial_states().copy()
+        accessible = set()
+        new_queue = []
+        while queue:
+            for state in queue:
+                if state not in accessible:
+                    accessible.add(state)
+                    new_queue.extend(
+                        t.target
+                        for vals in self.transitions(state).values()
+                        for t in vals
+                    )
+            queue, new_queue = new_queue, []
+
+        # now, from reachable accepting states look backward for coaccessible states
+        coaccessible = set()
+        queue = [s for s in self.accepting_states() if s in accessible]
+        assert new_queue == []
+        while queue:
+            for state in queue:
+                if state not in coaccessible:
+                    coaccessible.add(state)
+                    new_queue.extend(t.source for t in self.transitions_to(state) or ())
+            queue, new_queue = new_queue, []
+
+        # the variables should be re-named, but...
+        accessible.intersection_update(coaccessible)
+
+        changed = len(accessible) < len(self._states)
+        self._states = {s.name(): s for s in self.states() if s in accessible}
+        self._transitions = [
+            t
+            for t in self.transitions()
+            if t.source in accessible and t.target in accessible
+        ]
+        self._labeling["accepting"] = [
+            s for s in self.initial_states() if s in accessible
+        ]
+        self._labeling["initial"] = [
+            s for s in self.accepting_states() if s in accessible
+        ]
+
+        # FIXME
+        # Update also mappings, etc.
+
+        return changed
+
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
         for _, state in self._states.items():
@@ -247,7 +319,7 @@ class AccInitTransitionSystem(TransitionSystem):
             prio = transition.priority
             prio = f"|{prio}" if prio != 0 else ""
             print(
-                f'  "N{self.get_state_id(transition.source)}" -> "N{self.get_state_id(transition.target)}"[label="{transition.dot_name()}{prio}"]',
+                f'  "N{self.get_state_id(transition.source)}" -> "N{self.get_state_id(transition.target)}"[label="{transition.dot_label()}{prio}"]',
                 file=output,
             )
         print("}", file=output)
