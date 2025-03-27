@@ -42,7 +42,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             dump_codegen_position(f)
             f.write("switch(monitor_type) {\n")
             for nd in self._bdd_nodes:
-                num, F = nd.get_id(), nd.formula
+                num = nd.get_id()
                 f.write(
                     f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
                 )
@@ -684,6 +684,9 @@ class CodeGenCpp(CodeGenCppAtoms):
         # NOTE: we do not cache this one
         # A = transducer_for_prefixing(A1, A2, alphabet)
         # Ap = to_priority_automaton(A)
+
+        A1.remove_redundant_states_once()
+        A2.remove_redundant_states_once()
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:

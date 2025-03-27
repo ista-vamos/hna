@@ -1,3 +1,5 @@
+from copy import copy
+
 from hna.automata.transition_system import AccInitTransitionSystem, Transition, State
 
 
@@ -111,6 +113,15 @@ class BinaryPredicate(Condition):
     def rhs(self):
         return self._rhs
 
+    def subst(self, s):
+        what, by = s
+        new = copy(self)
+        if self._lhs == what:
+            new._lhs = by
+        if self._rhs == what:
+            new._rhs = by
+        return new
+
 
 class Eq(BinaryPredicate):
     def __init__(self, lhs, rhs):
@@ -125,7 +136,7 @@ class NEq(BinaryPredicate):
         super().__init__(lhs, rhs)
 
     def __str__(self):
-        return f"{self.lhs} ! {self.rhs}"
+        return f"{self.lhs} ≠ {self.rhs}"
 
 
 class Assignment:
@@ -137,11 +148,19 @@ class Assignment:
     def to(self):
         return self._to
 
+    @property
     def val(self):
         return self._val
 
     def __str__(self):
-        return f"{self.to} := {self.val}"
+        return f"{self.to}:={self.val}"
+
+    def subst(self, s):
+        # what, by = s
+        new = copy(self)
+        if self._val == s[0]:
+            new._val = s[1]
+        return new
 
 
 class TransitionLabel:
@@ -179,8 +198,11 @@ class TransitionLabel:
             and not self.assignment
         )
 
+    def is_input_eps(self):
+        return self.symbol.is_eps()
+
     def __str__(self):
-        return f"{self.symbol}{self.condition};{self.assignment}/{self.output}"
+        return f"{self.symbol}[{', '.join(map(str, self.condition))}];{', '.join(map(str, self.assignment))} / {self.output}"
 
 
 class Transducer(AccInitTransitionSystem):
@@ -225,6 +247,9 @@ class SymbolicTransducer(Transducer):
             origin=new_origin or self.origin(),
         )
 
+    def has_eps_transitions(self):
+        return any((t.label.is_eps() for t in self.transitions()))
+
 
 def concat_transducers(left: SymbolicTransducer, right: SymbolicTransducer):
     T, renamed_states = merge_transducers(left, right)
@@ -253,14 +278,13 @@ def merge_transducers(left, right):
     Also, clean initial and accepting states.
     """
 
-    registers = left.registers()
-    # registers = (
-    #    right.registers() if not registers else (registers + (right.registers() or []))
-    # )
-    if right.registers():
+    if left.registers() and right.registers():
         raise NotImplementedError("Rename conflicting registers")
+
+    registers = ((left.registers() or []) + (right.registers() or [])) or None
     # we might need to rename states, keep the new names in this map
     renamed_states = {}
+    renamed_registers = {}
     states = left.states().copy()
     # FIXME: this might be inefficient
     for r_state in right.states():
@@ -330,3 +354,170 @@ def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
                 T.add_accepting(acc)
 
     return T
+
+
+def compose_transducers(
+    inner: SymbolicTransducer, outer: SymbolicTransducer
+) -> SymbolicTransducer:
+    """
+    Compute the sequential composition outer(inner).
+    """
+
+    assert (
+        not inner.has_eps_transitions()
+    ), "Transducers in the composition cannot have epsilon transitions"
+    assert (
+        not outer.has_eps_transitions()
+    ), "Transducers in the composition cannot have epsilon transitions"
+
+    # pairs of states that we will later translate to State. But for now, it is more comfortable
+    # to work with pairs of states.
+    states = set()
+    # triple (source, label, target) where source and target are pairs of states.
+    # We will later translate them into Transition classes
+    transitions = []
+    queue = [(ii, oi) for ii in inner.initial_states() for oi in outer.initial_states()]
+    new_queue = []
+
+    while queue:
+        for state_pair in queue:
+            print(f"CUR: {state_pair[0]},{state_pair[1]}")
+            if state_pair in states:
+                continue
+            states.add(state_pair)
+
+            for outer_t in outer.transitions_from(state_pair[1]):
+                # handle epsilon steps of outer transducer
+                if outer_t.label.is_input_eps():
+                    new_target = (state_pair[0], outer_t.target)
+                    transitions.append(state_pair, outer_t.label, new_target)
+                    new_queue.append(new_target)
+
+            for inner_t, outer_t in (
+                (it, ot)
+                for it in inner.transitions_from(state_pair[0])
+                for ot in outer.transitions_from(state_pair[1])
+            ):
+                if outer_t.label.is_input_eps():
+                    # these were handled separately
+                    continue
+
+                # combine the transitions
+                new_t = compose_transitions(inner_t, outer_t)
+                if new_t is None:
+                    # the transition had UNSAT condition
+                    continue
+                assert new_t[0] == state_pair
+                assert new_t[0] == (inner_t.source, outer_t.source)
+                assert new_t[2] == (inner_t.target, outer_t.target)
+                print(
+                    f"NEW_T: {new_t[0][0]},{new_t[0][1]} - {new_t[1]} -> {new_t[2][0]},{new_t[2][1]}"
+                )
+                transitions.append(new_t)
+                # new_t[2] is the target of the new to-be-transition
+                if new_t[2] not in states:
+                    print(f"NEW: {new_t[2][0]}{new_t[2][1]}")
+                    new_queue.append(new_t[2])
+
+        queue, new_queue = new_queue, []
+
+    states = {(i, o): State(f"{i},{o}") for (i, o) in states}
+
+    registers = inner.registers()
+    registers = (
+        outer.registers() if not registers else (registers + (outer.registers() or []))
+    )
+    return SymbolicTransducer(
+        states=list(states.values()),
+        registers=registers,
+        transitions=[Transition(states[t[0]], t[1], states[t[2]]) for t in transitions],
+        init_states=[
+            states[s]
+            for s in states.keys()
+            if inner.is_initial(s[0]) and outer.is_initial(s[1])
+        ],
+        accepting_states=[
+            states[s]
+            for s in states.keys()
+            if inner.is_accepting(s[0]) and outer.is_accepting(s[1])
+        ],
+    )
+
+
+def compose_transitions(inner: Transition, outer: Transition) -> Transition:
+    inner_l: TransitionLabel = inner.label
+    outer_l: TransitionLabel = outer.label
+
+    subst = (outer_l.symbol, inner_l.output)
+    condition = simplify_condition(
+        inner_l.condition + substitute_in_cond(outer_l.condition, subst)
+    )
+    if condition is None:  # UNSAT condition
+        return None
+
+    label = TransitionLabel(
+        symbol=inner_l.symbol,
+        condition=condition,
+        assign=inner_l.assignment + substitute_in_assign(outer_l.assignment, subst),
+        output=substitute_in_output(outer_l.output, subst),
+    )
+
+    print(
+        "\033[31;1mFIXME FIXME FIXME: do substitutions in the condition, assign and output\033[0m"
+    )
+
+    return (inner.source, outer.source), label, (inner.target, outer.target)
+
+
+def simplify_condition(cond):
+    # TODO: do this properly with SMT solver?
+    eq_classes = {}
+    for c in (c for c in cond if isinstance(c, Eq)):
+        # FIXME: this is not very efficient, but we'll not likely have problem with this
+        C1 = eq_classes.setdefault(c.lhs, set((c.lhs,)))
+        C2 = eq_classes.setdefault(c.rhs, set((c.rhs,)))
+        C = C1 | C2
+        eq_classes[c.lhs] = C
+        eq_classes[c.rhs] = C
+
+        if not check_eq_class(C):
+            # UNSAT condition, two different constants should equal
+            return None
+
+    for c in (c for c in cond if isinstance(c, NEq)):
+        if c.rhs in eq_classes.get(c.lhs, ()):
+            # UNSAT condition, there's a claim that two elements
+            # should be the same and different at the same time
+            return None
+
+    # TODO: simplify the condition by constant propagation
+
+    return cond
+
+
+def check_eq_class(C):
+    const = None
+    for elem in C:
+        if isinstance(elem, Constant):
+            if const is not None and const != elem:
+                return False  # two different constants should equal
+            const = elem
+    return True
+
+
+def substitute_in_cond(cond, subst):
+    # FIXME: once we have data funs, this needs to be updates!")
+    return [c.subst(subst) for c in cond]
+
+
+def substitute_in_assign(A, subst):
+    # FIXME: once we have data funs, this needs to be updates!")
+    return [a.subst(subst) for a in A]
+
+
+def substitute_in_output(out, subst):
+    print("FIXME: once we have data funs, this needs to be updates!")
+    what, by = subst
+    if out == what:
+        return by
+    return out

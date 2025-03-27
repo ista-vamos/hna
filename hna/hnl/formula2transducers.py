@@ -16,12 +16,17 @@ from ..automata.transducers import (
     iterate_transducer,
     Var,
     TransitionLabel,
+    compose_transducers,
+    Reg,
+    Assignment,
+    Eq,
+    NEq,
 )
 from ..automata.transition_system import State, Transition
 
 
 def constant_transducer(formula):
-    states = [State("q0"), State("q1")]
+    states = [State(f"c0"), State("c1")]
     return SymbolicTransducer(
         states=states,
         registers=None,
@@ -39,7 +44,7 @@ def constant_transducer(formula):
 
 
 def program_variable_transducer(formula):
-    states = [State("q0")]
+    states = [State("v0")]
     return SymbolicTransducer(
         states=states,
         registers=None,
@@ -55,7 +60,26 @@ def program_variable_transducer(formula):
 
 
 def stutter_reduce_transducer(T: SymbolicTransducer):
-    return T
+    states = [State("st0"), State("st1")]
+    r, x = Reg("last"), Var("x")
+    ST = SymbolicTransducer(
+        states=states,
+        registers=[r],
+        transitions=[
+            Transition(
+                states[0], TransitionLabel(x, [], [Assignment(r, x)], x), states[1]
+            ),
+            Transition(states[1], TransitionLabel(x, [Eq(x, r)], [], Eps()), states[1]),
+            Transition(
+                states[1],
+                TransitionLabel(x, [NEq(x, r)], [Assignment(r, x)], x),
+                states[1],
+            ),
+        ],
+        init_states=[states[0]],
+        accepting_states=states,
+    )
+    return compose_transducers(T, ST)
 
 
 def formula_to_transducer(formula):

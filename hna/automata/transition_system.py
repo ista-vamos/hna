@@ -20,8 +20,11 @@ class State:
     def __hash__(self):
         return self._name.__hash__()
 
-    def __str__(self):
+    def __repr__(self):
         return f"State({self._name})"
+
+    def __str__(self):
+        return self._name
 
     def dot_name(self):
         return str(self._name)
@@ -200,6 +203,12 @@ class TransitionSystem:
             return T
         return [t for vals in T.values() for t in vals]
 
+    def transitions_from(self, state: State):
+        T = self._transitions_from.get(state)
+        if T is None:
+            return T
+        return [t for vals in T.values() for t in vals]
+
     def clear_transitions(self):
         t, tm = self._transitions, self._transitions_from
         self._transitions, self._transitions_from = [], {}
@@ -256,7 +265,7 @@ class AccInitTransitionSystem(TransitionSystem):
 
     def remove_redundant_states_once(self):
         """Remove unreachable states and states from which no accepting state is reachable"""
-        raise NotImplementedError("Not working yet")
+        # raise NotImplementedError("Not working yet")
         # get reachable states
         queue = self.initial_states().copy()
         accessible = set()
@@ -293,17 +302,18 @@ class AccInitTransitionSystem(TransitionSystem):
             for t in self.transitions()
             if t.source in accessible and t.target in accessible
         ]
-        self._labeling["accepting"] = [
+        self._labeling["initial"] = [
             s for s in self.initial_states() if s in accessible
         ]
-        self._labeling["initial"] = [
+        self._labeling["accepting"] = [
             s for s in self.accepting_states() if s in accessible
         ]
 
         # FIXME
         # Update also mappings, etc.
-
-        return changed
+        print(
+            "FIXME: update mappings, otherwise the transducers cannot be used after this method"
+        )
 
     def to_dot(self, output=stdout):
         print("digraph {", file=output)
