@@ -12,6 +12,10 @@ class Value:
     def value(self):
         return self._v
 
+    @value.setter
+    def value(self, v):
+        self._v = v
+
     def is_const(self) -> bool:
         return False
 
@@ -109,9 +113,17 @@ class BinaryPredicate(Condition):
     def lhs(self):
         return self._lhs
 
+    @lhs.setter
+    def lhs(self, val):
+        self._lhs = val
+
     @property
     def rhs(self):
         return self._rhs
+
+    @rhs.setter
+    def rhs(self, val):
+        self._rhs = val
 
     def subst(self, s):
         what, by = s
@@ -160,11 +172,18 @@ class Assignment:
         new = copy(self)
         if self._val == s[0]:
             new._val = s[1]
+        if self._to == s[0]:
+            new._to = s[1]
         return new
 
 
 class TransitionLabel:
-    def __init__(self, symbol: Value, condition: list, assign: list, output: Value):
+    def __init__(
+        self, symbol: (Value, tuple), condition: list, assign: list, output: Value
+    ):
+        assert not isinstance(
+            symbol, Reg
+        ), f"We do not allow a register to be transition symbol: {symbol}"
         self._symbol = symbol
         self._cond = condition
         self._assign = assign
@@ -201,8 +220,14 @@ class TransitionLabel:
     def is_input_eps(self):
         return self.symbol.is_eps()
 
+    def is_output_eps(self):
+        return self.output.is_eps()
+
     def __str__(self):
-        return f"{self.symbol}[{', '.join(map(str, self.condition))}];{', '.join(map(str, self.assignment))} / {self.output}"
+        out = f" / {self.output}" if self.output else ""
+        assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
+        cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
+        return f"{self.symbol}{cond}{assign}{out}"
 
 
 class Transducer(AccInitTransitionSystem):
@@ -469,7 +494,52 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
     return (inner.source, outer.source), label, (inner.target, outer.target)
 
 
+def term_lt(lhs, rhs):
+    if isinstance(lhs, Var):
+        if isinstance(rhs, Var):
+            return lhs.value < rhs.value
+        else:
+            return True
+    elif isinstance(lhs, Reg):
+        if isinstance(rhs, Var):
+            return False
+        elif isinstance(rhs, Reg):
+            return lhs.value < rhs.value
+        else:
+            return True
+    elif isinstance(lhs, Constant):
+        if isinstance(rhs, (Var, Reg)):
+            return False
+        else:
+            return lhs.value < rhs.value
+    raise RuntimeError("Unknown type of term")
+
+
+def normalize_term(term):
+    """
+    Any variable is 'smaller' than any register, and any register is smaller than any constant.
+    Variables, registers, and constants are ordered lexicographically.
+    This function outputs the smaller of (term.lhs, term.rhs) or (term.rhs, term.lhs).
+    NOTE: it modifies the original term!
+    """
+    if not term_lt(term.lhs, term.rhs):
+        term.rhs, term.lhs = term.lhs, term.rhs
+    return term
+
+
+def remove_duplicates(cond):
+    return list(set(normalize_term(c) for c in cond))
+
+
+def remove_trivial(cond):
+    return [c for c in cond if not isinstance(c, Eq) or c.lhs != c.rhs]
+
+
 def simplify_condition(cond):
+    # remove repeated terms
+    cond = remove_duplicates(cond)
+    cond = remove_trivial(cond)
+
     # TODO: do this properly with SMT solver?
     eq_classes = {}
     for c in (c for c in cond if isinstance(c, Eq)):
@@ -521,3 +591,18 @@ def substitute_in_output(out, subst):
     if out == what:
         return by
     return out
+
+
+class TwoTapeSymbolicTransducer(SymbolicTransducer):
+    def __init__(
+        self,
+        states: list = None,
+        registers: list = None,
+        transitions: list = None,
+        init_states: list = None,
+        accepting_states: list = None,
+        origin=None,
+    ):
+        super().__init__(
+            states, registers, transitions, init_states, accepting_states, origin
+        )

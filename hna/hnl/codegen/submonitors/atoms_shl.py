@@ -14,7 +14,7 @@ from hna.hnl.formula2automata import (
     to_priority_automaton,
 )
 from .atoms import CodeGenCppAtoms
-from ...formula2transducers import formula_to_transducer
+from ...formula2transducers import formula_to_transducer, automaton_for_prefixing
 
 
 class CodeGenCpp(CodeGenCppAtoms):
@@ -682,7 +682,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             print(f"Hit cache for {nformula.children[1]}")
 
         # NOTE: we do not cache this one
-        # A = transducer_for_prefixing(A1, A2, alphabet)
+        A = automaton_for_prefixing(A1, A2)
         # Ap = to_priority_automaton(A)
 
         A1.remove_redundant_states_once()
@@ -693,8 +693,8 @@ class CodeGenCpp(CodeGenCppAtoms):
                 A1.to_dot(f)
             with self.new_dbg_file(f"aut-{num}-rhs.dot") as f:
                 A2.to_dot(f)
-        # with self.new_dbg_file(f"aut-{num}.dot") as f:
-        #    A.to_dot(f)
+            with self.new_dbg_file(f"aut-{num}.dot") as f:
+                A.to_dot(f)
         # with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
         #    Ap.to_dot(f)
 
