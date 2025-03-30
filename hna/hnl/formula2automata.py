@@ -47,7 +47,7 @@ class TupleLabel(tuple):
         super().__init__()
 
     def __str__(self):
-        return f"{' # '.join(map(str, self))}"
+        return f"({' # '.join(map(str, self))})"
 
 
 def gen_letter_pairs(alphabet):

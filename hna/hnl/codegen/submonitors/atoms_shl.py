@@ -67,18 +67,18 @@ class CodeGenCpp(CodeGenCppAtoms):
             assert nd.automaton
 
             num, F = nd.get_id(), nd.formula
-            duplicate_num = generated_automata.get(
-                (nd.lvar, nd.rvar, nd.automaton.get_id())
-            )
-            if duplicate_num is not None:
-                with self.new_file(f"atom-{num}.h") as fh, self.new_file(
-                    f"atom-{num}.cpp"
-                ) as fcpp:
-                    self._generate_duplicate_atom(
-                        nd, duplicate_num, fh.write, fcpp.write
-                    )
-                    self._atoms_files.append(f"atom-{num}.cpp")
-                continue
+            # duplicate_num = generated_automata.get(
+            #    (nd.lvar, nd.rvar, nd.automaton.get_id())
+            # )
+            # if duplicate_num is not None:
+            #    with self.new_file(f"atom-{num}.h") as fh, self.new_file(
+            #        f"atom-{num}.cpp"
+            #    ) as fcpp:
+            #        self._generate_duplicate_atom(
+            #            nd, duplicate_num, fh.write, fcpp.write
+            #        )
+            #        self._atoms_files.append(f"atom-{num}.cpp")
+            #    continue
 
             with self.new_file(f"atom-{num}.h") as fh:
                 self._generate_atom_header(F, nd.automaton, num, fh.write)
@@ -455,184 +455,135 @@ class CodeGenCpp(CodeGenCppAtoms):
             raise NotImplementedError("This case is unsupported yet")
 
         for state in automaton.states():
-            # transitions = [t for t in automaton.transitions() if t.source == state]
-            T = automaton.transitions(state)
-            transitions = [t for ts in (T.values() if T else ()) for t in ts]
             dump_codegen_position(wrcpp)
             wrcpp(
                 f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
             )
 
             wrcpp(" bool matched = false;\n")
-            grouped_transitions = {}
-            # FIXME: use itertools.groupby
-            for t in transitions:
-                grouped_transitions.setdefault(t.priority, []).append(t)
 
-            for prio in priorities:
-                wrcpp(f"/* --------------- priority {prio} --------------- */\n")
-                ptransitions = grouped_transitions.get(
-                    prio
-                )  # [t for t in transitions if t.priority == prio]
-                if not ptransitions:
-                    continue
-                ### Handle epsilon steps
-                self.handle_epsilon_steps(automaton, lvar, ptransitions, rvar, wrcpp)
+            self.gen_transitions_code(automaton, state, lvar, rvar, wrcpp)
 
-                ### Handle left-epsilon steps
-                self.handle_left_epsilon_steps(
-                    automaton, lvar, ptransitions, rvar, wrcpp
-                )
-
-                ### Handle right-epsilon steps
-                self.handle_right_epsilon_steps(
-                    automaton, lvar, ptransitions, rvar, wrcpp
-                )
-
-                ### Handle letters
-                self.handle_letters(automaton, lvar, ptransitions, rvar, wrcpp)
-
-                dump_codegen_position(wrcpp)
-                wrcpp("if (matched) { return; }")
-                if prio > 0:
-                    # if this was not the least priority, continue with the next priority transitions
-                    wrcpp(
-                        "else {\n"
-                        "#ifdef DEBUG_PRINTS\n"
-                        f'std::cerr << "    => no transition in priority {prio} matched\\n";\n'
-                        "#endif /* !DEBUG_PRINTS */\n"
-                        "}"
-                    )
-                else:
-                    # otherwise the matching failed
-                    wrcpp(
-                        "else {  \n"
-                        "     #ifdef DEBUG_PRINTS\n"
-                        f'    std::cerr << "    => no transition matched\\n";\n'
-                        "     #endif /* !DEBUG_PRINTS */\n"
-                        "     /* this was the least priority, drop the cfg */\n"
-                        "     return;"
-                        "}\n\n"
-                    )
             wrcpp("}\n\n ")
 
-    def handle_letters(self, automaton, lvar, ptransitions, rvar, wrcpp):
-        tmp = [
-            t
-            for t in ptransitions
-            if not t.label[0].is_epsilon() and not t.label[1].is_epsilon()
-        ]
-        if not tmp:
-            return
+    def gen_transitions_code(self, automaton, state, lvar, rvar, wrcpp):
+        transitions = automaton.transitions_from(state)
 
+        for t in transitions:
+            symbol = t.label.symbol
+            ### Handle epsilon steps
+            if symbol[0].is_eps():
+                if symbol[1].is_eps():
+                    self.handle_epsilon_step(automaton, t, lvar, rvar, wrcpp)
+                else:
+                    ### Handle left-epsilon steps
+                    self.handle_left_epsilon_step(automaton, t, lvar, rvar, wrcpp)
+            elif symbol[1].is_eps():
+                ### Handle right-epsilon steps
+                self.handle_right_epsilon_step(automaton, t, lvar, rvar, wrcpp)
+            else:
+                ### Handle letters
+                self.handle_symbols(automaton, t, lvar, rvar, wrcpp)
         dump_codegen_position(wrcpp)
+        wrcpp("if (matched) { return; }")
+        # otherwise the matching failed
+        wrcpp(
+            "else {  \n"
+            "     #ifdef DEBUG_PRINTS\n"
+            f'    std::cerr << "    => no transition matched\\n";\n'
+            "     #endif /* !DEBUG_PRINTS */\n"
+            "     /* this was the least priority, drop the cfg */\n"
+            "     return;"
+            "}\n\n"
+        )
+
+    def handle_symbols(self, automaton, t, lvar, rvar, wrcpp):
+        dump_codegen_position(wrcpp)
+        symbol = t.label.symbol
         wrcpp(f" if (ev1 && ev2) {{\n ")
-        for t in tmp:
-            wrcpp(
-                f" /* {t} */\n "
-                "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp(
-                f" if (ev1->{lvar} == {t.label[0]} && ev2->{rvar} == {t.label[1]}) {{\n"
-            )
-            wrcpp(
-                f"   matched = true;\n "
-                f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1);\n "
-            )
-            wrcpp(
-                "#ifdef DEBUG_PRINTS\n"
-                f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp("}\n")
+        wrcpp(
+            f" /* {t} */\n "
+            "#ifdef DEBUG_PRINTS\n"
+            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
+        wrcpp(
+            f"   matched = true;\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1);\n "
+        )
+        wrcpp(
+            "#ifdef DEBUG_PRINTS\n"
+            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_right_epsilon_steps(self, automaton, lvar, ptransitions, rvar, wrcpp):
-        tmp = [
-            t
-            for t in ptransitions
-            if not t.label[0].is_epsilon() and t.label[1].is_epsilon()
-        ]
-        if not tmp:
-            return
-
+    def handle_right_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
         dump_codegen_position(wrcpp)
         wrcpp(f" if (ev1 != nullptr) {{\n")
-        for t in tmp:
-            wrcpp(
-                f" /* {t} */\n "
-                "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.name[0]}; {rvar} = {t.name[1]} -->\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp(f" if (ev1->{lvar} == {t.name[0]}) {{\n")
-            wrcpp(
-                f"   matched = true;\n "
-                f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
-            )
-            wrcpp(
-                "#ifdef DEBUG_PRINTS\n"
-                f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp("}\n")
+        symbol = t.label.symbol
+        wrcpp(
+            f" /* {t} */\n "
+            "#ifdef DEBUG_PRINTS\n"
+            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
+        wrcpp(
+            f"   matched = true;\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
+        )
+        wrcpp(
+            "#ifdef DEBUG_PRINTS\n"
+            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_left_epsilon_steps(self, automaton, lvar, ptransitions, rvar, wrcpp):
-        tmp = [
-            t
-            for t in ptransitions
-            if t.label[0].is_epsilon() and not t.label[1].is_epsilon()
-        ]
-        if not tmp:
-            return
+    def handle_left_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
 
         dump_codegen_position(wrcpp)
+        symbol = t.label.symbol
         wrcpp(f" if (ev2 != nullptr) {{\n")
-        for t in tmp:
-            wrcpp(
-                f" /* {t} */\n "
-                "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.name[0]}; {rvar} = {t.name[1]} -->\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp(f" if (ev2->{rvar} == {t.name[1]}) {{\n")
-            wrcpp(
-                f"   matched = true;\n "
-                f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "
-            )
-            wrcpp(
-                "#ifdef DEBUG_PRINTS\n"
-                f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            wrcpp("}\n")
+        wrcpp(
+            f" /* {t} */\n "
+            "#ifdef DEBUG_PRINTS\n"
+            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
+        wrcpp(
+            f"   matched = true;\n "
+            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "
+        )
+        wrcpp(
+            "#ifdef DEBUG_PRINTS\n"
+            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_epsilon_steps(self, automaton, lvar, ptransitions, rvar, wrcpp):
-        for t in (
-            t
-            for t in ptransitions
-            if t.label[0].is_epsilon() and t.label[1].is_epsilon()
-        ):
-            wrcpp(
-                f" /* {t} */\n "
-                "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
-            dump_codegen_position(wrcpp)
-            wrcpp(f"   matched = true;\n ")
-            wrcpp(
-                f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2);\n "
-            )
-            wrcpp(
-                "#ifdef DEBUG_PRINTS\n"
-                f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
-                "#endif /* !DEBUG_PRINTS */\n"
-            )
+    def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
+        wrcpp(
+            f" /* {t} */\n "
+            "#ifdef DEBUG_PRINTS\n"
+            f' std::cerr << "  -- {lvar} = {t.label.symbol[0]}; {rvar} = {t.label.symbol[1]} -->\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
+        dump_codegen_position(wrcpp)
+        wrcpp(f"   matched = true;\n ")
+        wrcpp(
+            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2);\n "
+        )
+        wrcpp(
+            "#ifdef DEBUG_PRINTS\n"
+            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
+            "#endif /* !DEBUG_PRINTS */\n"
+        )
 
     def _aut_to_html(self, filename, A):
         """
@@ -715,17 +666,19 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-        for nd in self._bdd_nodes:
-            num = nd.get_id()
-            for test_num in range(0, 20):
-                if test_num < 10:
-                    # make sure to generate some short tests
-                    path_len = random.randrange(0, 5)
-                else:
-                    path_len = random.randrange(5, 100)
+        print("FIXME: not generating tests")
 
-                path = random_path(nd.automaton, path_len)
-                self.gen_test(nd.automaton, nd.formula, num, path, test_num)
+    # for nd in self._bdd_nodes:
+    #    num = nd.get_id()
+    #    for test_num in range(0, 20):
+    #        if test_num < 10:
+    #            # make sure to generate some short tests
+    #            path_len = random.randrange(0, 5)
+    #        else:
+    #            path_len = random.randrange(5, 100)
+
+    #        path = random_path(nd.automaton, path_len)
+    #        self.gen_test(nd.automaton, nd.formula, num, path, test_num)
 
     def gen_test(self, A, F, num, path, test_num):
         assert A.is_initial(path[0].source), "Path starts with non-initial state"
@@ -785,8 +738,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         """
 
         self.generate_monitor(formula)
-        # if gen_tests:
-        #    self.generate_tests()
+        if gen_tests:
+            self.generate_tests()
 
         if self._embedded:
             from_dir = self.common_templates_path

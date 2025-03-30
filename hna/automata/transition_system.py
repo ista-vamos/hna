@@ -43,7 +43,7 @@ class Transition:
         # the transition does not change, precompute its str and hash,
         # because these are used a lot and we want them to be fast
         prio = f":{priority}" if self._priority != 0 else ""
-        self._str = f"({source} -[{label}{prio}]-> {target})"
+        self._str = f"({source} --|{label}{prio}|-> {target})"
         self._hash = hash((source, target, label, priority))
 
     @property
