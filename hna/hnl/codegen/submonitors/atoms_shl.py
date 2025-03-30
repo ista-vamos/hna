@@ -49,7 +49,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             f.write("default: abort();\n")
             f.write("}\n\n")
 
-    def _generate_monitor(self, formula, alphabet):
+    def _generate_monitor(self, formula):
         """
         Generate a monitor that actually monitors the body of the formula,
         i.e., it creates and moves with atom monitors.
@@ -57,10 +57,10 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
-        self._generate_automata_code(formula, alphabet)
+        self._generate_automata_code(formula)
         self._generate_atom_monitor()
 
-    def _generate_automata_code(self, formula, alphabet):
+    def _generate_automata_code(self, formula):
         generated_automata = {}
         for nd in self._bdd_nodes:
             print("Generating code for", nd.get_id(), ":", nd.formula)
@@ -647,26 +647,26 @@ class CodeGenCpp(CodeGenCppAtoms):
             f.write(",")
             self.input_file(f, "../../partials/html/graph-view-end.html")
 
-    def generate_atomic_comparison_automaton(self, bddnode: BDDNode, alphabet):
+    def generate_atomic_comparison_automaton(self, bddnode: BDDNode):
         assert isinstance(bddnode, BDDNode), bddnode
         assert bddnode.automaton is None
 
         formula = bddnode.formula
         num = bddnode.get_id()
         nformula = formula.rename_variables("v", "v", "t", "t")
-        ## we rename both projections to `v(t)` so that when we have another atom
-        ## that is the same but names of the trace variables, we do not rebuild it
-        # Ap = self._automata.get(nformula)
-        # if Ap:
-        #    print(
-        #        f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
-        #    )
-        #    bddnode.automaton = Ap
+        # we rename both projections to `v(t)` so that when we have another atom
+        # that is the same but names of the trace variables, we do not rebuild it
+        # A = self._automata.get(nformula)
+        # if A:
+        #   print(
+        #       f"Duplicate atom for {formula }, re-using the automaton for {nformula}"
+        #   )
+        #   bddnode.automaton = Ap
 
-        #    if self.args.debug:
-        #        with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
-        #            Ap.to_dot(f)
-        #    return Ap
+        #   if self.args.debug:
+        #       with self.new_dbg_file(f"aut-{num}.dot") as f:
+        #           A.to_dot(f)
+        #   return A
 
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
@@ -695,22 +695,13 @@ class CodeGenCpp(CodeGenCppAtoms):
                 A2.to_dot(f)
             with self.new_dbg_file(f"aut-{num}.dot") as f:
                 A.to_dot(f)
-        # with self.new_dbg_file(f"aut-{num}-prio.dot") as f:
-        #    Ap.to_dot(f)
-
-        # self._aut_to_html(f"aut-{num}-lhs.html", A1)
-        # self._aut_to_html(f"aut-{num}-rhs.html", A2)
-        # self._aut_to_html(f"aut-{num}.html", A)
-        # self._aut_to_html(f"aut-{num}-prio.html", Ap)
-
-        raise NotImplementedError("From here")
 
         self._automata[nformula] = A
 
         assert len(A.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(A.initial_states()) > 0, f"Automaton has no initial states"
 
-        return Ap
+        return A
 
     def generate_tests(self):
         print("-- Generating tests --")
@@ -788,15 +779,14 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-    def generate(self, formula, alphabet=None, gen_tests=True):
+    def generate(self, formula, gen_tests=True):
         """
         The top-level method to generate code
         """
-        alphabet = alphabet or self.args.alphabet
 
-        self.generate_monitor(formula, alphabet)
-        if gen_tests:
-            self.generate_tests()
+        self.generate_monitor(formula)
+        # if gen_tests:
+        #    self.generate_tests()
 
         if self._embedded:
             from_dir = self.common_templates_path
@@ -822,7 +812,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         self.format_generated_code()
 
-    def generate_monitor(self, formula: PrenexFormula, alphabet):
+    def generate_monitor(self, formula: PrenexFormula):
         assert not formula.has_quantifier_alternation(), formula
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
@@ -851,12 +841,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._gen_bdd_from_formula(formula)
 
         for nd in self._bdd_nodes:
-            nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
+            nd.automaton = self.generate_atomic_comparison_automaton(nd)
 
-        def gen_automaton(F):
-            if not isinstance(F, IsPrefix):
-                return
+        # def gen_automaton(F):
+        #    if not isinstance(F, IsPrefix):
+        #        return
 
-        formula.visit(gen_automaton)
+        # formula.visit(gen_automaton)
 
-        self._generate_monitor(formula, alphabet)
+        self._generate_monitor(formula)
