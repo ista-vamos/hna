@@ -28,6 +28,10 @@ class Value:
     def is_eps(self) -> bool:
         return False
 
+    def c_name(self):
+        """A name usable in C code"""
+        return f"{self.value}"
+
 
 class Constant(Value):
     def __init__(self, v):
@@ -44,6 +48,10 @@ class Constant(Value):
 
     def __str__(self):
         return f"{self.value}𞁞"
+
+    def c_name(self):
+        """A name usable in C code"""
+        return f"'{self.value}'" if self.value.isalpha() else f"{self.value}"
 
 
 class Var(Value):
@@ -142,6 +150,9 @@ class Eq(BinaryPredicate):
     def __str__(self):
         return f"{self.lhs} = {self.rhs}"
 
+    def c_code(self):
+        return f"{self.lhs.c_name()} == {self.rhs.c_name()}"
+
 
 class NEq(BinaryPredicate):
     def __init__(self, lhs, rhs):
@@ -149,6 +160,9 @@ class NEq(BinaryPredicate):
 
     def __str__(self):
         return f"{self.lhs} ≠ {self.rhs}"
+
+    def c_code(self):
+        return f"{self.lhs.c_name()} != {self.rhs.c_name()}"
 
 
 class Assignment:

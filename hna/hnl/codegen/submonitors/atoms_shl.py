@@ -2,6 +2,7 @@ import random
 from os import makedirs
 
 from hna.automata.automaton import Automaton
+from hna.automata.transducers import Var, Reg
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
@@ -15,6 +16,24 @@ from hna.hnl.formula2automata import (
 )
 from .atoms import CodeGenCppAtoms
 from ...formula2transducers import formula_to_transducer, automaton_for_prefixing
+
+
+def subst_lst(c, lst):
+    for s in lst:
+        c = c.subst(s)
+    return c
+
+
+def condition_code(t, subst=None):
+    cond = t.label.condition
+    if subst:
+        c_cond = "&&".join(subst_lst(c, subst or []).c_code() for c in cond)
+    else:
+        c_cond = "&&".join(c.c_code() for c in cond)
+
+    if c_cond == "":
+        return "true"
+    return c_cond
 
 
 class CodeGenCpp(CodeGenCppAtoms):
@@ -192,10 +211,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         ), f"Automaton {num} has multiple initial states"
         wrcpp("}\n\n")
 
-        # create the initial configuration
-        priorities = list(set(t.priority for t in automaton.transitions()))
-        priorities.sort(reverse=True)
-
         wrcpp(f"/* THE AUTOMATON FOR THE ATOM */\n")
         for state in automaton.states():
             wrcpp(f"/* {state} */\n")
@@ -216,7 +231,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(" };")
         wrcpp("}\n\n")
 
-        self.gen_handle_state(num, atom_formula, automaton, priorities, wrcpp)
+        self.gen_handle_state(num, atom_formula, automaton, wrcpp)
 
         dump_codegen_position(wrcpp)
         wrcpp(
@@ -224,14 +239,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         wrcpp(
-            f"void AtomMonitor{num}::_step(EvaluationState &cfg, const Event *ev1, const Event *ev2) {{\n"
+            f"void AtomMonitor{num}::_step(Atom{num}EvaluationState &cfg, const Event *ev1, const Event *ev2) {{\n"
         )
-        # we assume when we have a transition with a priority p,
-        # then we have transitions with all priorities 0 ... p.
-        # This is important because then in the code we just decrement
-        # the priority counter by one instead of looking up the next priority
-        # to test.
-        assert priorities == list(reversed(range(0, priorities[0] + 1))), priorities
 
         dump_codegen_position(wrcpp)
         if len(automaton.states()) == 1:
@@ -377,9 +386,17 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrh)
         wrh('#include "regular-atom-monitor.h"\n\n')
         wrh('#include "atom-identifier.h"\n\n')
+        wrh('#include "atom-evaluation-state.h"\n\n')
 
         wrh(self.namespace_start())
         wrh("\n\n")
+
+        dump_codegen_position(wrh)
+        wrh(f"struct Atom{num}EvaluationState : public EvaluationState {{\n\n")
+        wrh("  /* registers */\n ")
+        for r in automaton.registers():
+            wrh(f"  Event {r.c_name()};\n")
+        wrh("};\n\n")
 
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
@@ -387,9 +404,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         for state in automaton.states():
             dump_codegen_position(wrh)
             wrh(
-                f"void stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2);\n"
+                f"void stepState_{automaton.get_state_id(state)}(Atom{num}EvaluationState& cfg, const Event *ev1, const Event *ev2);\n"
             )
-        wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
+        wrh(
+            f"void _step(Atom{num}EvaluationState &cfg, const Event *ev1, const Event *ev2);\n"
+        )
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
         wrh(
@@ -441,7 +460,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
         )
 
-    def gen_handle_state(self, aut_num, atom_formula, automaton, priorities, wrcpp):
+    def gen_handle_state(self, aut_num, atom_formula, automaton, wrcpp):
 
         lvar = atom_formula.children[0].program_variables()
         rvar = atom_formula.children[1].program_variables()
@@ -457,7 +476,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         for state in automaton.states():
             dump_codegen_position(wrcpp)
             wrcpp(
-                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
+                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
             )
 
             wrcpp(" bool matched = false;\n")
@@ -500,14 +519,24 @@ class CodeGenCpp(CodeGenCppAtoms):
     def handle_symbols(self, automaton, t, lvar, rvar, wrcpp):
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
-        wrcpp(f" if (ev1 && ev2) {{\n ")
+        l_automaton_registers = automaton.origin()[0].registers() or ()
+        reg_substitution = [
+            (r, Reg(f"cfg.{r.c_name()}.{lvar if r in l_automaton_registers else rvar}"))
+            for r in automaton.registers()
+        ]
+        cond = condition_code(
+            t,
+            [(symbol[0], Var(f"ev1->{lvar}")), (symbol[1], Var(f"ev2->{rvar}"))]
+            + reg_substitution,
+        )
+        wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
         wrcpp(
             f" /* {t} */\n "
             "#ifdef DEBUG_PRINTS\n"
             f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
+        # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
         wrcpp(
             f"   matched = true;\n "
             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1);\n "
@@ -517,20 +546,25 @@ class CodeGenCpp(CodeGenCppAtoms):
             f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp("}\n")
+        # wrcpp("}\n")
         wrcpp("}\n")
 
     def handle_right_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
         dump_codegen_position(wrcpp)
-        wrcpp(f" if (ev1 != nullptr) {{\n")
         symbol = t.label.symbol
+        cond = condition_code(
+            t,
+            [(symbol[0], Var(f"ev1->{lvar}"))]
+            + [(r, Reg(f"cfg.{r.c_name()}.{lvar}")) for r in automaton.registers()],
+        )
+        wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
         wrcpp(
             f" /* {t} */\n "
             "#ifdef DEBUG_PRINTS\n"
             f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
+        # wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
         wrcpp(
             f"   matched = true;\n "
             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
@@ -540,21 +574,27 @@ class CodeGenCpp(CodeGenCppAtoms):
             f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp("}\n")
+        # wrcpp("}\n")
         wrcpp("}\n")
 
     def handle_left_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
 
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
-        wrcpp(f" if (ev2 != nullptr) {{\n")
+        l_automaton_registers = automaton.origin()[0].registers() or ()
+        reg_substitution = [
+            (r, Reg(f"cfg.{r.c_name()}.{lvar if r in l_automaton_registers else rvar}"))
+            for r in automaton.registers()
+        ]
+        cond = condition_code(t, [(symbol[1], Var(f"ev2->{rvar}"))] + reg_substitution)
+        wrcpp(f" if (ev2 != nullptr && {cond}) {{\n")
         wrcpp(
             f" /* {t} */\n "
             "#ifdef DEBUG_PRINTS\n"
             f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
+        # wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
         wrcpp(
             f"   matched = true;\n "
             f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1);\n "
@@ -564,7 +604,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-        wrcpp("}\n")
+        # wrcpp("}\n")
         wrcpp("}\n")
 
     def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
@@ -574,6 +614,18 @@ class CodeGenCpp(CodeGenCppAtoms):
             f' std::cerr << "  -- {lvar} = {t.label.symbol[0]}; {rvar} = {t.label.symbol[1]} -->\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
+        l_automaton_registers = automaton.origin()[0].registers() or ()
+        reg_substitution = [
+            (r, Reg(f"cfg.{r.c_name()}.{lvar if r in l_automaton_registers else rvar}"))
+            for r in automaton.registers()
+        ]
+        cond = condition_code(t, reg_substitution)
+        wrcpp(f'/* COND: "{cond}"*/\n')
+        if cond == "false":
+            wrcpp("/* CONDITION UNSAT */")
+        elif cond != "true":
+            wrcpp(f"if ({cond}) ")
+        wrcpp("{")
         dump_codegen_position(wrcpp)
         wrcpp(f"   matched = true;\n ")
         wrcpp(
@@ -584,19 +636,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
             "#endif /* !DEBUG_PRINTS */\n"
         )
-
-    def _aut_to_html(self, filename, A):
-        """
-        Dump automaton into HTML + JS page, an alternative to graphviz
-        that should handle the graphs more nicely.
-        """
-        assert filename.endswith(".html"), filename
-        with self.new_dbg_file(filename) as f:
-            self.input_file(f, "../../partials/html/graph-view-start.html")
-            f.write("elements: ")
-            A.to_json(f)
-            f.write(",")
-            self.input_file(f, "../../partials/html/graph-view-end.html")
+        wrcpp("}")
 
     def generate_atomic_comparison_automaton(self, bddnode: BDDNode):
         assert isinstance(bddnode, BDDNode), bddnode
@@ -604,7 +644,8 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         formula = bddnode.formula
         num = bddnode.get_id()
-        nformula = formula.rename_variables("v", "v", "t", "t")
+        nformula = formula
+        # nformula = formula.rename_variables("v", "v", "t", "t")
         # we rename both projections to `v(t)` so that when we have another atom
         # that is the same but names of the trace variables, we do not rebuild it
         # A = self._automata.get(nformula)

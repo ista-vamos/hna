@@ -169,10 +169,12 @@ def automaton_for_prefixing(
     new_queue = []
 
     renamed_registers = {}
-    registers = left.registers() or []
+    registers = left.registers().copy() or []
     for r in right.registers() or ():
         if r in registers:
-            renamed_registers[r] = Reg(f"{r.value}'")
+            renamed_registers[r] = Reg(f"{r.value}_2")
+            r = renamed_registers[r]
+        registers.append(r)
 
     while queue:
         for state_pair in queue:
@@ -262,4 +264,5 @@ def automaton_for_prefixing(
             if left.is_initial(s[0]) and right.is_initial(s[1])
         ],
         accepting_states=[states[s] for s in states.keys() if left.is_accepting(s[0])],
+        origin=(left, right),
     )
