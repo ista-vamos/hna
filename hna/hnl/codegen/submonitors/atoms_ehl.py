@@ -232,7 +232,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 identifier += ",0"
         identifier += "}"
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, HNLEvaluationState st, Trace *lt, Trace *rt) \n  :"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt) \n  :"
             f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
         )
         assert (
@@ -462,7 +462,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
         wrh(
-            f"AtomMonitor{num}(const Instance& instance, HNLEvaluationState st, Trace *lt, Trace *rt);\n\n"
+            f"AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt);\n\n"
         )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")

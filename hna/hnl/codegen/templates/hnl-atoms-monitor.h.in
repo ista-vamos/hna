@@ -75,7 +75,7 @@ public:
 
   Verdict step();
 
-  AtomMonitor *createAtomMonitor(HNLEvaluationState monitor_type, Instance&);
+  AtomMonitor *createAtomMonitor(FormulaEvaluationState monitor_type, Instance&);
   void removeInstance(Instance *instance);
 
   // statistics

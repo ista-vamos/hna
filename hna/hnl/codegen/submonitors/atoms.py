@@ -165,7 +165,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
             f.write(
                 "// FIXME: rename (or create a new enum with atom types that will coincide with this one) \n"
             )
-            f.write("enum HNLEvaluationState {\n")
+            f.write("enum FormulaEvaluationState {\n")
             f.write("  INVALID      =  0,\n")
             f.write("  FINISHED     = -1, // the atom finished \n")
             f.write("  RESULT_TRUE  = -2, // the atom got result TRUE\n")
@@ -187,7 +187,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
         with self.new_file("bdd-structure.h") as f:
             dump_codegen_position(f)
             f.write("/* ATOM, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
-            f.write("constexpr HNLEvaluationState BDD[][3] = {\n")
+            f.write("constexpr FormulaEvaluationState BDD[][3] = {\n")
             f.write("  {INVALID, INVALID, INVALID},\n")
             seen = set()
             wbg = set()
@@ -218,7 +218,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
             dump_codegen_position(f)
             f.write(
-                f"static constexpr HNLEvaluationState INITIAL_ATOM = {bdd_to_action(self.BDD.top)};\n"
+                f"static constexpr FormulaEvaluationState INITIAL_ATOM = {bdd_to_action(self.BDD.top)};\n"
             )
 
     def _create_instance(self, formula, wr):
@@ -272,14 +272,14 @@ class CodeGenCppAtoms(CodeGenCppShared):
             for q in self._fixed_quantifiers or ():
                 wr(f"  Trace *{q.var};\n")
             wr("\n  /* Currently evaluated atom automaton */\n")
-            wr(f"  HNLEvaluationState state;\n\n")
+            wr(f"  FormulaEvaluationState state;\n\n")
             wr("  /* The monitor this configuration waits for */\n")
             wr("  AtomMonitor *monitor{nullptr};\n\n")
             args = (
                 f"Trace *{q.var}"
                 for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
             )
-            wr(f"  Instance({', '.join(args)}, HNLEvaluationState init_state)\n  : ")
+            wr(f"  Instance({', '.join(args)}, FormulaEvaluationState init_state)\n  : ")
 
             wr(
                 ", ".join(
