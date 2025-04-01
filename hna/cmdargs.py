@@ -145,11 +145,11 @@ def parse_type(ty: str):
         return c_type, num_range
 
     # this is just an incomplete check
-    types = ("int", "char", "long", "float", "double", "_Bool", "bool")
-    if ty not in types:
+    types = ("int", "char", "short", "long", "float", "double", "bool")
+    if ty not in types and ty not in ("unsigned",):
         if ty not in (f"{sign} {t}" for t in types for sign in ("signed", "unsigned")):
-            raise RuntimeWarning(f"I do not know this C type: '{ty}', but I proceed.")
-    # this is a C type without range annotations (well, it
+            print(f"WARNING: I do not know this C type: '{ty}', but I proceed.")
+    # this is a C type without range annotations
     return ty, None
 
 
