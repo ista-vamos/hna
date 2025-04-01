@@ -420,7 +420,7 @@ def compose_transducers(
 
     while queue:
         for state_pair in queue:
-            print(f"CUR: {state_pair[0]},{state_pair[1]}")
+            # print(f"CUR: {state_pair[0]},{state_pair[1]}")
             if state_pair in states:
                 continue
             states.add(state_pair)
@@ -449,18 +449,17 @@ def compose_transducers(
                 assert new_t[0] == state_pair
                 assert new_t[0] == (inner_t.source, outer_t.source)
                 assert new_t[2] == (inner_t.target, outer_t.target)
-                print(
-                    f"NEW_T: {new_t[0][0]},{new_t[0][1]} - {new_t[1]} -> {new_t[2][0]},{new_t[2][1]}"
-                )
+                # print(
+                #    f"NEW_T: {new_t[0][0]},{new_t[0][1]} - {new_t[1]} -> {new_t[2][0]},{new_t[2][1]}"
+                # )
                 transitions.append(new_t)
                 # new_t[2] is the target of the new to-be-transition
                 if new_t[2] not in states:
-                    print(f"NEW: {new_t[2][0]}{new_t[2][1]}")
                     new_queue.append(new_t[2])
 
         queue, new_queue = new_queue, []
 
-    states = {(i, o): State(f"{i},{o}") for (i, o) in states}
+    states = {(i, o): State(f"({i},{o})") for (i, o) in states}
 
     registers = inner.registers()
     registers = (
@@ -499,10 +498,6 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
         condition=condition,
         assign=inner_l.assignment + substitute_in_assign(outer_l.assignment, subst),
         output=substitute_in_output(outer_l.output, subst),
-    )
-
-    print(
-        "\033[31;1mFIXME FIXME FIXME: do substitutions in the condition, assign and output\033[0m"
     )
 
     return (inner.source, outer.source), label, (inner.target, outer.target)

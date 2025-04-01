@@ -142,11 +142,17 @@ def compose_transitions(left_t, right_t, reg_map):
     )
 
 
+def rename_lst(x, subst_lst: list):
+    for s in subst_lst:
+        x = x.subst(s)
+    return x
+
+
 def rename(lst, subst_map):
-    print("RENAME: ", [str(x) for x in lst])
     if lst is None:
         return None
-    return [x.subst(item) for x in lst for item in subst_map.items()]
+
+    return [rename_lst(x, subst_map.items()) for x in lst]
 
 
 def automaton_for_prefixing(
@@ -165,7 +171,11 @@ def automaton_for_prefixing(
     # triple (source, label, target) where source and target are pairs of states.
     # We will later translate them into Transition classes
     transitions = []
-    queue = [(ii, oi) for ii in left.initial_states() for oi in right.initial_states()]
+    queue = [
+        TupleLabel((ii, oi))
+        for ii in left.initial_states()
+        for oi in right.initial_states()
+    ]
     new_queue = []
 
     renamed_registers = {}
@@ -179,7 +189,6 @@ def automaton_for_prefixing(
 
     while queue:
         for state_pair in queue:
-            print(f"CUR: {state_pair[0]},{state_pair[1]}")
             if state_pair in states:
                 continue
             states.add(state_pair)
@@ -242,18 +251,17 @@ def automaton_for_prefixing(
                 assert new_t[0] == state_pair
                 assert new_t[0] == (left_t.source, right_t.source)
                 assert new_t[2] == (left_t.target, right_t.target)
-                print(
-                    f"NEW_T: {new_t[0][0]},{new_t[0][1]} - {new_t[1]} -> {new_t[2][0]},{new_t[2][1]}"
-                )
+                # print(
+                #    f"NEW_T: {new_t[0]} - {new_t[1]} -> {new_t[2]}"
+                # )
                 transitions.append(new_t)
                 # new_t[2] is the target of the new to-be-transition
                 if new_t[2] not in states:
-                    print(f"NEW: {new_t[2][0]}{new_t[2][1]}")
                     new_queue.append(new_t[2])
 
         queue, new_queue = new_queue, []
 
-    states = {(l, r): State(f"{l} # {r}") for (l, r) in states}
+    states = {(l, r): State(str(TupleLabel((l, r)))) for (l, r) in states}
 
     return SymbolicTransducer(
         states=list(states.values()),
