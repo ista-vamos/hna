@@ -321,13 +321,7 @@ def union_transducers(
     for s in right.accepting_states():
         T.add_accepting(renamed_states.get(s, s))
 
-    # find an unused new init name
-    new_init_name = "0"
-    while T.get(new_init_name) is not None:
-        new_init_name += "0"
-    new_init = State(new_init_name)
-    T.add_state(new_init)
-    T.add_init(new_init)
+    new_init = add_new_init(T)
 
     for old_init in left.initial_states():
         for out in T.transitions_from(old_init):
@@ -342,6 +336,17 @@ def union_transducers(
                 T.add_accepting(new_init)
 
     return T
+
+
+def add_new_init(T):
+    # find an unused new init name
+    new_init_name = "0"
+    while T.get(new_init_name) is not None:
+        new_init_name += "0"
+    new_init = State(new_init_name)
+    T.add_state(new_init)
+    T.add_init(new_init)
+    return new_init
 
 
 def merge_transducers(left, right):
@@ -426,6 +431,23 @@ def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
             T.add_transition(Transition(acc, init_out.label, init_out.target))
             if T1.is_accepting(init):
                 T.add_accepting(acc)
+
+    # also, we must make sure we accept the empty word
+    # check if the initial states are accepting
+    if not all(T.is_accepting(s) for s in T.initial_states()):
+        # check if we can just mark the states accepting -- that we can do if they have no
+        # incoming edges
+        if all(not T.transitions_to(s) for s in T.initial_states()):
+            for s in T.initial_states():
+                T.add_accepting(s)
+        else:
+            # we must add a new initial state that accepts epsilon and then continues to T
+            # (basically the union with a transducer that accepts epsilon)
+            new_init = add_new_init(T)
+            T.add_accepting(new_init)
+            for old_init in T1.initial_states():
+                for out in T.transitions_from(old_init):
+                    T.add_transition(Transition(new_init, out.label, out.target))
 
     return T
 
