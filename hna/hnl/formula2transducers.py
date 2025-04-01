@@ -169,7 +169,8 @@ def automaton_for_prefixing(
     new_queue = []
 
     renamed_registers = {}
-    registers = left.registers().copy() if left.registers() else []
+    registers = left.registers()
+    registers = registers.copy() if registers else []
     for r in right.registers() or ():
         if r in registers:
             renamed_registers[r] = Reg(f"{r.value}_2")
