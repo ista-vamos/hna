@@ -842,8 +842,8 @@ def debug_code_state(ns, t1, t2, wrcpp, registers):
     wrcpp(
         f"""
             #ifdef DEBUG_PRINTS
-            std::cerr << "\033[4;34m{ns}Atom " << type() << " tr[" << {t1id} << ", " << {t2id} << "] @ state " << cfg.state << {reg} ".\\n";
-            std::cerr << "  left[" << cfg.p1 << "]: ";
+            std::cerr << "\033[0;36m{ns}Atom " << type() << " tr[" << {t1id} << ", " << {t2id} << "] @ state " << cfg.state << {reg} ".\\n";
+            std::cerr << "  left[" << cfg.p1 << "] : ";
         """
     )
     if t1:
@@ -859,7 +859,7 @@ def debug_code_state(ns, t1, t2, wrcpp, registers):
     else:
         wrcpp('std::cerr << "-";')
 
-    wrcpp('std::cerr << ", right["<< cfg.p2 <<"]: ";\n')
+    wrcpp('std::cerr << "\\n  right["<< cfg.p2 <<"]: ";\n')
 
     if t2:
         wrcpp(
