@@ -1,6 +1,7 @@
 from copy import copy
 
 from hna.automata.automaton import Automaton
+
 from .formula import (
     Constant,
     EPSILON_CONSTANT,
@@ -9,6 +10,7 @@ from .formula import (
     Concat,
     Iter,
     ProgramVariable,
+    Plus,
 )
 from ..automata.transducers import (
     SymbolicTransducer,
@@ -16,6 +18,7 @@ from ..automata.transducers import (
     Constant as TransitionConstant,
     Eps,
     iterate_transducer,
+    union_transducers,
     Var,
     TransitionLabel,
     compose_transducers,
@@ -99,6 +102,12 @@ def formula_to_transducer(formula):
 
     if isinstance(formula, Iter):
         return iterate_transducer(formula_to_transducer(formula.children[0]))
+
+    if isinstance(formula, Plus):
+        return union_transducers(
+            formula_to_transducer(formula.children[0]),
+            formula_to_transducer(formula.children[1]),
+        )
 
     if isinstance(formula, Constant):
         return constant_transducer(formula)

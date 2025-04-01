@@ -1,4 +1,5 @@
 from copy import copy
+from itertools import chain
 
 from hna.automata.transition_system import AccInitTransitionSystem, Transition, State
 
@@ -310,6 +311,39 @@ def concat_transducers(left: SymbolicTransducer, right: SymbolicTransducer):
     return T
 
 
+def union_transducers(
+    left: SymbolicTransducer, right: SymbolicTransducer
+) -> SymbolicTransducer:
+    T, renamed_states = merge_transducers(left, right)
+    # set new accepting states
+    for s in left.accepting_states():
+        T.add_accepting(s)
+    for s in right.accepting_states():
+        T.add_accepting(renamed_states.get(s, s))
+
+    # find an unused new init name
+    new_init_name = "0"
+    while T.get(new_init_name) is not None:
+        new_init_name += "0"
+    new_init = State(new_init_name)
+    T.add_state(new_init)
+    T.add_init(new_init)
+
+    for old_init in left.initial_states():
+        for out in T.transitions_from(old_init):
+            T.add_transition(Transition(new_init, out.label, out.target))
+            if left.is_accepting(old_init):
+                T.add_accepting(new_init)
+    for old_init in right.initial_states():
+        old_init_r = renamed_states.get(old_init, old_init)
+        for out in T.transitions_from(old_init_r):
+            T.add_transition(Transition(new_init, out.label, out.target))
+            if right.is_accepting(old_init):
+                T.add_accepting(new_init)
+
+    return T
+
+
 def merge_transducers(left, right):
     """
     Merge two transducers into a single transducer, renaming states of 'right' if the names conflict.
@@ -380,6 +414,7 @@ def remove_epsilon_steps(eT: SymbolicTransducer) -> SymbolicTransducer:
 
 
 def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
+    assert T1 is not None
     T = T1.copy(new_origin=T1)
     for acc, init in (
         (o, i) for o in T1.accepting_states() for i in T1.initial_states()
