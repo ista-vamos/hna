@@ -53,7 +53,7 @@ def condition_code(t, subst=None):
 
 def update_registers_code(automaton, t, var_map):
     update_registers = {}
-    for assign in t.label.assignment:
+    for assign in t.label.assignment or ():
         assert isinstance(assign.to, Reg), assign
         assert isinstance(assign.val, Value), assign
         assert (
@@ -61,7 +61,8 @@ def update_registers_code(automaton, t, var_map):
         ), f"A register updated multiple times: {t.label}"
         update_registers[assign.to] = var_map.get(assign.val, assign.val.c_name())
     update_registers = [
-        update_registers.get(r, f"cfg.{r.c_name()}") for r in automaton.registers()
+        update_registers.get(r, f"cfg.{r.c_name()}")
+        for r in (automaton.registers() or ())
     ]
     return ", ".join(update_registers)
 
@@ -219,7 +220,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         ), f"Automaton {num} has multiple initial states"
 
         # FIXME: this is a guess, we should properly use default constructors for register values...
-        registers_defaults = args_str(("0" for _ in automaton.registers()))
+        registers_defaults = args_str(("0" for _ in (automaton.registers() or ())))
         wrcpp(
             f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0 {registers_defaults.comma_prefixed()});\n"
         )
@@ -412,6 +413,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         automaton = nd.automaton
         lvar, rvar = nd.lvar, nd.rvar
         l_automaton_registers = automaton.origin()[0].registers() or ()
+        registers = automaton.registers() or ()
         self.gen_file(
             "atom-evaluation-state.h.in",
             "atom-evaluation-state.h",
@@ -421,17 +423,17 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@namespace_start@": self.namespace_start(),
                 "@namespace_end@": self.namespace_end(),
                 "@atom_num@": str(num),
-                "@registers_types@": f"{'\n'.join(f"using {r.c_name()}_t = decltype (Event().{lvar if r in l_automaton_registers else rvar});" for r in automaton.registers())}",
-                "@registers_fields@": f"{'\n'.join(f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in automaton.registers())}",
+                "@registers_types@": f"{'\n'.join(f"using {r.c_name()}_t = decltype (Event().{lvar if r in l_automaton_registers else rvar});" for r in registers)}",
+                "@registers_fields@": f"{'\n'.join(f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers)}",
                 "@registers_args@": args_str(
                     f"const Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()}"
-                    for r in automaton.registers()
+                    for r in registers
                 ).comma_prefixed(),
                 "@registers_pass_args@": args_str(
-                    r.c_name() for r in automaton.registers()
+                    r.c_name() for r in registers
                 ).comma_prefixed(),
                 "@registers_ctor@": args_str(
-                    f"{r.c_name()}({r.c_name()})" for r in automaton.registers()
+                    f"{r.c_name()}({r.c_name()})" for r in registers
                 ).comma_prefixed(),
             },
         )
@@ -577,7 +579,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
         reg_substitution = [
-            (r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()
+            (r, Reg(f"cfg.{r.c_name()}")) for r in (automaton.registers() or ())
         ]
         cond = condition_code(
             t,
