@@ -43,9 +43,6 @@ def formula_to_automaton(formula, alphabet=None):
 
 
 class TupleLabel(tuple):
-    def __init__(self, args):
-        super().__init__()
-
     def __str__(self):
         return f"({' # '.join(map(str, self))})"
 

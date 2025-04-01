@@ -279,7 +279,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 f"Trace *{q.var}"
                 for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
             )
-            wr(f"  Instance({', '.join(args)}, FormulaEvaluationState init_state)\n  : ")
+            wr(
+                f"  Instance({', '.join(args)}, FormulaEvaluationState init_state)\n  : "
+            )
 
             wr(
                 ", ".join(

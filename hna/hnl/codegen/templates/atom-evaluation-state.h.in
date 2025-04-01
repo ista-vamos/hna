@@ -1,0 +1,43 @@
+#ifndef EVALUATION_STATE_SET__@monitor_name@
+#define EVALUATION_STATE_SET__@monitor_name@
+
+#include "events.h"
+#include "evaluation-state.h"
+
+@namespace_start@
+
+struct Atom@atom_num@EvaluationState : public EvaluationState {
+        // registers
+        @registers_types@
+        @registers_fields@
+
+        Atom@atom_num@EvaluationState(State s, unsigned p1, unsigned p2 @registers_args@)
+        : EvaluationState(s, p1, p2) @registers_ctor@ {}
+};
+
+/**
+ * This is a vector where new elements are pushed into a separate
+ * storage and are moved to the main storage only on an explicit call.
+ * This is because we iterate over the vector when adding.
+ */
+class EvaluationStateSet : public std::vector<Atom@atom_num@EvaluationState> {
+  std::vector<Atom@atom_num@EvaluationState> _new_cfgs;
+
+public:
+  void emplace_new(State s, unsigned p1, unsigned p2 @registers_args@) {
+    _new_cfgs.emplace_back(s, p1, p2 @registers_pass_args@);
+  }
+
+  auto back_new() -> auto { return _new_cfgs.back(); }
+
+  template <typename Arg> void push_new(Arg a) { _new_cfgs.push_back(a); }
+
+  void rotate() {
+    this->swap(_new_cfgs);
+    _new_cfgs.clear();
+  }
+};
+
+@namespace_end@
+
+#endif
