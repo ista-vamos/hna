@@ -568,12 +568,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         cond = condition_code(
             t,
             [(symbol[0], Var(f"ev1->{lvar}"))]
-            + [(r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()],
+            + [(r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers() or ()],
         )
         wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
         debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
-        update_registers = args_str(f"cfg.{r.c_name()}" for r in automaton.registers())
+        update_registers = args_str(
+            f"cfg.{r.c_name()}" for r in automaton.registers() or ()
+        )
         wrcpp(
             f"   matched = true;\n "
             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 {update_registers.comma_prefixed()});\n "
