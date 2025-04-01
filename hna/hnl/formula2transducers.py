@@ -125,9 +125,11 @@ def compose_transitions(left_t, right_t, reg_map):
         symbol_r = sym
         cond_r = rename(label_r.condition, subst)
         assign_r = rename(label_r.assignment or [], subst)
+        output_r = subst.get(output_r, output_r)
     else:
         cond_r = label_r.condition or []
         assign_r = label_r.assignment or []
+    cond = label_l.condition + rename(cond_r, reg_map) + [Eq(label_l.output, output_r)]
     cond = simplify_condition(
         label_l.condition + rename(cond_r, reg_map) + [Eq(label_l.output, output_r)]
     )

@@ -1,4 +1,5 @@
 import random
+import re
 from os import makedirs
 
 from hna.automata.automaton import Automaton
@@ -64,7 +65,7 @@ def update_registers_code(automaton, t, var_map):
         update_registers.get(r, f"cfg.{r.c_name()}")
         for r in (automaton.registers() or ())
     ]
-    return ", ".join(update_registers)
+    return args_str(update_registers)
 
 
 class CodeGenCpp(CodeGenCppAtoms):
@@ -340,45 +341,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
         else:
             wrcpp("constexpr auto ev2ty = TraceQuery::END;")
-        t1id = "t1->id()" if t1 else '"-"'
-        t2id = "t2->id()" if t2 else '"-"'
-        wrcpp(
-            f"""
-                #ifdef DEBUG_PRINTS
-                std::cerr << "{ns}Atom " << type() << " [" << {t1id} << ", " << {t2id} << "] @ (" << cfg.state  << ", " << cfg.p1 << ", " << cfg.p2 << "): ";
-            """
-        )
-        if t1:
-            wrcpp(
-                f"""
-                    if (ev1ty == TraceQuery::END) {{
-                        std::cerr << "END";
-                    }} else {{
-                        std::cerr << ev1;
-                    }}
-                """
-            )
-        else:
-            wrcpp('std::cerr << "-";')
-        wrcpp('std::cerr << ", ";\n')
-        if t2:
-            wrcpp(
-                f"""
-                    if (ev2ty == TraceQuery::END) {{
-                        std::cerr << "END";
-                    }} else {{
-                        std::cerr << ev2;
-                    }}
-                """
-            )
-        else:
-            wrcpp('std::cerr << "-";')
-        wrcpp(
-            f"""
-                std::cerr << "\\n";
-                #endif /* !DEBUG_PRINTS */
-            """
-        )
+        debug_code_state(ns, t1, t2, wrcpp, automaton.registers() or ())
         if t1:
             wrcpp(
                 f"""
@@ -587,25 +550,15 @@ class CodeGenCpp(CodeGenCppAtoms):
             + reg_substitution,
         )
         wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
-        wrcpp(
-            f" /* {t} */\n "
-            "#ifdef DEBUG_PRINTS\n"
-            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
         var_map = {symbol[0]: f"ev1->{lvar}", symbol[1]: f"ev2->{rvar}"}
         update_registers = update_registers_code(automaton, t, var_map)
-        update_registers = f", {update_registers}" if update_registers else ""
         wrcpp(
             f"   matched = true;\n "
-            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers});\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
         )
-        wrcpp(
-            "#ifdef DEBUG_PRINTS\n"
-            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition(wrcpp, automaton.registers() or ())
         # wrcpp("}\n")
         wrcpp("}\n")
 
@@ -618,24 +571,14 @@ class CodeGenCpp(CodeGenCppAtoms):
             + [(r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()],
         )
         wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
-        wrcpp(
-            f" /* {t} */\n "
-            "#ifdef DEBUG_PRINTS\n"
-            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
-        update_registers = ", ".join(f"cfg.{r.c_name()}" for r in automaton.registers())
-        update_registers = ", " + update_registers if update_registers else ""
+        update_registers = args_str(f"cfg.{r.c_name()}" for r in automaton.registers())
         wrcpp(
             f"   matched = true;\n "
-            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 {update_registers});\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 {update_registers.comma_prefixed()});\n "
         )
-        wrcpp(
-            "#ifdef DEBUG_PRINTS\n"
-            f'   std::cerr << "    => new (" <<_cfgs.back_new().state  << ", " << _cfgs.back_new().p1 << ", " << _cfgs.back_new().p2 << ")\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition(wrcpp, automaton.registers() or ())
         # wrcpp("}\n")
         wrcpp("}\n")
 
@@ -648,36 +591,21 @@ class CodeGenCpp(CodeGenCppAtoms):
         ]
         cond = condition_code(t, [(symbol[1], Var(f"ev2->{rvar}"))] + reg_substitution)
         wrcpp(f" if (ev2 != nullptr && {cond}) {{\n")
-        wrcpp(
-            f" /* {t} */\n "
-            "#ifdef DEBUG_PRINTS\n"
-            f' std::cerr << "  -- {lvar} = {symbol[0]}; {rvar} = {symbol[1]} -->\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
 
         var_map = {symbol[0]: f"ev1->{lvar}", symbol[1]: f"ev2->{rvar}"}
         update_registers = update_registers_code(automaton, t, var_map)
-        update_registers = f", {update_registers}" if update_registers else ""
         wrcpp(
             f"   matched = true;\n "
-            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1 {update_registers});\n "
+            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
         )
-        wrcpp(
-            "#ifdef DEBUG_PRINTS\n"
-            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition(wrcpp, automaton.registers() or ())
         # wrcpp("}\n")
         wrcpp("}\n")
 
     def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
-        wrcpp(
-            f" /* {t} */\n "
-            "#ifdef DEBUG_PRINTS\n"
-            f' std::cerr << "  -- {lvar} = {t.label.symbol[0]}; {rvar} = {t.label.symbol[1]} -->\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         reg_substitution = [
             (r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()
         ]
@@ -690,16 +618,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp("{")
         dump_codegen_position(wrcpp)
         update_registers = update_registers_code(automaton, t, {})
-        update_registers = f", {update_registers}" if update_registers else ""
         wrcpp(f"   matched = true;\n ")
         wrcpp(
-            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 {update_registers});\n "
+            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 {update_registers.comma_prefixed()});\n "
         )
-        wrcpp(
-            "#ifdef DEBUG_PRINTS\n"
-            f'   std::cerr << "    => new (" << _cfgs.back_new().state  << ", " <<  _cfgs.back_new().p1 << ", " <<  _cfgs.back_new().p2 << ")\\n";\n'
-            "#endif /* !DEBUG_PRINTS */\n"
-        )
+        debug_code_transition(wrcpp, automaton.registers() or ())
         wrcpp("}")
 
     def generate_atomic_comparison_automaton(self, bddnode: BDDNode):
@@ -908,3 +831,75 @@ class CodeGenCpp(CodeGenCppAtoms):
         # formula.visit(gen_automaton)
 
         self._generate_monitor(formula)
+
+
+def debug_code_state(ns, t1, t2, wrcpp, registers):
+    t1id = "t1->id()" if t1 else '"-"'
+    t2id = "t2->id()" if t2 else '"-"'
+
+    reg = "<<".join(f'", " << "{r.c_name()}=" << cfg.{r.c_name()}' for r in registers)
+    reg = reg + " << " if reg else ""
+    wrcpp(
+        f"""
+            #ifdef DEBUG_PRINTS
+            std::cerr << "\033[4;34m{ns}Atom " << type() << " tr[" << {t1id} << ", " << {t2id} << "] @ state " << cfg.state << {reg} ".\\n";
+            std::cerr << "  left[" << cfg.p1 << "]: ";
+        """
+    )
+    if t1:
+        wrcpp(
+            f"""
+                if (ev1ty == TraceQuery::END) {{
+                    std::cerr << "END";
+                }} else {{
+                    std::cerr << ev1;
+                }}
+            """
+        )
+    else:
+        wrcpp('std::cerr << "-";')
+
+    wrcpp('std::cerr << ", right["<< cfg.p2 <<"]: ";\n')
+
+    if t2:
+        wrcpp(
+            f"""
+                if (ev2ty == TraceQuery::END) {{
+                    std::cerr << "END";
+                }} else {{
+                    std::cerr << ev2;
+                }}
+            """
+        )
+    else:
+        wrcpp('std::cerr << "-";')
+    wrcpp(
+        f"""
+            std::cerr << "\033[0m\\n";
+            #endif /* !DEBUG_PRINTS */
+        """
+    )
+
+
+def debug_code_transition(wrcpp, registers):
+    r_str = "<<".join(
+        f'", " << "{r.c_name()}=" << n_cfg.{r.c_name()}' for r in registers
+    )
+    r_str = r_str + " << " if r_str else ""
+    wrcpp(
+        "#ifdef DEBUG_PRINTS\n"
+        "    const auto& n_cfg = _cfgs.back_new();\n"
+        f'   std::cerr << "\033[0;32m    => next (state " << n_cfg.state  << ", left[" << n_cfg.p1 << "], right[" << n_cfg.p2 << "]" << {r_str} ")\033[0m\\n";\n'
+        "#endif /* !DEBUG_PRINTS */\n"
+    )
+
+
+def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
+    out = f" [{', '.join(map(str, t.label.condition))}]" if t.label.condition else ""
+    wrcpp(
+        f" /* {t} */\n "
+        "#ifdef DEBUG_PRINTS\n"
+        # f' std::cerr << "  -- {lvar}(left) = {symbol[0]}; {rvar}(right) = {symbol[1]} -->\\n";\n'
+        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {', '.join(map(str, t.label.assignment))} -->\\n";\n'
+        "#endif /* !DEBUG_PRINTS */\n"
+    )

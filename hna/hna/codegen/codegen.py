@@ -165,13 +165,13 @@ class CodeGenCpp(CodeGen):
             wr('#include "events.h"\n\n')
             dump_codegen_position(wr)
             wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
-            wr('  os << "("')
+            wr('  os << "{"')
             for n, field in enumerate(self._event):
                 name, ty = field
                 if n > 0:
                     wr(f'  << ", "')
                 wr(f'  << "{name} = " << ev.{name}')
-            wr('   << ")";\n')
+            wr('   << "}";\n')
             wr("return os;\n")
             wr("}\n")
 
