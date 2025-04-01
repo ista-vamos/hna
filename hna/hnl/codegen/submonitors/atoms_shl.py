@@ -900,6 +900,6 @@ def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
         f" /* {t} */\n "
         "#ifdef DEBUG_PRINTS\n"
         # f' std::cerr << "  -- {lvar}(left) = {symbol[0]}; {rvar}(right) = {symbol[1]} -->\\n";\n'
-        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {', '.join(map(str, t.label.assignment))} -->\\n";\n'
+        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {', '.join(map(str, t.label.assignment or ()))} -->\\n";\n'
         "#endif /* !DEBUG_PRINTS */\n"
     )
