@@ -22,6 +22,7 @@ class CSVEventsStream : public Stream {
   std::ifstream _stream;
   bool _finished{false};
   size_t _events_num_read{0};
+  const std::string _file;
 
 public:
   CSVEventsStream(const std::string &file, unsigned trace_id);

@@ -219,7 +219,7 @@ class CodeGenCpp(CodeGen):
                     wr(f"   _stream >> ev.{name};\n")
                     wr("    if (_stream.fail()) {\n")
                     wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";\n'
+                        f"    std::cerr << _file << \":\" << _events_num_read + 1 << \": failed reading column '{name}' of expected type '{ty}'\\n\";\n"
                     )
                     wr("    abort();\n")
                     wr("  }\n")
