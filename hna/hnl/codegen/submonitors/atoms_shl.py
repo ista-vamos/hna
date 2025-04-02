@@ -3,7 +3,7 @@ import re
 from os import makedirs
 
 from hna.automata.automaton import Automaton
-from hna.automata.transducers import Var, Reg, Value
+from hna.automata.transducers import Var, Reg, Value, Eps
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
@@ -607,7 +607,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp("}\n")
 
     def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
-        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
+        debug_code_transition_check(lvar, rvar, Eps(), t, wrcpp)
         reg_substitution = [
             (r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()
         ]
