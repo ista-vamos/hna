@@ -66,6 +66,9 @@ class Constant(Value):
     def __str__(self):
         return f"{self.value}𞁞"
 
+    def __repr__(self):
+        return f"{self.value}𞁞"
+
     def c_name(self):
         """A name usable in C code"""
         return f"'{self.value}'" if self.value.isalpha() else f"{self.value}"
@@ -90,6 +93,9 @@ class Var(Value):
 
     def __hash__(self):
         return hash("v") ^ hash(self.value)
+
+    def __repr__(self):
+        return f"Var({self.value})"
 
     def __str__(self):
         return str(self.value)
@@ -126,6 +132,10 @@ class Attr(Value):
         v, a = self.value
         return f"{a}({v})"
 
+    def __repr__(self):
+        v, a = self.value
+        return f"Attr({a}, {v})"
+
     def c_name(self, op="->"):
         """A name usable in C code"""
         v, a = self.value
@@ -160,6 +170,9 @@ class Reg(Value):
     def __str__(self):
         return f"{self.value}ᵣ"
 
+    def __repr__(self):
+        return f"Reg({self.value})"
+
     def ord(self):
         return "7", self.value, "z"
 
@@ -176,6 +189,9 @@ class Eps(Value):
 
     def __str__(self) -> str:
         return "ε"
+
+    def __repr__(self):
+        return "Eps()"
 
     def __hash__(self):
         return hash("ε")
@@ -233,6 +249,9 @@ class Eq(BinaryPredicate):
     def __str__(self):
         return f"{self.lhs} = {self.rhs}"
 
+    def __repr__(self):
+        return f"Eq({self.lhs}, {self.rhs})"
+
     def c_code(self):
         return f"{self.lhs.c_name()} == {self.rhs.c_name()}"
 
@@ -243,6 +262,9 @@ class NEq(BinaryPredicate):
 
     def __str__(self):
         return f"{self.lhs} ≠ {self.rhs}"
+
+    def __repr__(self):
+        return f"NEq({self.lhs}, {self.rhs})"
 
     def c_code(self):
         return f"{self.lhs.c_name()} != {self.rhs.c_name()}"
@@ -263,6 +285,9 @@ class Assignment:
 
     def __str__(self):
         return f"{self.to}:={self.val}"
+
+    def __repr__(self):
+        return f"Assign({self.to}, {self.val})"
 
     def subst(self, s):
         what, by = s
@@ -320,6 +345,12 @@ class TransitionLabel:
 
     def is_output_eps(self):
         return self.output.is_eps()
+
+    def __repr__(self):
+        out = f" / {self.output}" if self.output else ""
+        assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
+        cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
+        return f"TransitionLabel({self.symbol}{cond}{assign}{out})"
 
     def __str__(self):
         out = f" / {self.output}" if self.output else ""
