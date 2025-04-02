@@ -42,13 +42,11 @@ def get_num_range(data: list):
 
 
 def check_formula(formula, args):
-    assert not args.data_funs, "Not implemented HERE!"
-
     field_names = set((x[0] for x in args.data))
     for t in formula.program_variables():
-        if t.name not in field_names:
+        if t.name not in field_names and t.name not in args.data_fun:
             raise RuntimeError(
-                f"Formula is using data '{t.name}' which I don't know. I know: {field_names}"
+                f"Formula is using data '{t.name}' which I don't know. I know: {field_names} and data functions: {args.data_fun}"
             )
 
 
@@ -360,10 +358,24 @@ class CodeGenCpp(CodeGen):
 
             wr(f"#endif // !HNL_ALLTRACESETS__{self.name()}\n")
 
+    def gen_data_funs(self):
+        if not self.args.data_fun:
+            return
+
+        from hna.automata.transducers import transducer_from_yaml
+
+        data_funs = {}
+        for fn in self.args.data_fun:
+            name, T = transducer_from_yaml(fn)
+            data_funs[name] = T
+        self.args.data_fun = data_funs
+
     def generate(self, formula: PrenexFormula, alphabet=None) -> None:
         """
         The top-level function to generate code
         """
+        if not self._embedded:
+            self.gen_data_funs()
 
         check_formula(formula, self.args)
 

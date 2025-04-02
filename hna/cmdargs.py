@@ -66,9 +66,9 @@ def create_cmdargs_parser(out_dir):
     )
 
     parser.add_argument(
-        "--data-funs",
-        action="store",
-        help="NOT IMPLEMENTED. User-defined functions to query data.",
+        "--data-fun",
+        action="append",
+        help="User-defined functions to transform data (in the form of a transducer). The argument is a path to a YAML file describing the transducer.",
     )
 
     parser.add_argument(

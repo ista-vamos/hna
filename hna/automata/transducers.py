@@ -672,3 +672,33 @@ class TwoTapeSymbolicTransducer(SymbolicTransducer):
         super().__init__(
             states, registers, transitions, init_states, accepting_states, origin
         )
+
+
+def parse_condition(cond):
+    print(cond)
+    raise NotImplementedError("Here")
+
+
+def transducer_from_yaml(path):
+    from yaml import safe_load
+    from hna.hna.parser.parser import parse_edge
+
+    T = SymbolicTransducer(origin=path)
+    with open(path, "r") as stream:
+        data = safe_load(stream)
+        for nd in data["transducer"]["nodes"]:
+            T.add_state(State(str(nd)))
+        for edge in data["transducer"]["edges"]:
+            source, target = parse_edge(edge["edge"])
+            T.add_transition(
+                T.get(source),
+                TransitionLabel(
+                    edge["symbol"],
+                    parse_condition(edge["condition"]),
+                    None,
+                    edge["output"],
+                ),
+                T.get(target),
+            )
+
+    raise NotImplementedError("Here!")
