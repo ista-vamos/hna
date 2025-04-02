@@ -628,7 +628,7 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
 
     subst = (outer_l.symbol, inner_l.output)
     condition = simplify_condition(
-        inner_l.condition + substitute_in_cond(outer_l.condition, subst)
+        inner_l.condition + substitute_lst(outer_l.condition, subst)
     )
     if condition is None:  # UNSAT condition
         return None
@@ -636,8 +636,8 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
     label = TransitionLabel(
         symbol=inner_l.symbol,
         condition=condition,
-        assign=inner_l.assignment + substitute_in_assign(outer_l.assignment, subst),
-        output=substitute_in_output(outer_l.output, subst),
+        assign=inner_l.assignment + substitute_lst(outer_l.assignment, subst),
+        output=outer_l.output.subst(subst),
     )
 
     return (inner.source, outer.source), label, (inner.target, outer.target)
@@ -703,22 +703,8 @@ def check_eq_class(C):
     return True
 
 
-def substitute_in_cond(cond, subst):
-    # FIXME: once we have data funs, this needs to be updates!")
-    return [c.subst(subst) for c in cond]
-
-
-def substitute_in_assign(A, subst):
-    # FIXME: once we have data funs, this needs to be updates!")
-    return [a.subst(subst) for a in A]
-
-
-def substitute_in_output(out, subst):
-    print("FIXME: once we have data funs, this needs to be updates!")
-    what, by = subst
-    if out == what:
-        return by
-    return out
+def substitute_lst(lst, subst):
+    return [x.subst(subst) for x in lst]
 
 
 def parse_condition(cond):
