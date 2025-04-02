@@ -659,21 +659,6 @@ def substitute_in_output(out, subst):
     return out
 
 
-class TwoTapeSymbolicTransducer(SymbolicTransducer):
-    def __init__(
-        self,
-        states: list = None,
-        registers: list = None,
-        transitions: list = None,
-        init_states: list = None,
-        accepting_states: list = None,
-        origin=None,
-    ):
-        super().__init__(
-            states, registers, transitions, init_states, accepting_states, origin
-        )
-
-
 def parse_condition(cond):
     print(cond)
     raise NotImplementedError("Here")
