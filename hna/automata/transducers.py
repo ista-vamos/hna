@@ -42,6 +42,13 @@ class Value:
             return by
         return self
 
+    def ord(self):
+        """A tuple used for ordering this value"""
+        return ("z", "z", "z")
+
+    def __lt__(self, other):
+        return self.ord() < other.ord()
+
 
 class Constant(Value):
     def __init__(self, v):
@@ -63,6 +70,13 @@ class Constant(Value):
         """A name usable in C code"""
         return f"'{self.value}'" if self.value.isalpha() else f"{self.value}"
 
+    def ord(self):
+        """A tuple used for ordering this value"""
+        # NOTE: value can be int, because the comparison is short-circuiting
+        # and if we compare to something else than a constant, the code
+        # never gets to comparing the values and therefore there will be no invalid comparison
+        return ("9", self.value, "z")
+
 
 class Var(Value):
     def __init__(self, v):
@@ -80,12 +94,16 @@ class Var(Value):
     def __str__(self):
         return str(self.value)
 
+    def ord(self):
+        return "3", self.value, "z"
+
 
 class Attr(Value):
     """Access an attribute of a variable, e.g., in(x)"""
 
     def __init__(self, var, attr):
-        super().__self__((var, attr))
+        assert isinstance(var, Var), var
+        super().__init__((var, attr))
 
     def is_attr(self) -> bool:
         return True
@@ -107,10 +125,14 @@ class Attr(Value):
 
     def subst(self, s):
         what, by = s
-        a, v = self.value
+        v, a = self.value
         if v == what:
-            return Attr(a, by)
+            return Attr(by, a)
         return self
+
+    def ord(self):
+        v, a = self.value
+        return "1", a, v
 
 
 class Reg(Value):
@@ -128,6 +150,9 @@ class Reg(Value):
 
     def __str__(self):
         return f"{self.value}ᵣ"
+
+    def ord(self):
+        return "7", self.value, "z"
 
 
 class Eps(Value):
@@ -148,6 +173,9 @@ class Eps(Value):
 
     def subst(self, s):
         return self
+
+    def ord(self):
+        return "e", "z", "z"
 
 
 # ------------------------------------------------------------
@@ -499,7 +527,7 @@ def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
 
 
 def compose_transducers(
-    inner: SymbolicTransducer, outer: SymbolicTransducer
+    inner: SymbolicTransducer, outer: SymbolicTransducer, origin=None
 ) -> SymbolicTransducer:
     """
     Compute the sequential composition outer(inner).
@@ -582,6 +610,7 @@ def compose_transducers(
             for s in states.keys()
             if inner.is_accepting(s[0]) and outer.is_accepting(s[1])
         ],
+        origin=origin,
     )
 
 
@@ -606,27 +635,6 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
     return (inner.source, outer.source), label, (inner.target, outer.target)
 
 
-def term_lt(lhs, rhs):
-    if isinstance(lhs, Var):
-        if isinstance(rhs, Var):
-            return lhs.value < rhs.value
-        else:
-            return True
-    elif isinstance(lhs, Reg):
-        if isinstance(rhs, Var):
-            return False
-        elif isinstance(rhs, Reg):
-            return lhs.value < rhs.value
-        else:
-            return True
-    elif isinstance(lhs, Constant):
-        if isinstance(rhs, (Var, Reg)):
-            return False
-        else:
-            return lhs.value < rhs.value
-    raise RuntimeError(f"Unknown type of term: {lhs}")
-
-
 def normalize_term(term):
     """
     Any variable is 'smaller' than any register, and any register is smaller than any constant.
@@ -634,7 +642,7 @@ def normalize_term(term):
     This function outputs the smaller of (term.lhs, term.rhs) or (term.rhs, term.lhs).
     NOTE: it modifies the original term!
     """
-    if not term_lt(term.lhs, term.rhs):
+    if not term.lhs < term.rhs:
         term.rhs, term.lhs = term.lhs, term.rhs
     return term
 

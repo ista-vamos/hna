@@ -663,7 +663,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             print(f"Hit cache for {nformula.children[1]}")
 
         # NOTE: we do not cache this one
-        A = automaton_for_prefixing(A1, A2)
+        A = automaton_for_prefixing(A1, A2, bddnode.lvar, bddnode.rvar)
         # Ap = to_priority_automaton(A)
 
         A1.remove_redundant_states_once()

@@ -3,8 +3,7 @@ from copy import copy
 from hna.automata.automaton import Automaton
 
 from .formula import (
-    Constant,
-    EPSILON_CONSTANT,
+    Constant as FormulaConstant,
     IsPrefix,
     StutterReduce,
     Concat,
@@ -12,10 +11,12 @@ from .formula import (
     ProgramVariable,
     Plus,
 )
+from .formula2automata import TupleLabel
 from ..automata.transducers import (
     SymbolicTransducer,
     concat_transducers,
-    Constant as TransitionConstant,
+    Constant,
+    Attr,
     Eps,
     iterate_transducer,
     union_transducers,
@@ -39,7 +40,7 @@ def constant_transducer(formula):
         transitions=[
             Transition(
                 states[0],
-                TransitionLabel(Eps(), [], [], TransitionConstant(formula.value)),
+                TransitionLabel(Eps(), [], [], Constant(formula.value)),
                 states[1],
             )
         ],
@@ -49,7 +50,7 @@ def constant_transducer(formula):
     )
 
 
-def program_variable_transducer(formula):
+def trace_transducer(formula):
     states = [State("v0")]
     return SymbolicTransducer(
         states=states,
@@ -65,7 +66,7 @@ def program_variable_transducer(formula):
     )
 
 
-def stutter_reduce_transducer(T: SymbolicTransducer):
+def stutter_reduce_transducer(T: SymbolicTransducer, formula):
     states = [State("st0"), State("st1")]
     r, x = Reg("last"), Var("x")
     ST = SymbolicTransducer(
@@ -84,15 +85,18 @@ def stutter_reduce_transducer(T: SymbolicTransducer):
         ],
         init_states=[states[0]],
         accepting_states=states,
+        origin=formula,
     )
-    return compose_transducers(T, ST)
+    return compose_transducers(T, ST, origin=formula)
 
 
 def formula_to_transducer(formula):
     assert not isinstance(formula, IsPrefix), formula
 
     if isinstance(formula, StutterReduce):
-        return stutter_reduce_transducer(formula_to_transducer(formula.children[0]))
+        return stutter_reduce_transducer(
+            formula_to_transducer(formula.children[0]), formula
+        )
 
     if isinstance(formula, Concat):
         return concat_transducers(
@@ -109,19 +113,16 @@ def formula_to_transducer(formula):
             formula_to_transducer(formula.children[1]),
         )
 
-    if isinstance(formula, Constant):
+    if isinstance(formula, FormulaConstant):
         return constant_transducer(formula)
 
     if isinstance(formula, ProgramVariable):
-        return program_variable_transducer(formula)
+        return trace_transducer(formula)
 
     raise NotImplementedError(f"Unhandled formula: {formula}")
 
 
-from .formula2automata import TupleLabel
-
-
-def compose_transitions(left_t, right_t, reg_map):
+def compose_transitions(left_t, right_t, lproj, rproj, reg_map):
     label_l, label_r = left_t.label, right_t.label
     output_r = reg_map.get(label_r.output, label_r.output)
     symbol_r = label_r.symbol
@@ -138,9 +139,11 @@ def compose_transitions(left_t, right_t, reg_map):
     else:
         cond_r = label_r.condition or []
         assign_r = label_r.assignment or []
-    cond = label_l.condition + rename(cond_r, reg_map) + [Eq(label_l.output, output_r)]
+    output_l = label_l.output
+    lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
+    rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
     cond = simplify_condition(
-        label_l.condition + rename(cond_r, reg_map) + [Eq(label_l.output, output_r)]
+        label_l.condition + rename(cond_r, reg_map) + [Eq(lhs, rhs)]
     )
     if cond is None:
         return None
@@ -167,11 +170,11 @@ def rename(lst, subst_map):
 
 
 def automaton_for_prefixing(
-    left: SymbolicTransducer, right: SymbolicTransducer
+    left: SymbolicTransducer, right: SymbolicTransducer, lproj, rproj
 ) -> SymbolicTransducer:
     """
     Compute the symbolic register automaton that accepts inputs of two transducers (left and right)
-    such that the output of 'left' is a prefix of 'right'.
+    such that the output of 'lproj(left)' is a prefix of 'lproj(right)'.
     We do not have a class for automata with registers, so we return a symbolic transducer
     that has no output.
     """
@@ -255,7 +258,9 @@ def automaton_for_prefixing(
                     continue
 
                 # combine the transitions
-                new_t = compose_transitions(left_t, right_t, renamed_registers)
+                new_t = compose_transitions(
+                    left_t, right_t, lproj, rproj, renamed_registers
+                )
                 if new_t is None:
                     # the transition had UNSAT condition
                     continue
