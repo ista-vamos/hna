@@ -23,6 +23,9 @@ class Value:
     def is_var(self) -> bool:
         return False
 
+    def is_attr(self) -> bool:
+        return False
+
     def is_reg(self) -> bool:
         return False
 
@@ -32,6 +35,12 @@ class Value:
     def c_name(self):
         """A name usable in C code"""
         return f"{self.value}"
+
+    def subst(self, s):
+        what, by = s
+        if self == what:
+            return by
+        return self
 
 
 class Constant(Value):
@@ -72,6 +81,38 @@ class Var(Value):
         return str(self.value)
 
 
+class Attr(Value):
+    """Access an attribute of a variable, e.g., in(x)"""
+
+    def __init__(self, var, attr):
+        super().__self__((var, attr))
+
+    def is_attr(self) -> bool:
+        return True
+
+    def __eq__(self, other):
+        return isinstance(other, Attr) and self.value == other.value
+
+    def __hash__(self):
+        return hash("a") ^ hash(self.value)
+
+    def __str__(self):
+        v, a = self.value
+        return f"{a}({v})"
+
+    def c_name(self):
+        """A name usable in C code"""
+        v, a = self.value
+        return f"{v}->{a}"
+
+    def subst(self, s):
+        what, by = s
+        a, v = self.value
+        if v == what:
+            return Attr(a, by)
+        return self
+
+
 class Reg(Value):
     def __init__(self, v):
         super().__init__(v)
@@ -105,6 +146,9 @@ class Eps(Value):
     def __hash__(self):
         return hash("ε")
 
+    def subst(self, s):
+        return self
+
 
 # ------------------------------------------------------------
 
@@ -136,11 +180,12 @@ class BinaryPredicate(Condition):
 
     def subst(self, s):
         what, by = s
+        # we must copy the type of object
+        # XXX: unfortunately, this way we also copy lhs and rhs that we then override.
+        # If that should be a problem at some point, we'll switch to a more clever solution.
         new = copy(self)
-        if self._lhs == what:
-            new._lhs = by
-        if self._rhs == what:
-            new._rhs = by
+        new._lhs = self._lhs.subst(s)
+        new._rhs = self._rhs.subst(s)
         return new
 
 
@@ -183,12 +228,13 @@ class Assignment:
         return f"{self.to}:={self.val}"
 
     def subst(self, s):
-        # what, by = s
+        what, by = s
+        # we must copy the type of object
+        # XXX: unfortunately, this way we also copy lhs and rhs that we then override.
+        # If that should be a problem at some point, we'll switch to a more clever solution.
         new = copy(self)
-        if self._val == s[0]:
-            new._val = s[1]
-        if self._to == s[0]:
-            new._to = s[1]
+        new._to = self._to.subst(s)
+        new._val = self._val.subst(s)
         return new
 
 
@@ -578,7 +624,7 @@ def term_lt(lhs, rhs):
             return False
         else:
             return lhs.value < rhs.value
-    raise RuntimeError("Unknown type of term")
+    raise RuntimeError(f"Unknown type of term: {lhs}")
 
 
 def normalize_term(term):
