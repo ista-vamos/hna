@@ -366,8 +366,13 @@ class CodeGenCpp(CodeGen):
 
         data_funs = {}
         for fn in self.args.data_fun:
-            name, T = transducer_from_yaml(fn)
+            name, T = transducer_from_yaml(fn, self.args.data)
             data_funs[name] = T
+
+            if self.args.debug:
+                with self.new_dbg_file(f"aut-{name}.dot") as f:
+                    T.to_dot(f)
+
         self.args.data_fun = data_funs
 
     def generate(self, formula: PrenexFormula, alphabet=None) -> None:

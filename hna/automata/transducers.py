@@ -637,7 +637,10 @@ def compose_transitions(inner: Transition, outer: Transition) -> Transition:
     label = TransitionLabel(
         symbol=inner_l.symbol,
         condition=condition,
-        assign=inner_l.assignment + substitute_lst(outer_l.assignment, subst),
+        assign=(
+            (inner_l.assignment or []) + substitute_lst(outer_l.assignment or [], subst)
+        )
+        or None,
         output=outer_l.output.subst(subst),
     )
 
@@ -725,31 +728,64 @@ def substitute_lst(lst, subst):
     return [x.subst(subst) for x in lst]
 
 
-def parse_condition(cond):
-    print(cond)
-    raise NotImplementedError("Here")
+def parse_condition(cond, var, attrs):
+    terms = cond.split(",")
+    cond = []
+    for term in terms:
+        lhs, op, rhs = term.split()
+        lhs = Attr(var, lhs) if lhs in attrs else Constant(lhs)
+        rhs = Attr(var, rhs) if rhs in attrs else Constant(rhs)
+        if op in ("==", "="):
+            Ctor = Eq
+        elif op == "!=":
+            Ctor = NEq
+        cond.append(Ctor(lhs, rhs))
+    return cond
 
 
-def transducer_from_yaml(path):
+def transducer_from_yaml(path, attrs):
     from yaml import safe_load
     from hna.hna.parser.parser import parse_edge
 
+    attrs = set(x[0] for x in attrs)
     T = SymbolicTransducer(origin=path)
+
     with open(path, "r") as stream:
         data = safe_load(stream)
         for nd in data["transducer"]["nodes"]:
             T.add_state(State(str(nd)))
         for edge in data["transducer"]["edges"]:
+            if edge.get("assignment"):
+                raise NotImplementedError(
+                    "The code does not support assignments in user functions yet"
+                )
+
             source, target = parse_edge(edge["edge"])
+            symbol = edge["symbol"]
+            var = Var(symbol)
+            output = edge["output"]
+            if output == symbol:
+                output = var
+            elif output == r"\eps":
+                output = Eps()
+            else:
+                Constant(output)
+
             T.add_transition(
-                T.get(source),
-                TransitionLabel(
-                    edge["symbol"],
-                    parse_condition(edge["condition"]),
-                    None,
-                    edge["output"],
-                ),
-                T.get(target),
+                Transition(
+                    T.get(str(source)),
+                    TransitionLabel(
+                        var,
+                        parse_condition(edge["condition"], var, attrs),
+                        None,
+                        output,
+                    ),
+                    T.get(str(target)),
+                )
             )
 
-    raise NotImplementedError("Here!")
+        T.add_init(T.get(str(data["transducer"]["init"])))
+        for nd in data["transducer"]["accept"]:
+            T.add_accepting(T.get(str(nd)))
+
+        return str(data["transducer"]["name"]), T

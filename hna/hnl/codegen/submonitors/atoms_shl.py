@@ -6,17 +6,14 @@ from hna.automata.automaton import Automaton
 from hna.automata.transducers import Var, Reg, Value, Eps
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
-from hna.hnl.formula import (
-    IsPrefix,
-    PrenexFormula,
-)
+from hna.hnl.formula import IsPrefix, PrenexFormula, Function
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,
 )
 from .atoms import CodeGenCppAtoms
-from ...formula2transducers import formula_to_transducer, automaton_for_prefixing
+from ...formula2transducers import Formula2Transducer, automaton_for_prefixing
 
 
 class args_str(str):
@@ -193,12 +190,20 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
 
-        t1 = nd.ltrace.name if nd.ltrace else None
-        t2 = nd.rtrace.name if nd.rtrace else None
+        t1 = nd.ltrace or None
+        t2 = nd.rtrace or None
         if not (t1 or t2):
             raise NotImplementedError("This case is unsupported yet")
         if not t1:
             raise NotImplementedError("This case is unsupported yet")
+
+        if t1 and isinstance(t1, Function):
+            # just strip off the function as its transducer has been composed into the automaton
+            assert len(t1.traces) == 1
+            t1 = t1.traces[0]
+        if t2 and isinstance(t2, Function):
+            assert len(t2.traces) == 1
+            t2 = t2.traces[0]
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
@@ -207,7 +212,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         identifier = "AtomIdentifier{st"
         for q in formula.quantifiers():
-            if q.var.name in (t1, t2):
+            if q.var.name in (t1.name, t2.name):
                 identifier += f",instance.{q.var.name}->id()"
             else:
                 identifier += ",0"
@@ -654,21 +659,39 @@ class CodeGenCpp(CodeGenCppAtoms):
         #           A.to_dot(f)
         #   return A
 
+        # `lvar = lvar or rvar` because if lvar is None,
+        # then the comparison is between rvar and regular expressions, so
+        # the traces of regular expression describe traces of rvar and
+        # therefore `lvar or rvar` makes sense (because short-circuiting).
+        # Similarly the symmetrical case
+        rvar, lvar = bddnode.rvar, bddnode.lvar
+        rvar = rvar or lvar
+        lvar = lvar or rvar
+
+        if not lvar and not rvar:
+            raise RuntimeError(
+                "The comparison is only between regular expressions, no traces."
+            )
+
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
-            A1 = formula_to_transducer(nformula.children[0], bddnode.lvar)
+            A1 = Formula2Transducer(lvar, self.args.data_fun).formula_to_transducer(
+                nformula.children[0]
+            )
             self._automata[nformula.children[0]] = A1
         else:
             print(f"Hit cache for {nformula.children[0]}")
         A2 = self._automata.get(nformula.children[1])
         if A2 is None:
-            A2 = formula_to_transducer(nformula.children[1], bddnode.rvar)
+            A2 = Formula2Transducer(rvar, self.args.data_fun).formula_to_transducer(
+                nformula.children[1]
+            )
             self._automata[nformula.children[1]] = A2
         else:
             print(f"Hit cache for {nformula.children[1]}")
 
         # NOTE: we do not cache this one
-        A = automaton_for_prefixing(A1, A2, bddnode.lvar, bddnode.rvar)
+        A = automaton_for_prefixing(A1, A2, lvar, rvar)
         # Ap = to_priority_automaton(A)
 
         A1.remove_redundant_states_once()

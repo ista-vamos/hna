@@ -9,6 +9,7 @@ from .formula import (
     Concat,
     Iter,
     ProgramVariable,
+    Function,
     Plus,
 )
 from .formula2automata import TupleLabel
@@ -67,67 +68,88 @@ def trace_transducer(formula):
     )
 
 
-def stutter_reduce_transducer(T: SymbolicTransducer, formula, proj):
-    states = [State("st0"), State("st1")]
-    r, x = Reg("last"), Var("x")
-    ST = SymbolicTransducer(
-        states=states,
-        registers=[r],
-        transitions=[
-            Transition(
-                states[0], TransitionLabel(x, [], [Assignment(r, x)], x), states[1]
-            ),
-            Transition(
-                states[1],
-                TransitionLabel(x, [Eq(Attr(x, proj), Attr(r, proj))], [], Eps()),
-                states[1],
-            ),
-            Transition(
-                states[1],
-                TransitionLabel(
-                    x, [NEq(Attr(x, proj), Attr(r, proj))], [Assignment(r, x)], x
+class Formula2Transducer:
+    def __init__(self, proj, data_funs=()):
+        self._proj = proj
+        self._data_funs = data_funs
+
+    def formula_to_transducer(self, formula):
+        """Return a transducer for a given formula that describes values of a projection `proj` of the trace"""
+        assert not isinstance(formula, IsPrefix), formula
+
+        if isinstance(formula, StutterReduce):
+            return self.stutter_reduce_transducer(
+                self.formula_to_transducer(formula.children[0]), formula
+            )
+
+        if isinstance(formula, Concat):
+            return concat_transducers(
+                self.formula_to_transducer(formula.children[0]),
+                self.formula_to_transducer(formula.children[1]),
+            )
+
+        if isinstance(formula, Iter):
+            return iterate_transducer(self.formula_to_transducer(formula.children[0]))
+
+        if isinstance(formula, Plus):
+            return union_transducers(
+                self.formula_to_transducer(formula.children[0]),
+                self.formula_to_transducer(formula.children[1]),
+            )
+
+        if isinstance(formula, FormulaConstant):
+            return constant_transducer(formula, self._proj)
+
+        if isinstance(formula, ProgramVariable):
+            if isinstance(formula.trace, Function):
+                return self.projection_transducer(formula)
+            return trace_transducer(formula.trace)
+
+        raise NotImplementedError(f"Unhandled formula: {formula}")
+
+    def stutter_reduce_transducer(self, T: SymbolicTransducer, formula):
+        states = [State("st0"), State("st1")]
+        r, x = Reg("last"), Var("x")
+        proj = self._proj
+        ST = SymbolicTransducer(
+            states=states,
+            registers=[r],
+            transitions=[
+                Transition(
+                    states[0], TransitionLabel(x, [], [Assignment(r, x)], x), states[1]
                 ),
-                states[1],
-            ),
-        ],
-        init_states=[states[0]],
-        accepting_states=states,
-        origin=formula,
-    )
-    return compose_transducers(T, ST, origin=formula)
-
-
-def formula_to_transducer(formula, proj):
-    """Return a transducer for a given formula that describes values of a projection `proj` of the trace"""
-    assert not isinstance(formula, IsPrefix), formula
-
-    if isinstance(formula, StutterReduce):
-        return stutter_reduce_transducer(
-            formula_to_transducer(formula.children[0], proj), formula, proj
+                Transition(
+                    states[1],
+                    TransitionLabel(x, [Eq(Attr(x, proj), Attr(r, proj))], [], Eps()),
+                    states[1],
+                ),
+                Transition(
+                    states[1],
+                    TransitionLabel(
+                        x, [NEq(Attr(x, proj), Attr(r, proj))], [Assignment(r, x)], x
+                    ),
+                    states[1],
+                ),
+            ],
+            init_states=[states[0]],
+            accepting_states=states,
+            origin=formula,
         )
+        return compose_transducers(T, ST, origin=formula)
 
-    if isinstance(formula, Concat):
-        return concat_transducers(
-            formula_to_transducer(formula.children[0], proj),
-            formula_to_transducer(formula.children[1], proj),
+    def projection_transducer(self, formula):
+        fn = formula.trace
+        assert isinstance(fn, Function), formula
+        if fn.name not in self._data_funs:
+            raise RuntimeError(f"Unknown data function: {fn}")
+
+        if len(fn.traces) != 1:
+            raise RuntimeError("Multiple input traces to data function")
+
+        fun_T = self._data_funs[fn.name]
+        return compose_transducers(
+            trace_transducer(fn.traces[0]), fun_T, origin=formula
         )
-
-    if isinstance(formula, Iter):
-        return iterate_transducer(formula_to_transducer(formula.children[0], proj))
-
-    if isinstance(formula, Plus):
-        return union_transducers(
-            formula_to_transducer(formula.children[0], proj),
-            formula_to_transducer(formula.children[1], proj),
-        )
-
-    if isinstance(formula, FormulaConstant):
-        return constant_transducer(formula, proj)
-
-    if isinstance(formula, ProgramVariable):
-        return trace_transducer(formula)
-
-    raise NotImplementedError(f"Unhandled formula: {formula}")
 
 
 def compose_transitions(left_t, right_t, lproj, rproj, reg_map):
@@ -186,6 +208,12 @@ def automaton_for_prefixing(
     We do not have a class for automata with registers, so we return a symbolic transducer
     that has no output.
     """
+
+    # we assume both projections, even when one of the sides is a constant
+    # regular expression (because then it describes traces of the only
+    # top-level projection in the formula)
+    assert lproj, "left projection is not given"
+    assert rproj, "right projection is not given"
 
     # pairs of states that we will later translate to State. But for now, it is more comfortable
     # to work with pairs of states.
