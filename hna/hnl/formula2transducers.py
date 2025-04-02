@@ -32,15 +32,16 @@ from ..automata.transducers import (
 from ..automata.transition_system import State, Transition
 
 
-def constant_transducer(formula):
+def constant_transducer(formula, proj):
     states = [State(f"c0"), State("c1")]
+    x = Var("x")
     return SymbolicTransducer(
         states=states,
         registers=None,
         transitions=[
             Transition(
                 states[0],
-                TransitionLabel(Eps(), [], [], Constant(formula.value)),
+                TransitionLabel(x, [Eq(Attr(x, proj), Constant(formula.value))], [], x),
                 states[1],
             )
         ],
@@ -66,7 +67,7 @@ def trace_transducer(formula):
     )
 
 
-def stutter_reduce_transducer(T: SymbolicTransducer, formula):
+def stutter_reduce_transducer(T: SymbolicTransducer, formula, proj):
     states = [State("st0"), State("st1")]
     r, x = Reg("last"), Var("x")
     ST = SymbolicTransducer(
@@ -76,10 +77,16 @@ def stutter_reduce_transducer(T: SymbolicTransducer, formula):
             Transition(
                 states[0], TransitionLabel(x, [], [Assignment(r, x)], x), states[1]
             ),
-            Transition(states[1], TransitionLabel(x, [Eq(x, r)], [], Eps()), states[1]),
             Transition(
                 states[1],
-                TransitionLabel(x, [NEq(x, r)], [Assignment(r, x)], x),
+                TransitionLabel(x, [Eq(Attr(x, proj), Attr(r, proj))], [], Eps()),
+                states[1],
+            ),
+            Transition(
+                states[1],
+                TransitionLabel(
+                    x, [NEq(Attr(x, proj), Attr(r, proj))], [Assignment(r, x)], x
+                ),
                 states[1],
             ),
         ],
@@ -90,31 +97,32 @@ def stutter_reduce_transducer(T: SymbolicTransducer, formula):
     return compose_transducers(T, ST, origin=formula)
 
 
-def formula_to_transducer(formula):
+def formula_to_transducer(formula, proj):
+    """Return a transducer for a given formula that describes values of a projection `proj` of the trace"""
     assert not isinstance(formula, IsPrefix), formula
 
     if isinstance(formula, StutterReduce):
         return stutter_reduce_transducer(
-            formula_to_transducer(formula.children[0]), formula
+            formula_to_transducer(formula.children[0], proj), formula, proj
         )
 
     if isinstance(formula, Concat):
         return concat_transducers(
-            formula_to_transducer(formula.children[0]),
-            formula_to_transducer(formula.children[1]),
+            formula_to_transducer(formula.children[0], proj),
+            formula_to_transducer(formula.children[1], proj),
         )
 
     if isinstance(formula, Iter):
-        return iterate_transducer(formula_to_transducer(formula.children[0]))
+        return iterate_transducer(formula_to_transducer(formula.children[0], proj))
 
     if isinstance(formula, Plus):
         return union_transducers(
-            formula_to_transducer(formula.children[0]),
-            formula_to_transducer(formula.children[1]),
+            formula_to_transducer(formula.children[0], proj),
+            formula_to_transducer(formula.children[1], proj),
         )
 
     if isinstance(formula, FormulaConstant):
-        return constant_transducer(formula)
+        return constant_transducer(formula, proj)
 
     if isinstance(formula, ProgramVariable):
         return trace_transducer(formula)

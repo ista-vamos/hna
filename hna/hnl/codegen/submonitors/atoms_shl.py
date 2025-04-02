@@ -542,12 +542,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
         reg_substitution = [
-            (r, Reg(f"cfg.{r.c_name()}")) for r in (automaton.registers() or ())
+            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
         ]
         cond = condition_code(
             t,
-            [(symbol[0], Var(f"ev1->{lvar}")), (symbol[1], Var(f"ev2->{rvar}"))]
-            + reg_substitution,
+            [(symbol[0], Var(f"ev1")), (symbol[1], Var(f"ev2"))] + reg_substitution,
         )
         wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
         debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
@@ -567,7 +566,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         symbol = t.label.symbol
         cond = condition_code(
             t,
-            [(symbol[0], Var(f"ev1->{lvar}"))]
+            [(symbol[0], Var(f"ev1"))]
             + [(r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers() or ()],
         )
         wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
@@ -589,14 +588,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
         reg_substitution = [
-            (r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()
+            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
         ]
-        cond = condition_code(t, [(symbol[1], Var(f"ev2->{rvar}"))] + reg_substitution)
+        cond = condition_code(t, [(symbol[1], Var(f"ev2"))] + reg_substitution)
         wrcpp(f" if (ev2 != nullptr && {cond}) {{\n")
         debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
 
-        var_map = {symbol[0]: f"ev1->{lvar}", symbol[1]: f"ev2->{rvar}"}
+        var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
         update_registers = update_registers_code(automaton, t, var_map)
         wrcpp(
             f"   matched = true;\n "
@@ -609,7 +608,7 @@ class CodeGenCpp(CodeGenCppAtoms):
     def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
         debug_code_transition_check(lvar, rvar, Eps(), t, wrcpp)
         reg_substitution = [
-            (r, Reg(f"cfg.{r.c_name()}")) for r in automaton.registers()
+            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
         ]
         cond = condition_code(t, reg_substitution)
         wrcpp(f'/* COND: "{cond}"*/\n')
@@ -651,13 +650,13 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
-            A1 = formula_to_transducer(nformula.children[0])
+            A1 = formula_to_transducer(nformula.children[0], bddnode.lvar)
             self._automata[nformula.children[0]] = A1
         else:
             print(f"Hit cache for {nformula.children[0]}")
         A2 = self._automata.get(nformula.children[1])
         if A2 is None:
-            A2 = formula_to_transducer(nformula.children[1])
+            A2 = formula_to_transducer(nformula.children[1], bddnode.rvar)
             self._automata[nformula.children[1]] = A2
         else:
             print(f"Hit cache for {nformula.children[1]}")

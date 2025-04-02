@@ -102,8 +102,16 @@ class Attr(Value):
     """Access an attribute of a variable, e.g., in(x)"""
 
     def __init__(self, var, attr):
-        assert isinstance(var, Var), var
+        assert isinstance(var, (Var, Reg)), var
         super().__init__((var, attr))
+
+    @property
+    def var(self):
+        return self.value[0]
+
+    @property
+    def attr(self):
+        return self.value[1]
 
     def is_attr(self) -> bool:
         return True
@@ -118,10 +126,10 @@ class Attr(Value):
         v, a = self.value
         return f"{a}({v})"
 
-    def c_name(self):
+    def c_name(self, op="->"):
         """A name usable in C code"""
         v, a = self.value
-        return f"{v}->{a}"
+        return f"{v.c_name()}{op}{a}"
 
     def subst(self, s):
         what, by = s
