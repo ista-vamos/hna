@@ -710,7 +710,11 @@ def get_eq_constants(eq_classes):
         for elem in eqcl:
             if isinstance(elem, Constant):
                 continue
-            assert (elem not in consts) or consts[elem] == constants[0]
+            assert (elem not in consts) or consts[elem] == constants[0], (
+                eq_classes,
+                constants,
+                consts,
+            )
             consts[elem] = constants[0]
 
     return consts
@@ -729,14 +733,7 @@ def simplify_condition(cond):
     cond = remove_trivial(cond)
 
     # TODO: do this properly with SMT solver?
-    eq_classes = {}
-    for c in (c for c in cond if isinstance(c, Eq)):
-        # FIXME: this is not very efficient, but we'll not likely have problem with this
-        C1 = eq_classes.setdefault(c.lhs, set((c.lhs,)))
-        C2 = eq_classes.setdefault(c.rhs, set((c.rhs,)))
-        C = C1 | C2
-        eq_classes[c.lhs] = C
-        eq_classes[c.rhs] = C
+    eq_classes = get_eq_classes(cond)
 
     consts = get_eq_constants(eq_classes)
     if consts is None:
@@ -753,6 +750,20 @@ def simplify_condition(cond):
     # TODO: simplify the condition by constant propagation
 
     return cond
+
+
+def get_eq_classes(cond):
+    eq_classes = {}
+    for c in (x for x in cond if isinstance(x, Eq)):
+        # FIXME: this is not very efficient, but we'll not likely have problem with this
+        C1 = eq_classes.setdefault(c.lhs, set((c.lhs,)))
+        C2 = eq_classes.setdefault(c.rhs, set((c.rhs,)))
+        assert c.lhs in C1
+        assert c.rhs in C2
+        C = C1.union(C2)
+        for x in C:
+            eq_classes[x] = C
+    return eq_classes
 
 
 def substitute_lst(lst, subst):
