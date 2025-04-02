@@ -133,10 +133,11 @@ class Attr(Value):
 
     def subst(self, s):
         what, by = s
+        if self == what:
+            return by
+
         v, a = self.value
-        if v == what:
-            return Attr(by, a)
-        return self
+        return Attr(v.subst(s), a)
 
     def ord(self):
         v, a = self.value
@@ -663,6 +664,31 @@ def remove_trivial(cond):
     return [c for c in cond if not isinstance(c, Eq) or c.lhs != c.rhs]
 
 
+def get_eq_constants(eq_classes):
+    consts = {}
+    for eqcl in eq_classes.values():
+        constants = [elem for elem in eqcl if isinstance(elem, Constant)]
+        if len(constants) > 1:
+            return None  # two different constants should equal
+        elif not constants:
+            continue
+
+        for elem in eqcl:
+            if isinstance(elem, Constant):
+                continue
+            assert (elem not in consts) or consts[elem] == constants[0]
+            consts[elem] = constants[0]
+
+    return consts
+
+
+def propagate_constants(cond, consts):
+    for s in consts.items():
+        cond = substitute_lst(cond, s)
+    cond += [Eq(x, c) for x, c in consts.items()]
+    return remove_trivial(remove_duplicates(cond))
+
+
 def simplify_condition(cond):
     # remove repeated terms
     cond = remove_duplicates(cond)
@@ -678,9 +704,10 @@ def simplify_condition(cond):
         eq_classes[c.lhs] = C
         eq_classes[c.rhs] = C
 
-        if not check_eq_class(C):
-            # UNSAT condition, two different constants should equal
-            return None
+    consts = get_eq_constants(eq_classes)
+    if consts is None:
+        # UNSAT condition, two different constants should equal
+        return None
 
     for c in (c for c in cond if isinstance(c, NEq)):
         if c.rhs in eq_classes.get(c.lhs, ()):
@@ -688,19 +715,10 @@ def simplify_condition(cond):
             # should be the same and different at the same time
             return None
 
+    cond = propagate_constants(cond, consts)
     # TODO: simplify the condition by constant propagation
 
     return cond
-
-
-def check_eq_class(C):
-    const = None
-    for elem in C:
-        if isinstance(elem, Constant):
-            if const is not None and const != elem:
-                return False  # two different constants should equal
-            const = elem
-    return True
 
 
 def substitute_lst(lst, subst):
