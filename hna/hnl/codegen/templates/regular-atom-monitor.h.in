@@ -3,7 +3,7 @@
 
 #include "verdict.h"
 #include "atom-monitor.h"
-#include "atom-evaluation-state.h"
+@include_headers@
 
 @namespace_start@
 

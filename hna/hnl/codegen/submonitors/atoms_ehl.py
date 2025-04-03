@@ -453,6 +453,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
+        wrh(f" EvaluationStateSet _cfgs;\n\n")
         for state in automaton.states():
             dump_codegen_position(wrh)
             wrh(
@@ -633,10 +634,10 @@ class CodeGenCpp(CodeGenCppAtoms):
             wrcpp(
                 f" /* {t} */\n "
                 "#ifdef DEBUG_PRINTS\n"
-                f' std::cerr << "  -- {lvar} = {t.name[0]}; {rvar} = {t.name[1]} -->\\n";\n'
+                f' std::cerr << "  -- {lvar} = {t.label[0]}; {rvar} = {t.label[1]} -->\\n";\n'
                 "#endif /* !DEBUG_PRINTS */\n"
             )
-            wrcpp(f" if (ev1->{lvar} == {t.name[0]}) {{\n")
+            wrcpp(f" if (ev1->{lvar} == {t.label[0]}) {{\n")
             wrcpp(
                 f"   matched = true;\n "
                 f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2);\n "
@@ -864,9 +865,10 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         if self._embedded:
             from_dir = self.common_templates_path
-            for f in ("atom-base.h", "atom-evaluation-state.h"):
+            for f in ("atom-base.h", "evaluation-state.h"):
                 if f not in self.args.overwrite_file:
                     self.copy_file(f, from_dir=from_dir)
+            self.copy_file("ehl-evaluation-stateset.h")
         else:
             self.copy_files()
 
@@ -909,6 +911,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
+
+        values.update({"@include_headers@": '# include "ehl-evaluation-stateset.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         # there is no sub-formula, this is the monitor for the body of the formula

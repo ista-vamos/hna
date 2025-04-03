@@ -846,6 +846,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
+
+        values.update({"@include_headers@": '# include "atom-evaluation-state.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         # there is no sub-formula, this is the monitor for the body of the formula

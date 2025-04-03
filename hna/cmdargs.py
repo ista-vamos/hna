@@ -173,6 +173,7 @@ def process_args(args):
         for name_type in types:
             name, ty = name_type.split(":")
             tmp_data.append((name.strip(), parse_type(ty)))
+            print(tmp_data)
 
         args.data = tmp_data
 
