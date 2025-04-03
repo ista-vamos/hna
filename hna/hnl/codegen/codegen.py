@@ -35,8 +35,8 @@ def get_num_range(data: list):
             return None
         if min_n is None or rng[0] < min_n:
             min_n = rng[0]
-        if max_n is None or rng[0] > max_n:
-            max_n = rng[0]
+        if max_n is None or rng[1] > max_n:
+            max_n = rng[1]
 
     return min_n, max_n
 
@@ -457,7 +457,10 @@ class CodeGenCpp(CodeGen):
         self.format_generated_code()
 
     def _get_alphabet(self):
-        if not self.args.alphabet:
+        alphabet = self.args.alphabet
+        if alphabet:
+            alphabet = [Constant(a) for a in alphabet]
+        else:
             data = self.args.data
             num_range = get_num_range(data)
             if num_range is None:
@@ -465,8 +468,7 @@ class CodeGenCpp(CodeGen):
                     "No explicit alphabet given and failed to get a bound on numbers from data"
                 )
             alphabet = [Constant(str(a)) for a in range(num_range[0], num_range[1] + 1)]
-        else:
-            alphabet = [Constant(a) for a in self.args.alphabet]
+
         if not alphabet:
             raise RuntimeError("The alphabet is empty, eHL needs explicit alphabet.")
         return alphabet
