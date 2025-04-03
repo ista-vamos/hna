@@ -7,7 +7,7 @@ class State:
     """
 
     def __init__(self, name):
-        assert isinstance(name, str), (name, type(name))
+        # assert isinstance(name, str), (name, type(name))
         self._name = name
 
     def name(self):
@@ -24,7 +24,7 @@ class State:
         return f"State({self._name})"
 
     def __str__(self):
-        return self._name
+        return str(self._name)
 
     def dot_name(self):
         return str(self._name)
