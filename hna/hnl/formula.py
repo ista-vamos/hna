@@ -265,7 +265,19 @@ class PrenexFormula(Formula):
             problems.append(
                 f"Quantifier-free part of prenex formula contains quantifiers: {self.formula}"
             )
-        tv = self.formula.trace_variables()
+
+        # get trace variables used in the body of the formula
+        tv = set(self.formula.trace_variables())
+        # get trace variables used as arguments of functions
+        tv.update(
+            (
+                t
+                for q in self.quantifier_prefix
+                if isinstance(q, (ExistsFromFun, ForAllFromFun))
+                for t in q.fun.traces
+            )
+        )
+
         if len(self.quantifier_prefix) != len(tv):
             problems.append(
                 f"Number of quantifiers and trace variables do not match: "
