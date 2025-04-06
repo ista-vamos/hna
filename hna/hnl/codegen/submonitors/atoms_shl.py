@@ -387,7 +387,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         registers = automaton.registers() or ()
         self.gen_file(
             "atom-evaluation-state.h.in",
-            "atom-evaluation-state.h",
+            f"atom-{num}-evaluation-state.h",
             {
                 "@monitor_name@": self.name(),
                 "@namespace@": self.namespace(),
@@ -423,7 +423,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrh)
         wrh('#include "regular-atom-monitor.h"\n\n')
         wrh('#include "atom-identifier.h"\n\n')
-        wrh('#include "atom-evaluation-state.h"\n\n')
+        wrh(f'#include "atom-{num}-evaluation-state.h"\n\n')
 
         wrh(self.namespace_start())
         wrh("\n\n")
@@ -431,7 +431,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrh)
         wrh(f"/* {atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
-        wrh(f" EvaluationStateSet _cfgs;\n\n")
+        wrh(f" Atom{num}EvaluationStateSet _cfgs;\n\n")
         for state in automaton.states():
             dump_codegen_position(wrh)
             wrh(
@@ -846,8 +846,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
-
-        values.update({"@include_headers@": '# include "atom-evaluation-state.h"'})
+        # values.update({"@include_headers@": '# include "atom-evaluation-state.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         # there is no sub-formula, this is the monitor for the body of the formula

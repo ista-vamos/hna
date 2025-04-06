@@ -1,5 +1,5 @@
-#ifndef EVALUATION_STATE_SET__@monitor_name@
-#define EVALUATION_STATE_SET__@monitor_name@
+#ifndef ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
+#define ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
 
 #include "events.h"
 #include "evaluation-state.h"
@@ -20,7 +20,7 @@ struct Atom@atom_num@EvaluationState : public EvaluationState {
  * storage and are moved to the main storage only on an explicit call.
  * This is because we iterate over the vector when adding.
  */
-class EvaluationStateSet : public std::vector<Atom@atom_num@EvaluationState> {
+class Atom@atom_num@EvaluationStateSet : public std::vector<Atom@atom_num@EvaluationState> {
   std::vector<Atom@atom_num@EvaluationState> _new_cfgs;
 
 public:
