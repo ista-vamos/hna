@@ -6,7 +6,7 @@ from hna.hnl.formula import (
     Exists,
 )
 from .codegen_shared import CodeGenCpp
-from .atoms_ehl import CodeGenCpp as CodeGenCppAtomsMon
+from hna.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
 from hna.hnl.codegen.utils import _split_formula
 
 
@@ -208,7 +208,7 @@ class CodeGenCpp(CodeGenCpp):
                 embedded=True,
             )
         else:
-            nested_cg = CodeGenCppAtomsMon(
+            nested_cg = get_atoms_codegen(self.args.logic)(
                 self.sub_name(),
                 self.args,
                 self.ctx,
