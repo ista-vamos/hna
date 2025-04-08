@@ -1,6 +1,22 @@
 from hna.hnl.formula import IsPrefix
 
 
+class ConstBDDNode:
+    """Class for BDD which is either True or False"""
+
+    def __init__(self, formula, bdd):
+        self.formula = formula
+        self.bddvar = bdd
+        self.ltrace = None
+        self.lvar = None
+        self.rtrace = None
+        self.rvar = None
+        self.automaton = None
+
+    def get_id(self):
+        return 1
+
+
 class BDDNode:
     _id_cnt = 0
 

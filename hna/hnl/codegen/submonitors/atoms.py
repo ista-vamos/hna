@@ -4,7 +4,7 @@ from os.path import basename
 from pyeda.boolalg.bdd import bddvar
 
 from hna.codegen_common.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode
+from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from hna.hnl.formula import IsPrefix, And, Or, Not, TrivialTrue
 
 from .codegen_shared import CodeGenCpp as CodeGenCppShared
@@ -124,9 +124,10 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 if isinstance(F, TrivialTrue):
                     # turn the BDD node into TRUE
                     v = v | ~v
-                nd = BDDNode(F, v)
-                self._bdd_nodes.append(nd)
-                self._bdd_vars_to_nodes[v] = nd
+                else:
+                    nd = BDDNode(F, v)
+                    self._bdd_nodes.append(nd)
+                    self._bdd_vars_to_nodes[v] = nd
                 return v
             if isinstance(F, And):
                 return gen_bdd(F.children[0]) & gen_bdd(F.children[1])
@@ -140,6 +141,13 @@ class CodeGenCppAtoms(CodeGenCppShared):
         if self.args.debug:
             with self.new_dbg_file("BDD.dot") as f:
                 f.write(BDD.to_dot())
+
+        if BDD.is_one() or BDD.is_zero():
+            assert not self._bdd_nodes, self._bdd_nodes
+            # we have constructed no BDD nodes, because we have only the trivial BDD true/false.
+            # But even for true/false, we need to build the atom (a special one).
+            # Add this special BDDNode
+            self._bdd_nodes.append(ConstBDDNode(formula.formula, BDD))
 
         self.BDD = BDD
 
@@ -192,26 +200,34 @@ class CodeGenCppAtoms(CodeGenCppShared):
             f.write("/* ATOM, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
             f.write("constexpr FormulaEvaluationState BDD[][3] = {\n")
             f.write("  {INVALID, INVALID, INVALID},\n")
-            seen = set()
-            wbg = set()
-            wbg.add(self.BDD)
             rows = {}
-            while wbg:
-                bdd = wbg.pop()
-                if bdd in seen or bdd.is_one() or bdd.is_zero():
-                    continue
-                seen.add(bdd)
 
-                hi = bdd.restrict({bdd: 1})
-                lo = bdd.restrict({bdd: 0})
-                wbg.add(hi)
-                wbg.add(lo)
+            if self.BDD.is_zero() or self.BDD.is_one():
+                rows[1] = f"  {{ ATOM_1, RESULT_TRUE, RESULT_FALSE }} ,\n"
+            else:
+                seen = set()
+                wbg = set()
+                wbg.add(self.BDD)
+                while wbg:
+                    bdd = wbg.pop()
+                    if bdd in seen:  # or bdd.is_one() or bdd.is_zero():
+                        continue
+                    seen.add(bdd)
 
-                nd = self._bdd_vars_to_nodes[bdd.top]
-                assert nd.get_id() not in rows, rows
-                rows[nd.get_id()] = (
-                    f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n"
-                )
+                    hi = bdd.restrict({bdd: 1})
+                    lo = bdd.restrict({bdd: 0})
+                    wbg.add(hi)
+                    wbg.add(lo)
+
+                    if bdd.top:
+                        nd = self._bdd_vars_to_nodes[bdd.top]
+                        assert nd.get_id() not in rows, rows
+                        rows[nd.get_id()] = (
+                            f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n"
+                        )
+                    else:
+                        if bdd.is_zero():
+                            pass
 
             idxs = sorted(rows)
             for idx in idxs:
@@ -223,9 +239,14 @@ class CodeGenCppAtoms(CodeGenCppShared):
             # FIXME: TRUE and FALSE BDDs still may break this code,
             # we need to handle them on some higher level (ideally just do not create this instance
             # and immediately solve it)
-            nd = self._bdd_vars_to_nodes[self.BDD.top or self.BDD]
+            BDD = self.BDD
+            if BDD.top:
+                nd_id = self._bdd_vars_to_nodes[BDD.top].get_id()
+            else:
+                assert BDD.is_one() or BDD.is_zero(), BDD
+                nd_id = 1
             f.write(
-                f"static constexpr FormulaEvaluationState INITIAL_ATOM = ATOM_{nd.get_id()};\n"
+                f"static constexpr FormulaEvaluationState INITIAL_ATOM = ATOM_{nd_id};\n"
             )
 
     def _create_instance(self, formula, wr):

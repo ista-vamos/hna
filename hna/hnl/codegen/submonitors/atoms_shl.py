@@ -5,7 +5,7 @@ from os import makedirs
 from hna.automata.automaton import Automaton
 from hna.automata.transducers import Var, Reg, Value, Eps
 from hna.codegen_common.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode
+from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue
 from hna.hnl.formula2automata import (
     formula_to_automaton,
@@ -892,7 +892,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         for nd in self._bdd_nodes:
             # no automaton for this one, we'll handle that explicitly
-            if isinstance(nd.formula, TrivialTrue):
+            if isinstance(nd, ConstBDDNode):
                 continue
             nd.automaton = self.generate_atomic_comparison_automaton(nd)
 
