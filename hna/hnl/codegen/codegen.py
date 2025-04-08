@@ -50,8 +50,8 @@ def check_formula(formula, args):
             )
 
 
-def has_alphabet(alphabet, data) -> bool:
-    return bool(alphabet) or get_num_range(data) is not None
+def has_alphabet(alphabet, args) -> bool:
+    return bool(alphabet) or bool(args.alphabet) or get_num_range(args.data) is not None
 
 
 class CodeGenCpp(CodeGen):
@@ -385,7 +385,7 @@ class CodeGenCpp(CodeGen):
         check_formula(formula, self.args)
 
         if self.args.logic == "ehl":
-            if not has_alphabet(alphabet, self.args.data):
+            if not has_alphabet(alphabet, self.args):
                 raise RuntimeError("No finite alphabet given, cannot use eHL logic.")
 
             self.args.alphabet = alphabet or self._get_alphabet()
@@ -459,7 +459,7 @@ class CodeGenCpp(CodeGen):
     def _get_alphabet(self):
         alphabet = self.args.alphabet
         if alphabet:
-            alphabet = [Constant(a) for a in alphabet]
+            alphabet = [Constant(a) for a in alphabet.split(',')]
         else:
             data = self.args.data
             num_range = get_num_range(data)
