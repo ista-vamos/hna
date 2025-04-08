@@ -459,7 +459,7 @@ class CodeGenCpp(CodeGen):
     def _get_alphabet(self):
         alphabet = self.args.alphabet
         if alphabet:
-            alphabet = [Constant(a) for a in alphabet.split(',')]
+            alphabet = [Constant(a) for a in alphabet.split(",")]
         else:
             data = self.args.data
             num_range = get_num_range(data)

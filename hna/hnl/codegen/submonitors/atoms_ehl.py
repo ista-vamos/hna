@@ -446,6 +446,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         dump_codegen_position(wrh)
         wrh('#include "regular-atom-monitor.h"\n\n')
         wrh('#include "atom-identifier.h"\n\n')
+        wrh('#include "evaluation-state.h"\n')
+        wrh('#include "ehl-evaluation-stateset.h"\n\n')
 
         wrh(self.namespace_start())
         wrh("\n\n")
