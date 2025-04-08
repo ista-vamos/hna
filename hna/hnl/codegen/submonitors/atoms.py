@@ -5,7 +5,7 @@ from pyeda.boolalg.bdd import bddvar
 
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
-from hna.hnl.formula import IsPrefix, And, Or, Not
+from hna.hnl.formula import IsPrefix, And, Or, Not, TrivialTrue
 
 from .codegen_shared import CodeGenCpp as CodeGenCppShared
 
@@ -121,6 +121,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
             """
             if isinstance(F, IsPrefix):
                 v = bddvar(str(F))
+                if isinstance(F, TrivialTrue):
+                    # turn the BDD node into TRUE
+                    v = v | ~v
                 nd = BDDNode(F, v)
                 self._bdd_nodes.append(nd)
                 self._bdd_vars_to_nodes[v] = nd
@@ -215,6 +218,10 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 f.write(rows[idx])
 
             f.write("};\n\n")
+
+            # trivial BDDs do not yield any initial atom
+            if self.BDD.is_one() or self.BDD.is_zero():
+                return
 
             dump_codegen_position(f)
             f.write(

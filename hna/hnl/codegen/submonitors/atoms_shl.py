@@ -6,7 +6,7 @@ from hna.automata.automaton import Automaton
 from hna.automata.transducers import Var, Reg, Value, Eps
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
-from hna.hnl.formula import IsPrefix, PrenexFormula, Function
+from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -108,13 +108,36 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_automata_code(formula)
         self._generate_atom_monitor()
 
+    def _generate_trivial_atom(self, nd):
+        num, F = nd.get_id(), nd.formula
+
+        if nd.bddvar.is_one():
+            result = "Verdict::TRUE"
+        elif nd.bddvar.is_zero():
+            result = "Verdict::FALSE"
+        else:
+            raise NotImplementedError("Unknown BDD node")
+
+        values = {
+            "@monitor_name@": self.name(),
+            "@namespace@": self.namespace(),
+            "@namespace_start@": self.namespace_start(),
+            "@namespace_end@": self.namespace_end(),
+            # "@info@": f"Monitor for '{nd.formula}'",
+            "@formula@": str(nd.formula),
+            "@verdict@": result,
+            "@atom_num@": str(num),
+        }
+
+        self.gen_file("atom-trivial.h.in", f"atom-{num}.h", values)
+
     def _generate_automata_code(self, formula):
         generated_automata = {}
         for nd in self._bdd_nodes:
-            print("Generating code for", nd.get_id(), ":", nd.formula)
-            assert nd.automaton
-
             num, F = nd.get_id(), nd.formula
+            print("Generating code for", nd.get_id(), ":", F)
+
+            # check duplicate atoms
             # duplicate_num = generated_automata.get(
             #    (nd.lvar, nd.rvar, nd.automaton.get_id())
             # )
@@ -128,11 +151,19 @@ class CodeGenCpp(CodeGenCppAtoms):
             #        self._atoms_files.append(f"atom-{num}.cpp")
             #    continue
 
-            self._generate_atom_headers(F, nd, num)
-
+            # generate the CPP file
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 self._generate_atom(fcpp.write, formula, nd)
             self._atoms_files.append(f"atom-{num}.cpp")
+
+            # generate the headers
+            if nd.bddvar.is_zero() or nd.bddvar.is_one():
+                self._generate_trivial_atom(nd)
+                continue
+
+            assert nd.automaton, f"{formula}"
+            self._generate_atom_headers(F, nd, num)
+
             generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
 
         with self.new_file("atom-identifier.h") as f:
@@ -192,10 +223,11 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         t1 = nd.ltrace or None
         t2 = nd.rtrace or None
-        if not (t1 or t2):
-            raise NotImplementedError("This case is unsupported yet")
-        if not t1:
-            raise NotImplementedError("This case is unsupported yet")
+        if not (nd.bddvar.is_zero() or nd.bddvar.is_one()):
+            if not (t1 or t2):
+                raise NotImplementedError("This case is unsupported yet")
+            if not t1:
+                raise NotImplementedError("This case is unsupported yet")
 
         if t1 and isinstance(t1, Function):
             # just strip off the function as its transducer has been composed into the automaton
@@ -212,7 +244,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         identifier = "AtomIdentifier{st"
         for q in formula.quantifiers():
-            if q.var.name in (t1.name, t2.name):
+            if t1 and t2 and q.var.name in (t1.name, t2.name):
                 identifier += f",instance.{q.var.name}->id()"
             else:
                 identifier += ",0"
@@ -221,18 +253,21 @@ class CodeGenCpp(CodeGenCppAtoms):
             f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt) \n  :"
             f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
         )
-        assert (
-            len(automaton.initial_states()) == 1
-        ), f"Automaton {num} has multiple initial states"
+        if (
+            automaton
+        ):  # TRUE or FALSE nodes of BDD does not have an associated automaton
+            assert (
+                len(automaton.initial_states()) == 1
+            ), f"Automaton {num} does not have exactly one initial states"
 
-        # FIXME: this is a guess, we should properly use default constructors for register values...
-        registers_defaults = args_str(
-            ("&default_event" for _ in (automaton.registers() or ()))
-        )
-        wrcpp(
-            "Event default_event;\n"
-            f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0 {registers_defaults.comma_prefixed()});\n"
-        )
+            # FIXME: this is a guess, we should properly use default constructors for register values...
+            registers_defaults = args_str(
+                ("&default_event" for _ in (automaton.registers() or ()))
+            )
+            wrcpp(
+                "Event default_event;\n"
+                f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0 {registers_defaults.comma_prefixed()});\n"
+            )
         wrcpp("}\n\n")
 
         t1_instance = f"instance.{t1}" if t1 else "nullptr"
@@ -246,12 +281,17 @@ class CodeGenCpp(CodeGenCppAtoms):
         identifier += "}"
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{ }}\n\n"
         )
+
+        if not automaton:
+            # if this is the BDD node TRUE or FALSE,
+            # we have generated all that we need (the ctors)
+            return
+
         assert (
             len(automaton.initial_states()) == 1
-        ), f"Automaton {num} has multiple initial states"
-        wrcpp("}\n\n")
+        ), f"Automaton {num} does not have exactly one initial states"
 
         wrcpp(f"/* THE AUTOMATON FOR THE ATOM */\n")
         for state in automaton.states():
@@ -670,7 +710,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         if not lvar and not rvar:
             raise RuntimeError(
-                "The comparison is only between regular expressions, no traces."
+                f"No traces in the formula: '{formula}'. We do not support this case."
             )
 
         A1 = self._automata.get(nformula.children[0])
@@ -690,9 +730,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         else:
             print(f"Hit cache for {nformula.children[1]}")
 
-        # NOTE: we do not cache this one
         A = automaton_for_prefixing(A1, A2, lvar, rvar)
-        # Ap = to_priority_automaton(A)
 
         A1.remove_redundant_states_once()
         A2.remove_redundant_states_once()
@@ -853,6 +891,9 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._gen_bdd_from_formula(formula)
 
         for nd in self._bdd_nodes:
+            # no automaton for this one, we'll handle that explicitly
+            if isinstance(nd.formula, TrivialTrue):
+                continue
             nd.automaton = self.generate_atomic_comparison_automaton(nd)
 
         # def gen_automaton(F):
