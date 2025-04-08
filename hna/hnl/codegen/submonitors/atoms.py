@@ -219,13 +219,13 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
             f.write("};\n\n")
 
-            # trivial BDDs do not yield any initial atom
-            if self.BDD.is_one() or self.BDD.is_zero():
-                return
-
             dump_codegen_position(f)
+            # FIXME: TRUE and FALSE BDDs still may break this code,
+            # we need to handle them on some higher level (ideally just do not create this instance
+            # and immediately solve it)
+            nd = self._bdd_vars_to_nodes[self.BDD.top or self.BDD]
             f.write(
-                f"static constexpr FormulaEvaluationState INITIAL_ATOM = {bdd_to_action(self.BDD.top)};\n"
+                f"static constexpr FormulaEvaluationState INITIAL_ATOM = ATOM_{nd.get_id()};\n"
             )
 
     def _create_instance(self, formula, wr):
