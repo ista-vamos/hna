@@ -41,6 +41,18 @@ class ProcessAST(Transformer):
     def funtrace(self, items):
         return (items[0], items[1])
 
+    def boolconst(self, items):
+        assert len(items) == 1
+        return items[0]
+
+    def const_true(self, items):
+        assert not items, items
+        return TrivialTrue()
+
+    def const_false(self, items):
+        assert not items, items
+        return Not(TrivialTrue())
+
     def quantifier(self, items):
         # our grammar assumes prenex form, so the quantifiers are just forall/exists and a name
         if items[0].data == "forall":

@@ -1034,3 +1034,23 @@ class IsPrefix(Formula):
     @cached_str
     def __str__(self) -> str:
         return f"({self.children[0]} ≤ {self.children[1]})"
+
+
+class TrivialTrue(IsPrefix):
+    """Formula representing a trivial true"""
+
+    def __init__(self):
+        super().__init__(EPSILON, EPSILON)
+
+    def is_simple(self) -> bool:
+        return True
+
+    def rename_traces(self, t1, t2) -> Formula:
+        pass
+
+    def rename_variables(self, v1, v2, t1=None, t2=None) -> Formula:
+        pass
+
+    @cached_str
+    def __str__(self) -> str:
+        return f"TRUE"
