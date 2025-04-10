@@ -425,6 +425,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         lvar, rvar = nd.lvar, nd.rvar
         l_automaton_registers = automaton.origin()[0].registers() or ()
         registers = automaton.registers() or ()
+        reg_types = '\n'.join(f"using {r.c_name()}_t = Event;" for r in registers)
+        reg_fields = '\n'.join(f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers)
         self.gen_file(
             "atom-evaluation-state.h.in",
             f"atom-{num}-evaluation-state.h",
@@ -435,8 +437,8 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@namespace_end@": self.namespace_end(),
                 "@atom_num@": str(num),
                 # "@registers_types@": f"{'\n'.join(f"using {r.c_name()}_t = decltype (Event().{lvar if r in l_automaton_registers else rvar});" for r in registers)}",
-                "@registers_types@": f"{'\n'.join(f"using {r.c_name()}_t = Event;" for r in registers)}",
-                "@registers_fields@": f"{'\n'.join(f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers)}",
+                "@registers_types@": reg_types,
+                "@registers_fields@": reg_fields,
                 "@registers_args@": args_str(
                     f"const Atom{num}EvaluationState::{r.c_name()}_t *{r.c_name()}"
                     for r in registers
@@ -968,10 +970,11 @@ def debug_code_transition(wrcpp, registers):
 
 def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
     out = f" [{', '.join(map(str, t.label.condition))}]" if t.label.condition else ""
+    assignm = ', '.join(map(str, t.label.assignment or ()))
     wrcpp(
         f" /* {t} */\n "
         "#ifdef DEBUG_PRINTS\n"
         # f' std::cerr << "  -- {lvar}(left) = {symbol[0]}; {rvar}(right) = {symbol[1]} -->\\n";\n'
-        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {', '.join(map(str, t.label.assignment or ()))} -->\\n";\n'
+        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {assignm} -->\\n";\n'
         "#endif /* !DEBUG_PRINTS */\n"
     )
