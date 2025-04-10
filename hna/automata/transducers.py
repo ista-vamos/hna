@@ -771,6 +771,9 @@ def substitute_lst(lst, subst):
 
 
 def parse_condition(cond, var, attrs):
+    if not cond:
+        return []
+
     terms = cond.split(",")
     cond = []
     for term in terms:
@@ -818,7 +821,7 @@ def transducer_from_yaml(path, attrs):
                     T.get(str(source)),
                     TransitionLabel(
                         var,
-                        parse_condition(edge["condition"], var, attrs),
+                        parse_condition(edge.get("condition"), var, attrs),
                         None,
                         output,
                     ),

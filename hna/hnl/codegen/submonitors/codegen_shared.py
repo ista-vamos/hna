@@ -55,7 +55,7 @@ class CodeGenCpp(CodeGen):
                     )
 
                 if self.args.reduction:
-                    self._gen_create_instance_reduced(formula, n, wr)
+                    self._gen_create_instance_reduced(formula, wr)
                 else:
                     self._gen_create_instance(formula, traceset, q2set, wr)
 

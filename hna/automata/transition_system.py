@@ -200,13 +200,13 @@ class TransitionSystem:
     def transitions_to(self, state: State):
         T = self._transitions_to.get(state)
         if T is None:
-            return T
+            return []
         return [t for vals in T.values() for t in vals]
 
     def transitions_from(self, state: State):
         T = self._transitions_from.get(state)
         if T is None:
-            return T
+            return []
         return [t for vals in T.values() for t in vals]
 
     def clear_transitions(self):
@@ -276,8 +276,7 @@ class AccInitTransitionSystem(TransitionSystem):
                     accessible.add(state)
                     new_queue.extend(
                         t.target
-                        for vals in self.transitions(state).values()
-                        for t in vals
+                        for t in self.transitions_from(state)
                     )
             queue, new_queue = new_queue, []
 
