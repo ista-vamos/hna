@@ -124,6 +124,9 @@ def parse_arguments():
     if args.input_formula is None:
         raise RuntimeError("ERROR: Got no input formula.")
 
+    if args.data is None:
+        raise RuntimeError("ERROR: need --data parameter")
+
     print(args)
 
     return args
