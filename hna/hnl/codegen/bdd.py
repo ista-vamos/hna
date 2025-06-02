@@ -1,4 +1,4 @@
-from hna.hnl.formula import IsPrefix
+from hna.hnl.formula import Comparison
 
 
 class ConstBDDNode:
@@ -20,11 +20,11 @@ class ConstBDDNode:
 class BDDNode:
     _id_cnt = 0
 
-    def __init__(self, formula: IsPrefix, bddvar):
+    def __init__(self, formula: Comparison, bddvar):
         BDDNode._id_cnt += 1
         self._id = BDDNode._id_cnt
 
-        assert isinstance(formula, IsPrefix), formula
+        assert isinstance(formula, Comparison), formula
         self.formula = formula
         assert len(formula.children) == 2, formula.children
         l, r = formula.children

@@ -30,8 +30,9 @@ _prio1: land | lor
 _prio2: neg | _prio3
 neg: "!" _prio3
 
-_prio3: boolconst | is_prefix | "(" _qf_formula ")"
+_prio3: boolconst | is_prefix | is_eq | "(" _qf_formula ")"
 is_prefix: traceformula "<=" traceformula
+is_eq: traceformula "=" traceformula
 boolconst: const_true | const_false
 const_true: "true"
 const_false: "false"

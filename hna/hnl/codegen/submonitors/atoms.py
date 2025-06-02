@@ -5,7 +5,7 @@ from pyeda.boolalg.bdd import bddvar
 
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from hna.hnl.formula import IsPrefix, And, Or, Not, TrivialTrue
+from hna.hnl.formula import Comparison, IsPrefix, And, Or, Not, TrivialTrue
 
 from .codegen_shared import CodeGenCpp as CodeGenCppShared
 
@@ -119,7 +119,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
             Recursively build BDD from the formula and create the mapping
             between atoms and BDD variables. Each atom represents a variable.
             """
-            if isinstance(F, IsPrefix):
+            if isinstance(F, Comparison):
                 v = bddvar(str(F))
                 if isinstance(F, TrivialTrue):
                     # turn the BDD node into TRUE

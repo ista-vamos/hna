@@ -1,7 +1,5 @@
 from copy import copy
 
-from hna.automata.automaton import Automaton
-
 from .formula import (
     Constant as FormulaConstant,
     IsPrefix,
@@ -199,8 +197,8 @@ def rename(lst, subst_map):
     return [rename_lst(x, subst_map.items()) for x in lst]
 
 
-def automaton_for_prefixing(
-    left: SymbolicTransducer, right: SymbolicTransducer, lproj, rproj
+def automaton_for_comparison(
+    left: SymbolicTransducer, right: SymbolicTransducer, lproj, rproj, aut: str
 ) -> SymbolicTransducer:
     """
     Compute the symbolic register automaton that accepts inputs of two transducers (left and right)
@@ -315,6 +313,13 @@ def automaton_for_prefixing(
 
     states = {(l, r): State(str(TupleLabel((l, r)))) for (l, r) in states}
 
+    if aut == "pref":
+        accepting_states = [states[s] for s in states.keys() if left.is_accepting(s[0])]
+    elif aut == "eq":
+        accepting_states = [states[s] for s in states.keys() if left.is_accepting(s[0]) and right.is_accepting(s[0])]
+    else:
+        raise NotImplementedError("Unknown type of comparison")
+
     return SymbolicTransducer(
         states=list(states.values()),
         registers=registers or None,
@@ -324,6 +329,6 @@ def automaton_for_prefixing(
             for s in states.keys()
             if left.is_initial(s[0]) and right.is_initial(s[1])
         ],
-        accepting_states=[states[s] for s in states.keys() if left.is_accepting(s[0])],
+        accepting_states=accepting_states,
         origin=(left, right),
     )

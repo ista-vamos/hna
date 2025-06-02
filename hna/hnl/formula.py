@@ -978,8 +978,7 @@ class Or(Formula):
     def __str__(self):
         return f"({self.children[0]}) ∨ ({self.children[1]})"
 
-
-class IsPrefix(Formula):
+class Comparison(Formula):
     def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:
         assert isinstance(formula1, TraceFormula), formula1
         assert isinstance(formula2, TraceFormula), formula1
@@ -1008,7 +1007,7 @@ class IsPrefix(Formula):
                 {rpv[0]: ProgramVariable(rpv[0].name, TraceVariable(t2))}
             )
 
-        return IsPrefix(lhs, rhs)
+        return type(self)(lhs, rhs)
 
     def rename_variables(self, v1, v2, t1=None, t2=None) -> Formula:
         """
@@ -1029,11 +1028,23 @@ class IsPrefix(Formula):
                 {rpv[0]: ProgramVariable(v2, TraceVariable(t2) if t2 else rpv[0].trace)}
             )
 
-        return IsPrefix(lhs, rhs)
+        return type(self)(lhs, rhs)
+
+class IsPrefix(Comparison):
+    def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:
+        super().__init__(formula1, formula2)
 
     @cached_str
     def __str__(self) -> str:
         return f"({self.children[0]} ≤ {self.children[1]})"
+
+class IsEq(Comparison):
+    def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:
+        super().__init__(formula1, formula2)
+
+    @cached_str
+    def __str__(self) -> str:
+        return f"({self.children[0]} = {self.children[1]})"
 
 
 class TrivialTrue(IsPrefix):

@@ -6,14 +6,14 @@ from hna.automata.automaton import Automaton
 from hna.automata.transducers import Var, Reg, Value, Eps
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue
+from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue, IsEq
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,
 )
 from .atoms import CodeGenCppAtoms
-from ...formula2transducers import Formula2Transducer, automaton_for_prefixing
+from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
 
 class args_str(str):
@@ -347,6 +347,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         ns = f"{self._namespace}::" if self._namespace else ""
 
+        dump_codegen_position(wrcpp)
         wrcpp(f"Verdict AtomMonitor{num}::step(unsigned /* num_steps */) {{\n")
         wrcpp(
             f"""
@@ -363,6 +364,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 // Would that be more efficient? (It also means bigger configurations...)
             """
         )
+
         if t1:
             wrcpp(
                 f"""
@@ -389,11 +391,15 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
         else:
             wrcpp("constexpr auto ev2ty = TraceQuery::END;")
+
         debug_code_state(ns, t1, t2, wrcpp, automaton.registers() or ())
-        if t1:
+
+        dump_codegen_position(wrcpp)
+        
+        if isinstance(atom_formula, IsEq):
             wrcpp(
                 f"""
-                    if (ev1ty == TraceQuery::END) {{
+                    if (ev1ty == TraceQuery::END && ev2ty == TraceQuery::END) {{
                         if (state_is_accepting(cfg.state)) {{
                             return Verdict::TRUE;
                         }}
@@ -401,16 +407,20 @@ class CodeGenCpp(CodeGenCppAtoms):
             """
             )
         else:
-            assert t2
+            assert isinstance(atom_formula, IsPrefix), formula
+            assert t1 or t2
+            evty = 'ev1ty' if t1 else 'ev2ty'
+
             wrcpp(
                 f"""
-                    if (ev2ty == TraceQuery::END) {{
+                    if ({evty} == TraceQuery::END) {{
                         if (state_is_accepting(cfg.state)) {{
                             return Verdict::TRUE;
                         }}
                     }}
             """
             )
+
         ev1 = "ev1ty == TraceQuery::END ? nullptr : &ev1" if t1 else "nullptr"
         ev2 = "ev2ty == TraceQuery::END ? nullptr : &ev2" if t2 else "nullptr"
         wrcpp(f"_step(cfg, {ev1}, {ev2});")
@@ -732,7 +742,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         else:
             print(f"Hit cache for {nformula.children[1]}")
 
-        A = automaton_for_prefixing(A1, A2, lvar, rvar)
+        A = automaton_for_comparison(A1, A2, lvar, rvar, aut="pref" if isinstance(nformula, IsPrefix) else "eq")
 
         A1.remove_redundant_states_once()
         A2.remove_redundant_states_once()

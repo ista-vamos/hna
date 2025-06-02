@@ -31,6 +31,9 @@ class ProcessAST(Transformer):
     def is_prefix(self, items):
         return IsPrefix(items[0], items[1])
 
+    def is_eq(self, items):
+        return IsEq(items[0], items[1])
+
     def stutter_reduce(self, items):
         return StutterReduce(items[0])
 
