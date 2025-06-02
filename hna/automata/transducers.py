@@ -210,6 +210,32 @@ class Condition:
     pass
 
 
+class TraceFinished:
+    def __init__(self, t):
+        self._trace = t
+
+    @property
+    def trace(self):
+        return self._trace
+
+    def subst(self, s):
+        what, by = s
+        new = copy(self)
+
+        if what == self.trace:
+            new._trace = by
+
+        return new
+
+    def c_code(self):
+        return f"{self.trace}->finished()"
+
+    def __str__(self) -> str:
+        return f'END({self.trace})'
+
+
+
+
 class BinaryPredicate(Condition):
     def __init__(self, lhs, rhs):
         self._lhs = lhs
