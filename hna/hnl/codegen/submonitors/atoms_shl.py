@@ -3,7 +3,7 @@ import re
 from os import makedirs
 
 from hna.automata.automaton import Automaton
-from hna.automata.transducers import Var, Reg, Value, Eps
+from hna.automata.transducers import Var, Reg, Value, Eps, TraceFinished, Transition
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue, IsEq
@@ -37,13 +37,21 @@ def subst_lst(c, lst):
     return c
 
 
-def condition_code(t, subst=None):
-    cond = t.label.condition
-    if subst:
-        c_cond = "&&".join(subst_lst(c, subst or []).c_code() for c in cond)
-    else:
-        c_cond = "&&".join(c.c_code() for c in cond)
+def condition_code(t, subst=None, trace2ev=None):
+    _cond = t.label.condition
+    cond, finished_cond = [], []
+    for c in _cond:
+        finished_cond.append(c) if isinstance(c, TraceFinished) else cond.append()
 
+    if subst:
+        cond = [subst_lst(c, subst or []).c_code() for c in cond]
+    else:
+        cond = [c.c_code() for c in cond]
+
+    # The pointer to event is nullptr for traces that finished
+    cond.extend((f'{trace2ev[c.trace]} == nullptr' for c in finished_cond))
+
+    c_cond = "&&".join(cond)
     if c_cond == "":
         return "true"
     return c_cond
@@ -572,12 +580,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         transitions = automaton.transitions_from(state)
 
         for t in transitions:
-            symbol = t.label.symbol
+            symbols = t.label.symbols
             ### Handle epsilon steps
-            if symbol[0].is_eps():
-                if symbol[1].is_eps():
-                    self.handle_epsilon_step(automaton, t, lvar, rvar, wrcpp)
-                else:
+            if not symbols:
+                self.handle_epsilon_step(automaton, t, lvar, rvar, wrcpp)
+            elif t.is_input_eps():
                     ### Handle left-epsilon steps
                     self.handle_left_epsilon_step(automaton, t, lvar, rvar, wrcpp)
             elif symbol[1].is_eps():
@@ -599,15 +606,16 @@ class CodeGenCpp(CodeGenCppAtoms):
             "}\n\n"
         )
 
-    def handle_symbols(self, automaton, t, lvar, rvar, wrcpp):
+    def handle_symbols(self, automaton, t: Transition, lvar, rvar, wrcpp):
         dump_codegen_position(wrcpp)
         symbol = t.label.symbol
         reg_substitution = [
             (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
         ]
+        evs = [Var("ev1"), Var("ev2")]
         cond = condition_code(
-            t,
-            [(symbol[0], Var(f"ev1")), (symbol[1], Var(f"ev2"))] + reg_substitution,
+            t, list(zip(symbol, evs)) + reg_substitution,
+            evs
         )
         wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
         debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
@@ -742,10 +750,13 @@ class CodeGenCpp(CodeGenCppAtoms):
         else:
             print(f"Hit cache for {nformula.children[1]}")
 
-        A = automaton_for_comparison(A1, A2, lvar, rvar, aut="pref" if isinstance(nformula, IsPrefix) else "eq")
-
         A1.remove_redundant_states_once()
         A2.remove_redundant_states_once()
+
+        A = automaton_for_comparison(A1, A2, aut_type="pref" if isinstance(nformula, IsPrefix) else "eq")
+
+        A.remove_redundant_states_once()
+
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:
@@ -985,6 +996,6 @@ def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
         f" /* {t} */\n "
         "#ifdef DEBUG_PRINTS\n"
         # f' std::cerr << "  -- {lvar}(left) = {symbol[0]}; {rvar}(right) = {symbol[1]} -->\\n";\n'
-        f' std::cerr << "  -- \033[0;0m{lvar}(left) = {t.label.symbol[0]} # {rvar}(right) = {t.label.symbol[1]}\033[0m{out} ; {assignm} -->\\n";\n'
+        f' std::cerr << "  -- \033[0;0m{t.label.symbols}\033[0m{out} ; {assignm} -->\\n";\n'
         "#endif /* !DEBUG_PRINTS */\n"
     )

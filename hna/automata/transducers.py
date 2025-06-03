@@ -2,6 +2,7 @@ from copy import copy
 from itertools import chain
 
 from hna.automata.transition_system import AccInitTransitionSystem, Transition, State
+from hna.hnl.formula import TraceVariable
 
 
 class Value:
@@ -82,8 +83,12 @@ class Constant(Value):
 
 
 class Var(Value):
-    def __init__(self, v):
-        super().__init__(v)
+    """
+    A variable representing a symbol of a trace.
+    """
+
+    def __init__(self, name):
+        super().__init__(name)
 
     def is_var(self) -> bool:
         return True
@@ -98,7 +103,7 @@ class Var(Value):
         return f"Var({self.value})"
 
     def __str__(self):
-        return str(self.value)
+        return f'{self.value}'
 
     def ord(self):
         return "3", self.value, "z"
@@ -326,63 +331,76 @@ class Assignment:
         return new
 
 
-class TransitionLabel:
-    def __init__(
-        self, symbol: (Value, tuple), condition: list, assign: list, output: Value
-    ):
-        assert not isinstance(
-            symbol, Reg
-        ), f"We do not allow a register to be transition symbol: {symbol}"
-        self._symbol = symbol
+# TODO: rename to "TransitionLabel" after renaming "SymbolicTransducer" to "MST" ("Multi-trace symbolic transducer")
+class TransitionMultiLabel:
+    def __init__(self, symbols: dict, condition: list, assign: list, output: Value):
+        assert all(isinstance(k, Var) for k in symbols.values()), symbols
+        assert all(isinstance(k, TraceVariable) for k in symbols.keys()), symbols
+
+        self._symbols = symbols
         self._cond = condition
         self._assign = assign
         self._output = output
 
-    @property
-    def output(self):
-        return self._output
 
     @property
-    def symbol(self):
-        return self._symbol
+    def symbols(self):
+        return self._symbols
+
 
     @property
     def assignment(self):
         return self._assign
 
+
     @property
     def condition(self):
         return self._cond
 
+
+    @property
+    def output(self):
+        return self._output
+
+
     @staticmethod
     def EPS():
-        return TransitionLabel(Eps(), [], [], Eps())
+        return TransitionMultiLabel({}, [], [], Eps())
+
 
     def is_eps(self):
+        """
+        Return `True` if the label is epsilon label in the classical sense: input-output epsilon with no conditions nor assignments.
+        """
         return (
-            self.symbol.is_eps()
-            and self.output.is_eps()
-            and not self.condition
-            and not self.assignment
+            self.is_output_eps() and self.is_input_eps()
         )
 
     def is_input_eps(self):
-        return self.symbol.is_eps()
+        return not self.symbols
 
     def is_output_eps(self):
         return self.output.is_eps()
 
+    def reset_trace(self, what, to):
+        return TransitionMultiLabel({
+            (to if k == what else k) : v
+            for k, v in self.symbols.items()
+        }, self.output)
+
     def __repr__(self):
-        out = f" / {self.output}" if self.output else ""
+        out = f" ↦ {self.output}" if self.output else ""
         assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
-        return f"TransitionLabel({self.symbol}{cond}{assign}{out})"
+        return f"TransitionLabel({self.symbols or "ε"}{cond}{assign}{out})"
+
 
     def __str__(self):
-        out = f" / {self.output}" if self.output else ""
+        out = f" ↦  {self.output}" if self.output else ""
         assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
-        return f"{self.symbol}{cond}{assign}{out}"
+        sym = ', '.join(f'{t}: {x}' for t,x in self.symbols.items())
+        return f"({sym or "ε"}){cond}{assign}{out}"
 
 
 class Transducer(AccInitTransitionSystem):
@@ -411,11 +429,27 @@ class SymbolicTransducer(Transducer):
         accepting_states: list = None,
         origin=None,
     ):
-        super().__init__(states, transitions, init_states, accepting_states, origin)
-        self._registers = registers
+        assert states is None or all(isinstance(s, State) for s in states)
+        assert init_states is None or all(isinstance(s, State) for s in init_states)
+        assert init_states is None or all(s in states for s in init_states)
+        assert accepting_states is None or all(isinstance(s, State) for s in accepting_states)
+        assert accepting_states is None or all(s in states for s in accepting_states)
+        assert registers is None or all(isinstance(r, Reg) for r in registers)
+        assert transitions is None or all(isinstance(t, Transition) for t in transitions)
 
+        self._registers = registers
+        # list of traces read by this transducer
+        self._traces = set() 
+
+        super().__init__(states, transitions, init_states, accepting_states, origin)
+
+    # FIXME: turn into a property
     def registers(self):
         return self._registers
+
+    @property
+    def traces(self):
+        return self._traces
 
     def copy(self, new_origin=None):
         return SymbolicTransducer(
@@ -428,7 +462,11 @@ class SymbolicTransducer(Transducer):
         )
 
     def has_eps_transitions(self):
-        return any((t.label.is_eps() for t in self.transitions()))
+        return any((t.is_eps() for t in self.transitions()))
+
+    def add_transition(self, t):
+        self._traces.add(t.label.symbols.values())
+        super().add_transition(t)
 
 
 def concat_transducers(left: SymbolicTransducer, right: SymbolicTransducer):

@@ -385,6 +385,11 @@ class TraceVariable(TraceFormula):
     def uniq_name(self) -> str:
         return str(self.name)
 
+    def __repr__(self):
+        return f'TraceVariable({self.name})'
+
+    def __str__(self):
+        return self.name
 
 class Function(TraceFormula):
     def __init__(self, name: Token, traces) -> None:
