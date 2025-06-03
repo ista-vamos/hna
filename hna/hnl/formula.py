@@ -386,10 +386,11 @@ class TraceVariable(TraceFormula):
         return str(self.name)
 
     def __repr__(self):
-        return f'TraceVariable({self.name})'
+        return f"TraceVariable({self.name})"
 
     def __str__(self):
         return self.name
+
 
 class Function(TraceFormula):
     def __init__(self, name: Token, traces) -> None:
@@ -983,6 +984,7 @@ class Or(Formula):
     def __str__(self):
         return f"({self.children[0]}) ∨ ({self.children[1]})"
 
+
 class Comparison(Formula):
     def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:
         assert isinstance(formula1, TraceFormula), formula1
@@ -1035,6 +1037,7 @@ class Comparison(Formula):
 
         return type(self)(lhs, rhs)
 
+
 class IsPrefix(Comparison):
     def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:
         super().__init__(formula1, formula2)
@@ -1042,6 +1045,7 @@ class IsPrefix(Comparison):
     @cached_str
     def __str__(self) -> str:
         return f"({self.children[0]} ≤ {self.children[1]})"
+
 
 class IsEq(Comparison):
     def __init__(self, formula1: TraceFormula, formula2: TraceFormula) -> None:

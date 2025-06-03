@@ -49,7 +49,7 @@ def condition_code(t, subst=None, trace2ev=None):
         cond = [c.c_code() for c in cond]
 
     # The pointer to event is nullptr for traces that finished
-    cond.extend((f'{trace2ev[c.trace]} == nullptr' for c in finished_cond))
+    cond.extend((f"{trace2ev[c.trace]} == nullptr" for c in finished_cond))
 
     c_cond = "&&".join(cond)
     if c_cond == "":
@@ -403,7 +403,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         debug_code_state(ns, t1, t2, wrcpp, automaton.registers() or ())
 
         dump_codegen_position(wrcpp)
-        
+
         if isinstance(atom_formula, IsEq):
             wrcpp(
                 f"""
@@ -417,7 +417,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         else:
             assert isinstance(atom_formula, IsPrefix), formula
             assert t1 or t2
-            evty = 'ev1ty' if t1 else 'ev2ty'
+            evty = "ev1ty" if t1 else "ev2ty"
 
             wrcpp(
                 f"""
@@ -443,8 +443,10 @@ class CodeGenCpp(CodeGenCppAtoms):
         lvar, rvar = nd.lvar, nd.rvar
         l_automaton_registers = automaton.origin()[0].registers() or ()
         registers = automaton.registers() or ()
-        reg_types = '\n'.join(f"using {r.c_name()}_t = Event;" for r in registers)
-        reg_fields = '\n'.join(f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers)
+        reg_types = "\n".join(f"using {r.c_name()}_t = Event;" for r in registers)
+        reg_fields = "\n".join(
+            f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers
+        )
         self.gen_file(
             "atom-evaluation-state.h.in",
             f"atom-{num}-evaluation-state.h",
@@ -585,8 +587,8 @@ class CodeGenCpp(CodeGenCppAtoms):
             if not symbols:
                 self.handle_epsilon_step(automaton, t, lvar, rvar, wrcpp)
             elif t.is_input_eps():
-                    ### Handle left-epsilon steps
-                    self.handle_left_epsilon_step(automaton, t, lvar, rvar, wrcpp)
+                ### Handle left-epsilon steps
+                self.handle_left_epsilon_step(automaton, t, lvar, rvar, wrcpp)
             elif symbol[1].is_eps():
                 ### Handle right-epsilon steps
                 self.handle_right_epsilon_step(automaton, t, lvar, rvar, wrcpp)
@@ -613,10 +615,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
         ]
         evs = [Var("ev1"), Var("ev2")]
-        cond = condition_code(
-            t, list(zip(symbol, evs)) + reg_substitution,
-            evs
-        )
+        cond = condition_code(t, list(zip(symbol, evs)) + reg_substitution, evs)
         wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
         debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
@@ -753,10 +752,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         A1.remove_redundant_states_once()
         A2.remove_redundant_states_once()
 
-        A = automaton_for_comparison(A1, A2, aut_type="pref" if isinstance(nformula, IsPrefix) else "eq")
+        A = automaton_for_comparison(
+            A1, A2, aut_type="pref" if isinstance(nformula, IsPrefix) else "eq"
+        )
 
         A.remove_redundant_states_once()
-
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:
@@ -991,7 +991,7 @@ def debug_code_transition(wrcpp, registers):
 
 def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
     out = f" [{', '.join(map(str, t.label.condition))}]" if t.label.condition else ""
-    assignm = ', '.join(map(str, t.label.assignment or ()))
+    assignm = ", ".join(map(str, t.label.assignment or ()))
     wrcpp(
         f" /* {t} */\n "
         "#ifdef DEBUG_PRINTS\n"

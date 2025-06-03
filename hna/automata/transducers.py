@@ -103,7 +103,7 @@ class Var(Value):
         return f"Var({self.value})"
 
     def __str__(self):
-        return f'{self.value}'
+        return f"{self.value}"
 
     def ord(self):
         return "3", self.value, "z"
@@ -236,9 +236,7 @@ class TraceFinished:
         return f"{self.trace}->finished()"
 
     def __str__(self) -> str:
-        return f'END({self.trace})'
-
-
+        return f"END({self.trace})"
 
 
 class BinaryPredicate(Condition):
@@ -342,39 +340,31 @@ class TransitionMultiLabel:
         self._assign = assign
         self._output = output
 
-
     @property
     def symbols(self):
         return self._symbols
-
 
     @property
     def assignment(self):
         return self._assign
 
-
     @property
     def condition(self):
         return self._cond
-
 
     @property
     def output(self):
         return self._output
 
-
     @staticmethod
     def EPS():
         return TransitionMultiLabel({}, [], [], Eps())
-
 
     def is_eps(self):
         """
         Return `True` if the label is epsilon label in the classical sense: input-output epsilon with no conditions nor assignments.
         """
-        return (
-            self.is_output_eps() and self.is_input_eps()
-        )
+        return self.is_output_eps() and self.is_input_eps()
 
     def is_input_eps(self):
         return not self.symbols
@@ -383,10 +373,9 @@ class TransitionMultiLabel:
         return self.output.is_eps()
 
     def reset_trace(self, what, to):
-        return TransitionMultiLabel({
-            (to if k == what else k) : v
-            for k, v in self.symbols.items()
-        }, self.output)
+        return TransitionMultiLabel(
+            {(to if k == what else k): v for k, v in self.symbols.items()}, self.output
+        )
 
     def __repr__(self):
         out = f" ↦ {self.output}" if self.output else ""
@@ -394,12 +383,11 @@ class TransitionMultiLabel:
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
         return f"TransitionLabel({self.symbols or "ε"}{cond}{assign}{out})"
 
-
     def __str__(self):
         out = f" ↦  {self.output}" if self.output else ""
         assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
-        sym = ', '.join(f'{t}: {x}' for t,x in self.symbols.items())
+        sym = ", ".join(f"{t}: {x}" for t, x in self.symbols.items())
         return f"({sym or "ε"}){cond}{assign}{out}"
 
 
@@ -432,14 +420,18 @@ class SymbolicTransducer(Transducer):
         assert states is None or all(isinstance(s, State) for s in states)
         assert init_states is None or all(isinstance(s, State) for s in init_states)
         assert init_states is None or all(s in states for s in init_states)
-        assert accepting_states is None or all(isinstance(s, State) for s in accepting_states)
+        assert accepting_states is None or all(
+            isinstance(s, State) for s in accepting_states
+        )
         assert accepting_states is None or all(s in states for s in accepting_states)
         assert registers is None or all(isinstance(r, Reg) for r in registers)
-        assert transitions is None or all(isinstance(t, Transition) for t in transitions)
+        assert transitions is None or all(
+            isinstance(t, Transition) for t in transitions
+        )
 
         self._registers = registers
         # list of traces read by this transducer
-        self._traces = set() 
+        self._traces = set()
 
         super().__init__(states, transitions, init_states, accepting_states, origin)
 

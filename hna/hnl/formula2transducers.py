@@ -41,9 +41,7 @@ def constant_transducer(formula):
         transitions=[
             Transition(
                 states[0],
-                TransitionMultiLabel(
-                    {}, [], [], Constant(formula.value)
-                ),
+                TransitionMultiLabel({}, [], [], Constant(formula.value)),
                 states[1],
             )
         ],
@@ -61,18 +59,14 @@ def trace_transducer(trace):
         transitions=[
             Transition(
                 states[0],
-                TransitionMultiLabel(
-                    {trace: Var("x")},
-                    [], [], Var("x")
-                ),
-                states[0]),
+                TransitionMultiLabel({trace: Var("x")}, [], [], Var("x")),
+                states[0],
+            ),
             Transition(
                 states[0],
-                TransitionMultiLabel(
-                    {}, [TraceFinished(trace)], [], Eps()
-                ),
-                states[1]
-            )
+                TransitionMultiLabel({}, [TraceFinished(trace)], [], Eps()),
+                states[1],
+            ),
         ],
         init_states=[states[0]],
         accepting_states=[states[1]],
@@ -189,8 +183,8 @@ def compose_transitions(left_t, right_t, reg_map):
             assign_r = label_r.assignment or []
     symbols_r = new_r
     output_l = label_l.output
-    #lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
-    #rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
+    # lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
+    # rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
     cond = simplify_condition(
         label_l.condition + rename(cond_r, reg_map) + [Eq(output_l, output_r)]
     )
@@ -309,22 +303,18 @@ def automaton_for_comparison(
                 print("##", left_t, "##", right_t)
                 if right_t.label.is_output_eps() or left_t.label.is_output_eps():
                     # these were handled separately
-                    print('  skip')
+                    print("  skip")
                     continue
 
                 # combine the transitions
-                new_t = compose_transitions(
-                    left_t, right_t, renamed_registers
-                )
+                new_t = compose_transitions(left_t, right_t, renamed_registers)
                 if new_t is None:
                     # the transition had UNSAT condition
                     continue
                 assert new_t[0] == state_pair
                 assert new_t[0] == (left_t.source, right_t.source)
                 assert new_t[2] == (left_t.target, right_t.target)
-                print(
-                   f"NEW_T: {new_t[0]} - {new_t[1]} -> {new_t[2]}"
-                )
+                print(f"NEW_T: {new_t[0]} - {new_t[1]} -> {new_t[2]}")
                 transitions.append(new_t)
                 # new_t[2] is the target of the new to-be-transition
                 if new_t[2] not in states:
@@ -337,7 +327,11 @@ def automaton_for_comparison(
     if aut_type == "pref":
         accepting_states = [states[s] for s in states.keys() if left.is_accepting(s[0])]
     elif aut_type == "eq":
-        accepting_states = [states[s] for s in states.keys() if left.is_accepting(s[0]) and right.is_accepting(s[1])]
+        accepting_states = [
+            states[s]
+            for s in states.keys()
+            if left.is_accepting(s[0]) and right.is_accepting(s[1])
+        ]
     else:
         raise NotImplementedError("Unknown type of comparison")
 

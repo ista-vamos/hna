@@ -274,10 +274,7 @@ class AccInitTransitionSystem(TransitionSystem):
             for state in queue:
                 if state not in accessible:
                     accessible.add(state)
-                    new_queue.extend(
-                        t.target
-                        for t in self.transitions_from(state)
-                    )
+                    new_queue.extend(t.target for t in self.transitions_from(state))
             queue, new_queue = new_queue, []
 
         # now, from reachable accepting states look backward for coaccessible states
