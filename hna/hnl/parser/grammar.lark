@@ -42,8 +42,13 @@ const_false: "false"
 ?concat: iter_or_conc ("." iter_or_conc)*
 ?iter_or_conc: _conc "*" -> iter
               | _conc
-_conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce
-stutter_reduce: "[" traceformula "]"
+_conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce | slice
+// we use [] and also [[]] for stutter reduction in the case
+// that [] would be ambiguous with slicing
+stutter_reduce: "[" traceformula "]" | "[[" traceformula "]]"
+
+slice: traceformula "[" constint ":" constint "]" | traceformula "[" constint "]"
+constint: INT
 seq: constant+
 
 progvar:  name "(" tracevar ")"
@@ -55,6 +60,7 @@ constant: /[a-zA-Z0-9]/
 name: NAME
 tracevar: NAME
 
+%import common.SIGNED_INT -> INT
 %import common.CNAME -> NAME
 %import common.WS
 %ignore WS

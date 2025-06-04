@@ -37,6 +37,14 @@ class ProcessAST(Transformer):
     def stutter_reduce(self, items):
         return StutterReduce(items[0])
 
+    def slice(self, items):
+        if len(items) == 2:
+            interval = int(items[1].value), int(items[1].value)
+        else:
+            assert len(items) == 3
+            interval = int(items[1].value), int(items[2].value)
+        return Slice(items[0], interval)
+
     def funcall(self, items):
         name = items[0].children[0].children[0]
         return Function(name, items[1:])
@@ -47,6 +55,10 @@ class ProcessAST(Transformer):
     def boolconst(self, items):
         assert len(items) == 1
         return items[0]
+
+    def constint(self, items):
+        assert len(items) == 1
+        return Constant(items[0])
 
     def const_true(self, items):
         assert not items, items

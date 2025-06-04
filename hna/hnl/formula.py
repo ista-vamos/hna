@@ -829,6 +829,30 @@ class StutterReduce(TraceFormula):
         return self.children[0].first()
 
 
+class Slice(TraceFormula):
+    def __init__(self, formula: Formula, interval: tuple) -> None:
+        assert isinstance(formula, TraceFormula), formula
+        super().__init__([formula])
+        self.interval = interval
+
+    @cached_str
+    def __str__(self) -> str:
+        i = self.interval
+        return f"{self.children[0]}[{i[0]}..{i[1]}]"
+
+    def nullable(self):
+        raise NotImplementedError("Slice does not support this")
+
+    def simplify(self) -> Formula:
+        return Slice(self.children[0].simplify(), self.interval)
+
+    def derivative(self, wrt: Constant) -> DerivativesSet:
+        raise NotImplementedError("Slice does not support this")
+
+    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+        raise NotImplementedError("Slice does not support this")
+
+
 def derivatives_fixpoint(formula: TraceFormula, wrt: Constant) -> DerivativesSet:
     assert isinstance(wrt, Constant), type(wrt)
     result = formula.derivative(wrt)
