@@ -12,12 +12,8 @@
  * Class encapsulating the evaluation of an atom on a pair of traces
  **/
 class RegularAtomMonitor : public AtomMonitor {
-protected:
-  Trace *t1;
-  Trace *t2;
-
 public:
-  RegularAtomMonitor(const AtomIdentifier& id, Trace *t1, Trace *t2) : AtomMonitor(id), t1(t1), t2(t2) {}
+  RegularAtomMonitor(const AtomIdentifier& id) : AtomMonitor(id) {}
 
   Verdict step(const unsigned step_num);
 };

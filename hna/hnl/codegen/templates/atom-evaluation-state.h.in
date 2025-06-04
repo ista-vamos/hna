@@ -1,29 +1,31 @@
-#ifndef ATOM_ @atom_num @_EVALUATION_STATE__ @monitor_name @
-#define ATOM_ @atom_num @_EVALUATION_STATE__ @monitor_name @
+#ifndef ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
+#define ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
+
+#include <vector>
 
 #include "events.h"
 
 @namespace_start@
 
-    using State = int;
+using State = int;
 
 struct EvaluationState {
-
-  EvaluationState(State s, unsigned p1, unsigned p2)
-      : state(s), p1(p1), p2(p2) {}
-};
-
-struct Atom @atom_num@EvaluationState : public EvaluationState {
   State state;
 
-     // position in the traces
-     @position_fields@
+  EvaluationState(State s) : state(s) {}
+};
 
-      // registers
-      @registers_types@ @registers_fields@
+struct Atom@atom_num@EvaluationState : public EvaluationState {
 
-      Atom @atom_num@EvaluationState(State s, @position_args@ @registers_args@)
-      : state(s), @registers_ctor@{}
+    // position in the traces
+    @position_fields@
+    
+    // registers
+    @registers_types@
+    @registers_fields@
+    
+    Atom@atom_num@EvaluationState(State s @position_args@ @registers_args@)
+    : EvaluationState(s) @position_ctor@ @registers_ctor@ {}
 };
 
 /**
@@ -31,13 +33,13 @@ struct Atom @atom_num@EvaluationState : public EvaluationState {
  * storage and are moved to the main storage only on an explicit call.
  * This is because we iterate over the vector when adding.
  */
-class Atom @atom_num@EvaluationStateSet
-    : public std::vector<Atom @atom_num@EvaluationState> {
-  std::vector<Atom @atom_num@EvaluationState> _new_cfgs;
+class Atom@atom_num@EvaluationStateSet
+    : public std::vector<Atom@atom_num@EvaluationState> {
+  std::vector<Atom@atom_num@EvaluationState> _new_cfgs;
 
 public:
-  void emplace_new(State s, unsigned p1, unsigned p2 @registers_args@) {
-    _new_cfgs.emplace_back(s, p1, p2 @registers_pass_args@);
+  void emplace_new(State s @position_args@ @registers_args@) {
+    _new_cfgs.emplace_back(s @position_pass_args@ @registers_pass_args@);
   }
 
   auto back_new() -> auto { return _new_cfgs.back(); }

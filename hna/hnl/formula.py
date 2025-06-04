@@ -379,6 +379,9 @@ class TraceVariable(TraceFormula):
     def __eq__(self, other: "TraceVariable") -> bool:
         return isinstance(other, TraceVariable) and self.name == other.name
 
+    def __lt__(self, other: "TraceVariable") -> bool:
+        return isinstance(other, TraceVariable) and self.name < other.name
+
     def trace_variables(self) -> List["TraceVariable"]:
         return [self]
 

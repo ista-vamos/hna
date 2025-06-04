@@ -17,16 +17,27 @@ from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
 
 class TranslationData:
-    def __init__(self, automaton, atom_formula):
+    def __init__(self, automaton, atom_formula, num):
         self.automaton = automaton
-        self.trace_to_ev = {t: Var(f"ev_{t.c_name()}") for t in automaton.traces}
+        # a list of traces to have a fixed order on them in the generated code
+        self.traces = sorted(list(automaton.traces))
         self.atom_formula = atom_formula
+        self.num = num
 
-    def trace_to_ev_arg(self, t) -> str:
-        return f"const Event *{self.trace_to_ev[t]}"
+        self.trace_to_ev = {t: Var(f"ev_{t.c_name()}") for t in self.traces}
 
-    def ev_as_args(self) -> str:
-        return ", ".join((self.trace_to_ev_arg(t) for t in self.automaton.traces))
+    @property
+    def events(self):
+        return [self.trace_to_ev[tr] for tr in self.traces]
+
+    def evs_pass_as_args(self) -> str:
+        return args_str(", ".join((self.trace_to_ev[t].c_name() for t in self.traces)))
+
+    def evs_as_args(self) -> str:
+        return args_str(", ".join((self._trace_to_ev_arg(t) for t in self.traces)))
+
+    def traces_as_args(self) -> str:
+        return args_str(", ".join(f"Trace *{tr.c_name()}" for tr in self.traces))
 
     def var_to_ev(self, transition) -> dict:
         # map variables of a transition to event pointers in the generated code
@@ -45,6 +56,9 @@ class TranslationData:
             substitution.append((x, self.trace_to_ev[tr]))
 
         return substitution
+
+    def _trace_to_ev_arg(self, t) -> str:
+        return f"const Event *{self.trace_to_ev[t]}"
 
 
 class args_str(str):
@@ -179,8 +193,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         # generated_automata = {}
 
         for nd in self._bdd_nodes:
-            num, F = nd.get_id(), nd.formula
-            print("Generating code for", nd.get_id(), ":", F)
+            num, atom_formula = nd.get_id(), nd.formula
+            print("Generating code for", nd.get_id(), ":", atom_formula)
 
             # check duplicate atoms
             # duplicate_num = generated_automata.get(
@@ -196,9 +210,11 @@ class CodeGenCpp(CodeGenCppAtoms):
             #        self._atoms_files.append(f"atom-{num}.cpp")
             #    continue
 
+            data = TranslationData(nd.automaton, atom_formula, num)
+
             # generate the CPP file
             with self.new_file(f"atom-{num}.cpp") as fcpp:
-                self._generate_atom(fcpp.write, formula, nd)
+                self._generate_atom(data, formula, fcpp.write)
             self._atoms_files.append(f"atom-{num}.cpp")
 
             # generate the headers
@@ -207,7 +223,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 continue
 
             assert nd.automaton, f"{formula}"
-            self._generate_atom_headers(F, nd, num)
+            self._generate_atom_headers(data)
 
             # generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
 
@@ -263,16 +279,11 @@ class CodeGenCpp(CodeGenCppAtoms):
             f.write("  default: abort();\n")
             f.write("}")
 
-    def _generate_atom(self, wrcpp, formula, nd):
-        atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
-
-        data = TranslationData(automaton, atom_formula)
+    def _generate_atom(self, data, formula: PrenexFormula, wrcpp):
+        atom_formula, num, automaton = data.atom_formula, data.num, data.automaton
 
         # get traces from this formula. Strip off the function as its transducer has been composed into the automaton
-        traces = [
-            t.traces[0] if isinstance(t, Function) else t
-            for t in formula.trace_variables()
-        ]
+        traces = [t.traces[0] if isinstance(t, Function) else t for t in data.traces]
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
@@ -288,10 +299,10 @@ class CodeGenCpp(CodeGenCppAtoms):
             else:
                 identifier += ",0"
         identifier += "}"
-        traces_args = args_str(", ".join(f"Trace *{t.c_name()}" for t in traces))
+        traces_args = args_str(", ".join(f"{t.c_name()}({t.c_name()})" for t in traces))
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st {traces_args.comma_prefixed()}) \n  :"
-            f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st {data.traces_as_args().comma_prefixed()}) \n  :"
+            f" RegularAtomMonitor({identifier}), {traces_args} {{\n\n"
         )
         if (
             automaton
@@ -304,9 +315,10 @@ class CodeGenCpp(CodeGenCppAtoms):
             registers_defaults = args_str(
                 ("&default_event" for _ in (automaton.registers() or ()))
             )
+            initial_positions = args_str(", ".join(str(0) for _ in data.traces))
             wrcpp(
                 "Event default_event;\n"
-                f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])}, 0, 0 {registers_defaults.comma_prefixed()});\n"
+                f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])} {initial_positions.comma_prefixed()} {registers_defaults.comma_prefixed()});\n"
             )
         wrcpp("}\n\n")
 
@@ -320,7 +332,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         identifier += "}"
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {instances_args.comma_prefixed()}) {{ }}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num} {instances_args.comma_prefixed()}) {{ }}\n\n"
         )
 
         if not automaton:
@@ -360,7 +372,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         wrcpp(
-            f"void AtomMonitor{num}::_step(Atom{num}EvaluationState &cfg, {data.ev_as_args()}) {{\n"
+            f"void AtomMonitor{num}::_step(Atom{num}EvaluationState &cfg, {data.evs_as_args()}) {{\n"
         )
 
         dump_codegen_position(wrcpp)
@@ -377,7 +389,9 @@ class CodeGenCpp(CodeGenCppAtoms):
                 wrcpp("/* DROP CFG */\n\n")
                 continue
             else:
-                wrcpp(f"stepState_{automaton.get_state_id(state)}(cfg, ev1, ev2);\n")
+                wrcpp(
+                    f"stepState_{automaton.get_state_id(state)}(cfg, {data.evs_pass_as_args()});\n"
+                )
                 wrcpp(f"break;\n")
 
         wrcpp(f" default : abort();\n ")
@@ -405,18 +419,19 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         events_args = []
-        for tr, ev in data.trace_to_ev.items():
+        for tr in data.traces:
+            ev = data.trace_to_ev[tr]
             wrcpp(
                 f"""
                     Event {ev};
-                    auto {ev}_status = t1->get(cfg.pos_{tr.c_name()}, {ev});
+                    auto {ev}_status = {tr.c_name()}->get(cfg.pos_{tr.c_name()}, {ev});
                     if ({ev}_status == TraceQuery::WAITING) {{
                         _cfgs.push_new(cfg);
                         continue;
                     }}
                 """
             )
-            events_args.append(ev.c_name());
+            events_args.append(f"&{ev.c_name()}")
             # else:
             #     wrcpp("constexpr auto ev1ty = TraceQuery::END;")
             #
@@ -454,14 +469,30 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n\n")
 
-    def _generate_atom_headers(self, atom_formula, nd: BDDNode, num: int):
-        automaton = nd.automaton
+    def _generate_atom_headers(self, data):
+        automaton = data.automaton
+        num = data.num
+
         l_automaton_registers = automaton.origin()[0].registers() or ()
         registers = automaton.registers() or ()
         reg_types = "\n".join(f"using {r.c_name()}_t = Event;" for r in registers)
         reg_fields = "\n".join(
             f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers
         )
+
+        position_args = args_str(
+            ", ".join(f"unsigned pos_{tr.c_name()}" for tr in data.traces)
+        )
+        position_pass_args = args_str(
+            ", ".join(f"pos_{tr.c_name()}" for tr in data.traces)
+        )
+        position_ctor = args_str(
+            ", ".join(f"pos_{tr.c_name()}(pos_{tr.c_name()})" for tr in data.traces)
+        )
+        position_fields = "\n".join(
+            f"unsigned pos_{tr.c_name()}{{0}};" for tr in data.traces
+        )
+
         self.gen_file(
             "atom-evaluation-state.h.in",
             f"atom-{num}-evaluation-state.h",
@@ -471,6 +502,10 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@namespace_start@": self.namespace_start(),
                 "@namespace_end@": self.namespace_end(),
                 "@atom_num@": str(num),
+                "@position_args@": position_args.comma_prefixed(),
+                "@position_pass_args@": position_pass_args.comma_prefixed(),
+                "@position_fields@": position_fields,
+                "@position_ctor@": position_ctor.comma_prefixed(),
                 "@registers_types@": reg_types,
                 "@registers_fields@": reg_fields,
                 "@registers_args@": args_str(
@@ -487,9 +522,10 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         with self.new_file(f"atom-{num}.h") as fh:
-            self._generate_atom_header(atom_formula, automaton, num, fh.write)
+            self._generate_atom_header(data, fh.write)
 
-    def _generate_atom_header(self, atom_formula, automaton, num, wrh):
+    def _generate_atom_header(self, data, wrh):
+        automaton, num = data.automaton, data.num
         wrh(
             f"""
         #ifndef _ATOM_{num}_H__{self.name()}
@@ -505,21 +541,22 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrh("\n\n")
 
         dump_codegen_position(wrh)
-        wrh(f"/* {atom_formula}*/\n")
+        wrh(f"/* {data.atom_formula}*/\n")
         wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
         wrh(f" Atom{num}EvaluationStateSet _cfgs;\n\n")
+        for tr in data.traces:
+            wrh(f"  Trace *{tr.c_name()};\n")
+        wrh("\n")
         for state in automaton.states():
             dump_codegen_position(wrh)
             wrh(
-                f"void stepState_{automaton.get_state_id(state)}(Atom{num}EvaluationState& cfg, const Event *ev1, const Event *ev2);\n"
+                f"void stepState_{automaton.get_state_id(state)}(Atom{num}EvaluationState& cfg, {data.evs_as_args()});\n"
             )
-        wrh(
-            f"void _step(Atom{num}EvaluationState &cfg, const Event *ev1, const Event *ev2);\n"
-        )
+        wrh(f"void _step(Atom{num}EvaluationState &cfg, {data.evs_as_args()});\n")
         wrh("public:\n")
         wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
         wrh(
-            f"AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt);\n\n"
+            f"AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, {data.traces_as_args()});\n\n"
         )
         wrh(f"Verdict step(unsigned num = 0);\n\n")
         wrh("};\n\n")
@@ -528,44 +565,46 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrh("#endif\n")
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
-        num, atom_formula = nd.get_id(), nd.formula
-
-        wrh(
-            f"""
-        #ifndef _ATOM_{num}_H__{self.name()}
-        #define _ATOM_{num}_H__{self.name()}
-        """
-        )
-        dump_codegen_position(wrh)
-        wrh(f'#include "atom-{duplicate_of}.h"\n\n')
-
-        wrh(self.namespace_start())
-        wrh("\n\n")
-
-        dump_codegen_position(wrh)
-        wrh(f"/* {atom_formula} */\n\n")
-        wrh(
-            f"/* This atom is a duplicate of AtomMonitor{duplicate_of} (but possibly trace inputs) */\n"
-        )
-        wrh(
-            f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
-            "public:\n"
-            f"  AtomMonitor{num}(const Instance&);\n"
-            f"}};\n"
-        )
-
-        wrh(self.namespace_end())
-        wrh("\n\n")
-        wrh("#endif\n")
-
-        wrcpp(f'#include "atom-{num}.h"\n\n')
-        if self._namespace:
-            wrcpp(f"using namespace {self._namespace};\n\n")
-
-        dump_codegen_position(wrcpp)
-        wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
-        )
+        raise NotImplementedError("Not re-implemented for transducers")
+        #
+        # num, atom_formula = nd.get_id(), nd.formula
+        #
+        # wrh(
+        #     f"""
+        # #ifndef _ATOM_{num}_H__{self.name()}
+        # #define _ATOM_{num}_H__{self.name()}
+        # """
+        # )
+        # dump_codegen_position(wrh)
+        # wrh(f'#include "atom-{duplicate_of}.h"\n\n')
+        #
+        # wrh(self.namespace_start())
+        # wrh("\n\n")
+        #
+        # dump_codegen_position(wrh)
+        # wrh(f"/* {atom_formula} */\n\n")
+        # wrh(
+        #     f"/* This atom is a duplicate of AtomMonitor{duplicate_of} (but possibly trace inputs) */\n"
+        # )
+        # wrh(
+        #     f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
+        #     "public:\n"
+        #     f"  AtomMonitor{num}(const Instance&);\n"
+        #     f"}};\n"
+        # )
+        #
+        # wrh(self.namespace_end())
+        # wrh("\n\n")
+        # wrh("#endif\n")
+        #
+        # wrcpp(f'#include "atom-{num}.h"\n\n')
+        # if self._namespace:
+        #     wrcpp(f"using namespace {self._namespace};\n\n")
+        #
+        # dump_codegen_position(wrcpp)
+        # wrcpp(
+        #     f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
+        # )
 
     def gen_handle_state(self, aut_num, data, wrcpp):
 
@@ -573,7 +612,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         for state in automaton.states():
             dump_codegen_position(wrcpp)
             wrcpp(
-                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, {data.ev_as_args()}) {{\n"
+                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, {data.evs_as_args()}) {{\n"
             )
 
             wrcpp(" bool matched = false;\n")
@@ -609,11 +648,22 @@ class CodeGenCpp(CodeGenCppAtoms):
         debug_code_transition_check(t, data, wrcpp)
         automaton = data.automaton
         update_registers = update_registers_code(t, data)
+        progress_traces = t.label.symbols.keys()
+        new_positions = args_str(
+            ", ".join(
+                (
+                    f"cfg.pos_{tr.c_name()} + 1"
+                    if tr in progress_traces
+                    else f"cfg.pos_{tr.c_name()}"
+                )
+                for tr in data.traces
+            )
+        )
         wrcpp(
             f"   matched = true;\n "
-            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, {new_positions} {update_registers.comma_prefixed()});\n "
         )
-        debug_code_transition(wrcpp, automaton.registers() or ())
+        debug_code_transition(wrcpp, data)
         # wrcpp("}\n")
         wrcpp("}\n")
 
@@ -844,7 +894,7 @@ def debug_code_state(ns, data, wrcpp):
     registers = data.automaton.registers() or ()
     reg = "<<".join(f'", " << "{r.c_name()}=" << cfg.{r.c_name()}' for r in registers)
     reg = reg + " << " if reg else ""
-    ids = '<< ", " <<'.join(f'{tr.c_name()}->id()' for tr in data.trace_to_ev.keys())
+    ids = '<< ", " <<'.join(f"{tr.c_name()}->id()" for tr in data.traces)
     wrcpp(
         f"""
             #ifdef DEBUG_PRINTS
@@ -852,13 +902,14 @@ def debug_code_state(ns, data, wrcpp):
         """
     )
 
-    for tr, ev in data.trace_to_ev.items():
+    for tr in data.traces:
+        ev = data.trace_to_ev[tr]
         wrcpp(
             f"""
                 if ({ev}_status == TraceQuery::END) {{
                     std::cerr << "END";
                 }} else {{
-                    std::cerr << ev1;
+                    std::cerr << {ev};
                 }}
             """
         )
@@ -872,15 +923,17 @@ def debug_code_state(ns, data, wrcpp):
     )
 
 
-def debug_code_transition(wrcpp, registers):
+def debug_code_transition(wrcpp, data):
     r_str = "<<".join(
-        f'", " << "{r.c_name()}=" << n_cfg.{r.c_name()}' for r in registers
+        f'", " << "{r.c_name()}=" << n_cfg.{r.c_name()}'
+        for r in (data.automaton.registers() or ())
     )
     r_str = r_str + " << " if r_str else ""
+    new_positions = '<< ", " <<'.join(f"n_cfg.pos_{tr.c_name()}" for tr in data.traces)
     wrcpp(
         "#ifdef DEBUG_PRINTS\n"
         "    const auto& n_cfg = _cfgs.back_new();\n"
-        f'   std::cerr << "\033[0;32m    => next (state " << n_cfg.state  << ", left[" << n_cfg.p1 << "], right[" << n_cfg.p2 << "]" << {r_str} ")\033[0m\\n";\n'
+        f'   std::cerr << "\033[0;32m    => next (state " << n_cfg.state  << ", [" << {new_positions} << "]" << {r_str} ")\033[0m\\n";\n'
         "#endif /* !DEBUG_PRINTS */\n"
     )
 
