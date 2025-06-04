@@ -367,7 +367,12 @@ class TransitionMultiLabel:
         """
         Return `True` if the label is epsilon label in the classical sense: input-output epsilon with no conditions nor assignments.
         """
-        return self.is_output_eps() and self.is_input_eps()
+        return (
+            self.is_output_eps()
+            and self.is_input_eps()
+            and (not self.condition)
+            and (not self.assignment)
+        )
 
     def is_input_eps(self):
         return not self.symbols
@@ -463,7 +468,7 @@ class SymbolicTransducer(Transducer):
         )
 
     def has_eps_transitions(self):
-        return any((t.is_eps() for t in self.transitions()))
+        return any((t.label.is_eps() for t in self.transitions()))
 
     def add_transition(self, t):
         for tr in t.label.symbols.keys():
@@ -650,12 +655,18 @@ def compose_transducers(
     Compute the sequential composition outer(inner).
     """
 
-    assert (
-        not inner.has_eps_transitions()
-    ), "Transducers in the composition cannot have epsilon transitions"
-    assert (
-        not outer.has_eps_transitions()
-    ), "Transducers in the composition cannot have epsilon transitions"
+    if inner.has_eps_transitions():
+        with open("/tmp/inner.dot", "w") as f:
+            inner.to_dot(f)
+        raise RuntimeError(
+            "Transducers in the composition cannot have epsilon transitions (see /tmp/inner.dot)"
+        )
+    if outer.has_eps_transitions():
+        with open("/tmp/outer.dot", "w") as f:
+            outer.to_dot(f)
+        raise RuntimeError(
+            "Transducers in the composition cannot have epsilon transitions (see /tmp/outer.dot)"
+        )
 
     # pairs of states that we will later translate to State. But for now, it is more comfortable
     # to work with pairs of states.

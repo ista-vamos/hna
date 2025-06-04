@@ -47,7 +47,7 @@ _conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce | slice
 // that [] would be ambiguous with slicing
 stutter_reduce: "[" traceformula "]" | "[[" traceformula "]]"
 
-slice: traceformula "[" constint ":" constint "]" | traceformula "[" constint "]"
+slice: traceformula "[" constint ".." constint "]" | traceformula "[" constint "]"
 constint: INT
 seq: constant+
 

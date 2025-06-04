@@ -7,8 +7,10 @@ from .formula import (
     Concat,
     Iter,
     ProgramVariable,
+    TraceVariable,
     Function,
     Plus,
+    Slice,
 )
 from .formula2automata import TupleLabel
 from ..automata.transducers import (
@@ -75,6 +77,48 @@ def trace_transducer(trace, projection: str):
     )
 
 
+def positive_slice_transducer(interval):
+    # we need some dummy trace that serves as the input to the transducer
+    trace = TraceVariable("<dummy-in>")
+    i, j = interval
+    assert 0 <= i <= j
+    states = [State("b0")]
+    acc = []
+    transitions = []
+    # drop i - 1 letters from the word
+    for n in range(1, i + 1):
+        s1, s2 = states[-1], State(f"b{n}")
+        states.append(s2)
+        transitions.append(
+            Transition(s1, TransitionMultiLabel({trace: Var("x")}, [], [], Eps()), s2)
+        )
+    # copy letters from i-th position to j-1th position
+    for n in range(i + 1, j + 2):
+        s1, s2 = states[-1], State(f"b{n}")
+        states.append(s2)
+        acc.append(s2)
+        transitions.append(
+            Transition(
+                s1, TransitionMultiLabel({trace: Var("x")}, [], [], Var("x")), s2
+            )
+        )
+
+    # drop the rest
+    s = states[-1]
+    transitions.append(
+        Transition(s, TransitionMultiLabel({trace: Var("x")}, [], [], Eps()), s),
+    )
+
+    return SymbolicTransducer(
+        states=states,
+        registers=[],
+        transitions=transitions,
+        init_states=[states[0]],
+        accepting_states=acc,
+        origin=None,
+    )
+
+
 class Formula2Transducer:
     def __init__(self, data_funs=()):
         self._data_funs = data_funs
@@ -111,6 +155,12 @@ class Formula2Transducer:
                 return self.projection_transducer(formula)
             return trace_transducer(formula.trace, formula.name)
 
+        if isinstance(formula, Slice):
+            assert len(formula.children) == 1, formula
+            return self.slice_transducer(
+                self.formula_to_transducer(formula.children[0]), formula
+            )
+
         raise NotImplementedError(f"Unhandled formula: {formula}")
 
     def stutter_reduce_transducer(self, T: SymbolicTransducer, formula):
@@ -141,6 +191,17 @@ class Formula2Transducer:
             accepting_states=states,
             origin=formula,
         )
+        return compose_transducers(T, ST, origin=formula)
+
+    def slice_transducer(self, T: SymbolicTransducer, formula):
+        interval = formula.interval
+        if 0 <= interval[0] <= interval[1]:
+            ST = positive_slice_transducer(interval)
+            with open("/tmp/t.dot", "w") as f:
+                ST.to_dot(f)
+        else:
+            raise NotImplementedError(f"This slicing is not implemented: {formula}")
+
         return compose_transducers(T, ST, origin=formula)
 
     def projection_transducer(self, formula):
