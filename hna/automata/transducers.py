@@ -788,11 +788,9 @@ def propagate_constants(cond, consts):
 
 
 def simplify_condition(cond):
-    print("ORIG", cond)
     # remove repeated terms
     cond = remove_duplicates(cond)
     cond = remove_trivial(cond)
-    print(cond)
 
     # TODO: do this properly with SMT solver?
     eq_classes = get_eq_classes(cond)

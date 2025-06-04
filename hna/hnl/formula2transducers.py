@@ -183,13 +183,11 @@ def compose_transitions(left_t, right_t, reg_map):
             assign_r = label_r.assignment or []
     symbols_r = new_r
     output_l = label_l.output
-    print(output_l, output_r)
     # lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
     # rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
     cond = simplify_condition(
         label_l.condition + rename(cond_r, reg_map) + [Eq(output_l, output_r)]
     )
-    print(cond)
     if cond is None:
         # the condition is UNSAT
         return None
@@ -306,10 +304,9 @@ def automaton_for_comparison(
                 for lt in left.transitions_from(state_pair[0])
                 for rt in right.transitions_from(state_pair[1])
             ):
-                print("##", left_t, "##", right_t)
+                # print("##", left_t, "##", right_t)
                 if right_t.label.is_output_eps() or left_t.label.is_output_eps():
                     # these were handled separately
-                    print("  skip")
                     continue
 
                 # combine the transitions
@@ -320,7 +317,7 @@ def automaton_for_comparison(
                 assert new_t[0] == state_pair
                 assert new_t[0] == (left_t.source, right_t.source)
                 assert new_t[2] == (left_t.target, right_t.target)
-                print(f"NEW_T: {new_t[0]} - {new_t[1]} -> {new_t[2]}")
+                # print(f"NEW_T: {new_t[0]} - {new_t[1]} -> {new_t[2]}")
                 transitions.append(new_t)
                 # new_t[2] is the target of the new to-be-transition
                 if new_t[2] not in states:

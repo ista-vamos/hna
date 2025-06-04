@@ -78,7 +78,6 @@ def condition_code(t, data: TranslationData):
         finished_cond.append(c) if isinstance(c, TraceFinished) else cond.append(c)
 
     subst = data.condition_substitutions(t)
-    print(subst)
     if subst:
         cond = [subst_lst(c, subst or []).c_code() for c in cond]
     else:
