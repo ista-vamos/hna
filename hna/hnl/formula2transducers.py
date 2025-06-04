@@ -76,8 +76,7 @@ def trace_transducer(trace, projection: str):
 
 
 class Formula2Transducer:
-    def __init__(self, proj, data_funs=()):
-        self._proj = proj
+    def __init__(self, data_funs=()):
         self._data_funs = data_funs
 
     def formula_to_transducer(self, formula):

@@ -266,36 +266,26 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
 
-        t1 = nd.ltrace or None
-        t2 = nd.rtrace or None
-        if not (nd.bddvar.is_zero() or nd.bddvar.is_one()):
-            if not (t1 or t2):
-                raise NotImplementedError("This case is unsupported yet")
-            if not t1:
-                raise NotImplementedError("This case is unsupported yet")
-
-        if t1 and isinstance(t1, Function):
-            # just strip off the function as its transducer has been composed into the automaton
-            assert len(t1.traces) == 1
-            t1 = t1.traces[0]
-        if t2 and isinstance(t2, Function):
-            assert len(t2.traces) == 1
-            t2 = t2.traces[0]
+        # get traces from this formula. Strip off the function as its transducer has been composed into the automaton
+        traces = [t.traces[0] if isinstance(t, Function) else t for t in formula.trace_variables()]
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
             wrcpp(f"using namespace {self._namespace};\n\n")
         dump_codegen_position(wrcpp)
 
+        traces_names = [t.name for t in traces]
         identifier = "AtomIdentifier{st"
         for q in formula.quantifiers():
-            if t1 and t2 and q.var.name in (t1.name, t2.name):
-                identifier += f",instance.{q.var.name}->id()"
+            q_name = q.var.name
+            if q_name in traces_names:
+                identifier += f",instance.{q_name}->id()"
             else:
                 identifier += ",0"
         identifier += "}"
+        traces_args = args_str(', '.join(f'Trace *{t.c_name()}' for t in traces))
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt) \n  :"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st {traces_args.comma_prefixed()}) \n  :"
             f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
         )
         if (
@@ -660,24 +650,15 @@ class CodeGenCpp(CodeGenCppAtoms):
         #       with self.new_dbg_file(f"aut-{num}.dot") as f:
         #           A.to_dot(f)
         #   return A
-
-        # `lvar = lvar or rvar` because if lvar is None,
-        # then the comparison is between rvar and regular expressions, so
-        # the traces of regular expression describe traces of rvar and
-        # therefore `lvar or rvar` makes sense (because short-circuiting).
-        # Similarly the symmetrical case
-        rvar, lvar = bddnode.rvar, bddnode.lvar
-        rvar = rvar or lvar
-        lvar = lvar or rvar
-
-        if not lvar and not rvar:
+        #
+        if not formula.trace_variables():
             raise RuntimeError(
                 f"No traces in the formula: '{formula}'. We do not support this case."
             )
 
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
-            A1 = Formula2Transducer(lvar, self.args.data_fun).formula_to_transducer(
+            A1 = Formula2Transducer(self.args.data_fun).formula_to_transducer(
                 nformula.children[0]
             )
             self._automata[nformula.children[0]] = A1
@@ -685,7 +666,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             print(f"Hit cache for {nformula.children[0]}")
         A2 = self._automata.get(nformula.children[1])
         if A2 is None:
-            A2 = Formula2Transducer(rvar, self.args.data_fun).formula_to_transducer(
+            A2 = Formula2Transducer(self.args.data_fun).formula_to_transducer(
                 nformula.children[1]
             )
             self._automata[nformula.children[1]] = A2

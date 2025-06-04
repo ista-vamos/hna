@@ -70,7 +70,7 @@ def main(args):
     print("Functions: ", formula.functions())
 
     problems = formula.problems()
-    if not formula.is_simple():
+    if args.logic == 'ehl' and not formula.is_simple():
         problems.append("Formula is not simple, we require that for now")
     for problem in problems:
         print("\033[1;31m", problem, "\033[0m")

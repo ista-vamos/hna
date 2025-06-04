@@ -27,23 +27,7 @@ class BDDNode:
         assert isinstance(formula, Comparison), formula
         self.formula = formula
         assert len(formula.children) == 2, formula.children
-        l, r = formula.children
-        l, r = l.program_variables(), r.program_variables()
-        assert len(l) <= 1, l
-        assert len(r) <= 1, r
-        if l:
-            l = l[0]
-            self.ltrace = l.trace
-            self.lvar = l.name
-        else:
-            self.ltrace = self.lvar = None
-
-        if r:
-            r = r[0]
-            self.rtrace = r.trace
-            self.rvar = r.name
-        else:
-            self.rtrace = self.rvar = None
+        self.lformula, self.rformula = formula.children
 
         self.bddvar = bddvar
         # this automaton may be shared between multiple BDD nodes
