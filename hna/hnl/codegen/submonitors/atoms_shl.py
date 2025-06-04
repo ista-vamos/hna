@@ -366,7 +366,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         wrcpp(
-            f"void AtomMonitor{num}::_step(Atom{num}EvaluationState &cfg, const Event *ev1, const Event *ev2) {{\n"
+            f"void AtomMonitor{num}::_step(Atom{num}EvaluationState &cfg, {data.ev_as_args()}) {{\n"
         )
 
         dump_codegen_position(wrcpp)
@@ -477,7 +477,6 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def _generate_atom_headers(self, atom_formula, nd: BDDNode, num: int):
         automaton = nd.automaton
-        lvar, rvar = nd.lvar, nd.rvar
         l_automaton_registers = automaton.origin()[0].registers() or ()
         registers = automaton.registers() or ()
         reg_types = "\n".join(f"using {r.c_name()}_t = Event;" for r in registers)
@@ -493,7 +492,6 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@namespace_start@": self.namespace_start(),
                 "@namespace_end@": self.namespace_end(),
                 "@atom_num@": str(num),
-                # "@registers_types@": f"{'\n'.join(f"using {r.c_name()}_t = decltype (Event().{lvar if r in l_automaton_registers else rvar});" for r in registers)}",
                 "@registers_types@": reg_types,
                 "@registers_fields@": reg_fields,
                 "@registers_args@": args_str(
@@ -627,10 +625,10 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def handle_transition(self, t: Transition, data: TranslationData, wrcpp) -> None:
         dump_codegen_position(wrcpp)
+
         cond = condition_code(t, data)
         wrcpp(f" if ({cond}) {{\n ")
         debug_code_transition_check(t, data, wrcpp)
-        # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
         automaton = data.automaton
         update_registers = update_registers_code(t, data)
         wrcpp(
@@ -807,7 +805,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         if self._embedded:
             from_dir = self.common_templates_path
-            for f in ("atom-base.h", "evaluation-state.h"):
+            for f in ("atom-base.h",):
                 if f not in self.args.overwrite_file:
                     self.copy_file(f, from_dir=from_dir)
         else:
