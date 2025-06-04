@@ -176,7 +176,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atom-trivial.h.in", f"atom-{num}.h", values)
 
     def _generate_automata_code(self, formula):
-        generated_automata = {}
+        # generated_automata = {}
+
         for nd in self._bdd_nodes:
             num, F = nd.get_id(), nd.formula
             print("Generating code for", nd.get_id(), ":", F)
@@ -208,7 +209,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             assert nd.automaton, f"{formula}"
             self._generate_atom_headers(F, nd, num)
 
-            generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
+            # generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self.namespace()
@@ -265,8 +266,13 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
 
+        data = TranslationData(automaton, atom_formula)
+
         # get traces from this formula. Strip off the function as its transducer has been composed into the automaton
-        traces = [t.traces[0] if isinstance(t, Function) else t for t in formula.trace_variables()]
+        traces = [
+            t.traces[0] if isinstance(t, Function) else t
+            for t in formula.trace_variables()
+        ]
 
         wrcpp(f'#include "atom-{num}.h"\n\n')
         if self._namespace:
@@ -282,7 +288,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             else:
                 identifier += ",0"
         identifier += "}"
-        traces_args = args_str(', '.join(f'Trace *{t.c_name()}' for t in traces))
+        traces_args = args_str(", ".join(f"Trace *{t.c_name()}" for t in traces))
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st {traces_args.comma_prefixed()}) \n  :"
             f" RegularAtomMonitor({identifier}, lt, rt) {{\n\n"
@@ -304,18 +310,17 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
         wrcpp("}\n\n")
 
-        t1_instance = f"instance.{t1}" if t1 else "nullptr"
-        t2_instance = f"instance.{t2}" if t2 else "nullptr"
+        instances_args = args_str(", ".join(f"instance.{t.c_name()}" for t in traces))
         identifier = f"AtomIdentifier{{ATOM_{num}"
         for q in formula.quantifiers():
-            if q.var.name in (t1, t2):
+            if q.var.name in traces_names:
                 identifier += f",instance.{q.var.name}->id()"
             else:
                 identifier += ",0"
         identifier += "}"
         dump_codegen_position(wrcpp)
         wrcpp(
-            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {t1_instance}, {t2_instance}) {{ }}\n\n"
+            f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{num}(instance, ATOM_{num}, {instances_args.comma_prefixed()}) {{ }}\n\n"
         )
 
         if not automaton:
@@ -347,7 +352,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(" };")
         wrcpp("}\n\n")
 
-        self.gen_handle_state(num, atom_formula, automaton, wrcpp)
+        self.gen_handle_state(num, data, wrcpp)
 
         dump_codegen_position(wrcpp)
         wrcpp(
@@ -399,34 +404,23 @@ class CodeGenCpp(CodeGenCppAtoms):
             """
         )
 
-        if t1:
+        events_args = []
+        for tr, ev in data.trace_to_ev.items():
             wrcpp(
                 f"""
-                    Event ev1;
-                    auto ev1ty = t1->get(cfg.p1, ev1);
-                    if (ev1ty == TraceQuery::WAITING) {{
+                    Event {ev};
+                    auto {ev}_status = t1->get(cfg.pos_{tr.c_name()}, {ev});
+                    if ({ev}_status == TraceQuery::WAITING) {{
                         _cfgs.push_new(cfg);
                         continue;
                     }}
                 """
             )
-        else:
-            wrcpp("constexpr auto ev1ty = TraceQuery::END;")
-        if t2:
-            wrcpp(
-                f"""
-                    Event ev2;
-                    auto ev2ty = t2->get(cfg.p2, ev2);
-                    if (ev2ty == TraceQuery::WAITING) {{
-                        _cfgs.push_new(cfg);
-                        continue;
-                    }}
-                """
-            )
-        else:
-            wrcpp("constexpr auto ev2ty = TraceQuery::END;")
-
-        debug_code_state(ns, t1, t2, wrcpp, automaton.registers() or ())
+            events_args.append(ev.c_name());
+            # else:
+            #     wrcpp("constexpr auto ev1ty = TraceQuery::END;")
+            #
+        debug_code_state(ns, data, wrcpp)
 
         dump_codegen_position(wrcpp)
 
@@ -442,12 +436,10 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
         else:
             assert isinstance(atom_formula, IsPrefix), formula
-            assert t1 or t2
-            evty = "ev1ty" if t1 else "ev2ty"
 
             wrcpp(
                 f"""
-                    if ({evty} == TraceQuery::END) {{
+                    if (XXX == TraceQuery::END) {{
                         if (state_is_accepting(cfg.state)) {{
                             return Verdict::TRUE;
                         }}
@@ -455,9 +447,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             """
             )
 
-        ev1 = "ev1ty == TraceQuery::END ? nullptr : &ev1" if t1 else "nullptr"
-        ev2 = "ev2ty == TraceQuery::END ? nullptr : &ev2" if t2 else "nullptr"
-        wrcpp(f"_step(cfg, {ev1}, {ev2});")
+        wrcpp(f"_step(cfg, {', '.join(events_args)});")
         wrcpp("}\n")
 
         wrcpp(f"_cfgs.rotate();")
@@ -577,10 +567,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
         )
 
-    def gen_handle_state(self, aut_num, atom_formula, automaton, wrcpp):
+    def gen_handle_state(self, aut_num, data, wrcpp):
 
-        data = TranslationData(automaton, atom_formula)
-
+        automaton = data.automaton
         for state in automaton.states():
             dump_codegen_position(wrcpp)
             wrcpp(
@@ -851,46 +840,30 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_monitor(formula)
 
 
-def debug_code_state(ns, t1, t2, wrcpp, registers):
-    t1id = "t1->id()" if t1 else '"-"'
-    t2id = "t2->id()" if t2 else '"-"'
-
+def debug_code_state(ns, data, wrcpp):
+    registers = data.automaton.registers() or ()
     reg = "<<".join(f'", " << "{r.c_name()}=" << cfg.{r.c_name()}' for r in registers)
     reg = reg + " << " if reg else ""
+    ids = '<< ", " <<'.join(f'{tr.c_name()}->id()' for tr in data.trace_to_ev.keys())
     wrcpp(
         f"""
             #ifdef DEBUG_PRINTS
-            std::cerr << "\033[0;36m{ns}Atom " << type() << " tr[" << {t1id} << ", " << {t2id} << "] @ state " << cfg.state << {reg} ".\\n";
-            std::cerr << "  left[" << cfg.p1 << "] : ";
+            std::cerr << "\033[0;36m{ns}Atom " << type() << " tr[" << {ids} << "] @ state " << cfg.state << {reg} ".\\n";
         """
     )
-    if t1:
+
+    for tr, ev in data.trace_to_ev.items():
         wrcpp(
             f"""
-                if (ev1ty == TraceQuery::END) {{
+                if ({ev}_status == TraceQuery::END) {{
                     std::cerr << "END";
                 }} else {{
                     std::cerr << ev1;
                 }}
             """
         )
-    else:
-        wrcpp('std::cerr << "-";')
 
-    wrcpp('std::cerr << "\\n  right["<< cfg.p2 <<"]: ";\n')
-
-    if t2:
-        wrcpp(
-            f"""
-                if (ev2ty == TraceQuery::END) {{
-                    std::cerr << "END";
-                }} else {{
-                    std::cerr << ev2;
-                }}
-            """
-        )
-    else:
-        wrcpp('std::cerr << "-";')
+        wrcpp(f'std::cerr << "\\n  {tr.c_name()}["<< cfg.pos_{tr.c_name()} <<"]: ";\n')
     wrcpp(
         f"""
             std::cerr << "\033[0m\\n";
