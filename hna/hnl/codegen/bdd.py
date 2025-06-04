@@ -28,11 +28,14 @@ class BDDNode:
         self.formula = formula
         assert len(formula.children) == 2, formula.children
         self.lformula, self.rformula = formula.children
+        self.original_formula = formula
 
         self.bddvar = bddvar
         # this automaton may be shared between multiple BDD nodes
         # if the automata for the nodes are isomorphic
         self.automaton = None
+        # renaming of trace variables (mapping from unique names to original names)
+        self.renaming = None
 
     def get_id(self):
         return self._id

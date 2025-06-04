@@ -6,7 +6,15 @@ from hna.automata.automaton import Automaton
 from hna.automata.transducers import Var, Reg, Value, Eps, TraceFinished, Transition
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from hna.hnl.formula import IsPrefix, PrenexFormula, Function, TrivialTrue, IsEq
+from hna.hnl.formula import (
+    IsPrefix,
+    PrenexFormula,
+    Function,
+    TrivialTrue,
+    IsEq,
+    TraceVariable,
+    Comparison,
+)
 from hna.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
@@ -17,24 +25,61 @@ from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
 
 class TranslationData:
-    def __init__(self, automaton, atom_formula, num):
-        self.automaton = automaton
+    def __init__(self, bddnode):
+        self.automaton = bddnode.automaton
+        # renamed trace variables
+        renaming = bddnode.renaming
         # a list of traces to have a fixed order on them in the generated code
-        self.traces = sorted(list(automaton.traces))
-        self.atom_formula = atom_formula
-        self.num = num
+        # These are the original traces without renaming
+        self.traces = sorted(
+            list(t for t in self.automaton.traces if t not in renaming)
+        )
+        self.atom_formula = bddnode.formula
+        self.num = bddnode.get_id()
 
-        self.trace_to_ev = {t: Var(f"ev_{t.c_name()}") for t in self.traces}
+        # if a trace appears in multiple projections, we have to keep track of
+        # the position for each of the projections.
+        # `traces_with_duplicates` will hold a list of all occurrences of trace variables,
+        # renamed to be unique -- as a list of pairs (unique_name, original_name).
+        tmp = {}
+        ltraces, rtraces = [], []
+        for t in (
+            p.trace
+            for p in self.atom_formula.children[0].program_variable_occurrences()
+        ):
+            ltraces.append((t, renaming.get(t, t)))
+        for t in (
+            p.trace
+            for p in self.atom_formula.children[1].program_variable_occurrences()
+        ):
+            rtraces.append((t, renaming.get(t, t)))
+
+        self.traces_with_duplicates = ltraces + rtraces
+        self.ltraces = ltraces
+        self.rtraces = rtraces
+
+        self.renaming = renaming
+        self.trace_to_ev = {
+            t: Var(f"ev_{t.c_name()}") for t, _ in self.traces_with_duplicates
+        }
 
     @property
     def events(self):
         return [self.trace_to_ev[tr] for tr in self.traces]
 
     def evs_pass_as_args(self) -> str:
-        return args_str(", ".join((self.trace_to_ev[t].c_name() for t in self.traces)))
+        return args_str(
+            ", ".join(
+                (self.trace_to_ev[t].c_name() for t, _ in self.traces_with_duplicates)
+            )
+        )
 
     def evs_as_args(self) -> str:
-        return args_str(", ".join((self._trace_to_ev_arg(t) for t in self.traces)))
+        return args_str(
+            ", ".join(
+                (self._trace_to_ev_arg(t) for t, _ in self.traces_with_duplicates)
+            )
+        )
 
     def traces_as_args(self) -> str:
         return args_str(", ".join(f"Trace *{tr.c_name()}" for tr in self.traces))
@@ -80,6 +125,32 @@ def subst_lst(c, lst):
     for s in lst:
         c = c.subst(s)
     return c
+
+
+def rename_trace_variables(formula: Comparison):
+    """
+    Rename trace variables to be unique.
+    Return a new formula with the renamed variables and a mapping
+    of new names to old names.
+    """
+    # create a copy of the formula -- we will modify this copy
+    formula = formula.substitute({})
+    tmp = {}
+    mapping = {}
+    traces = [p.trace for p in formula.program_variable_occurrences()]
+    for t in traces:
+        # increase the counter of this trace
+        n = tmp.setdefault(t, 0)
+        n += 1
+        tmp[t] = n
+
+        if n > 1:
+            new_name = f"{t.name}_{n}"
+            mapping[TraceVariable(new_name)] = TraceVariable(t.name)
+            # MODIFY the trace variable -- this way we modify only this
+            # occurrence
+            t.name = new_name
+    return formula, mapping
 
 
 def condition_code(t, data: TranslationData):
@@ -210,7 +281,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             #        self._atoms_files.append(f"atom-{num}.cpp")
             #    continue
 
-            data = TranslationData(nd.automaton, atom_formula, num)
+            data = TranslationData(nd)
 
             # generate the CPP file
             with self.new_file(f"atom-{num}.cpp") as fcpp:
@@ -315,7 +386,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             registers_defaults = args_str(
                 ("&default_event" for _ in (automaton.registers() or ()))
             )
-            initial_positions = args_str(", ".join(str(0) for _ in data.traces))
+            initial_positions = args_str(
+                ", ".join(str(0) for _ in data.traces_with_duplicates)
+            )
             wrcpp(
                 "Event default_event;\n"
                 f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])} {initial_positions.comma_prefixed()} {registers_defaults.comma_prefixed()});\n"
@@ -419,12 +492,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         events_args = []
-        for tr in data.traces:
+        for tr, tr_orig in data.traces_with_duplicates:
             ev = data.trace_to_ev[tr]
             wrcpp(
                 f"""
                     Event {ev};
-                    auto {ev}_status = {tr.c_name()}->get(cfg.pos_{tr.c_name()}, {ev});
+                    auto {ev}_status = {tr_orig.c_name()}->get(cfg.pos_{tr.c_name()}, {ev});
                     if ({ev}_status == TraceQuery::WAITING) {{
                         _cfgs.push_new(cfg);
                         continue;
@@ -454,19 +527,20 @@ class CodeGenCpp(CodeGenCppAtoms):
         atom_formula = data.atom_formula
         if isinstance(atom_formula, IsEq):
             # all traces must be finished
-            cond = " && ".join(f"{ev}_status == TraceQuery::END" for ev in data.events)
+            traces = data.traces_with_duplicates
         else:
             assert isinstance(atom_formula, IsPrefix), formula
             # only left traces must be finished
-            left_traces = atom_formula.children[0].trace_variables()
-            cond = " && ".join(
-                f"{data.trace_to_ev[tr]}_status == TraceQuery::END"
-                for tr in data.traces
-                if tr in left_traces
-            )
+            traces = data.ltraces
+
+        cond = " && ".join(
+            f"{data.trace_to_ev[tr]}_status == TraceQuery::END" for tr, _ in traces
+        )
 
         wrcpp(
             f"""
+            /* FIXME: keep a track of ended traces (e.g., in a bitstring that would become 0
+               once all traces are finished -- we would then check only for unfinished traces */
                  if (state_is_accepting(cfg.state)) {{
                      if ({cond}) {{
                          return Verdict::TRUE;
@@ -487,16 +561,21 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         position_args = args_str(
-            ", ".join(f"unsigned pos_{tr.c_name()}" for tr in data.traces)
+            ", ".join(
+                f"unsigned pos_{tr.c_name()}" for tr, _ in data.traces_with_duplicates
+            )
         )
         position_pass_args = args_str(
-            ", ".join(f"pos_{tr.c_name()}" for tr in data.traces)
+            ", ".join(f"pos_{tr.c_name()}" for tr, _ in data.traces_with_duplicates)
         )
         position_ctor = args_str(
-            ", ".join(f"pos_{tr.c_name()}(pos_{tr.c_name()})" for tr in data.traces)
+            ", ".join(
+                f"pos_{tr.c_name()}(pos_{tr.c_name()})"
+                for tr, _ in data.traces_with_duplicates
+            )
         )
         position_fields = "\n".join(
-            f"unsigned pos_{tr.c_name()}{{0}};" for tr in data.traces
+            f"unsigned pos_{tr.c_name()}{{0}};" for tr, _ in data.traces_with_duplicates
         )
 
         self.gen_file(
@@ -641,7 +720,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             "     #ifdef DEBUG_PRINTS\n"
             f'    std::cerr << "    => no transition matched\\n";\n'
             "     #endif /* !DEBUG_PRINTS */\n"
-            "     /* this was the least priority, drop the cfg */\n"
+            "     /* drop the cfg */\n"
             "     return;"
             "}\n\n"
         )
@@ -662,7 +741,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                     if tr in progress_traces
                     else f"cfg.pos_{tr.c_name()}"
                 )
-                for tr in data.traces
+                for tr, _ in data.traces_with_duplicates
             )
         )
         wrcpp(
@@ -699,6 +778,10 @@ class CodeGenCpp(CodeGenCppAtoms):
             raise RuntimeError(
                 f"No traces in the formula: '{formula}'. We do not support this case."
             )
+
+        # FIXME: don't overwrite it like this, do it more clearly (e.g., before bulding BDD)
+        nformula, renaming = rename_trace_variables(nformula)
+        bddnode.formula = nformula
 
         A1 = self._automata.get(nformula.children[0])
         if A1 is None:
@@ -739,7 +822,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         assert len(A.accepting_states()) > 0, f"Automaton has no accepting states"
         assert len(A.initial_states()) > 0, f"Automaton has no initial states"
 
-        return A
+        return A, renaming
 
     def generate_tests(self):
         print("-- Generating tests --")
@@ -885,13 +968,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             # no automaton for this one, we'll handle that explicitly
             if isinstance(nd, ConstBDDNode):
                 continue
-            nd.automaton = self.generate_atomic_comparison_automaton(nd)
-
-        # def gen_automaton(F):
-        #    if not isinstance(F, IsPrefix):
-        #        return
-
-        # formula.visit(gen_automaton)
+            nd.automaton, nd.renaming = self.generate_atomic_comparison_automaton(nd)
 
         self._generate_monitor(formula)
 
@@ -908,7 +985,7 @@ def debug_code_state(ns, data, wrcpp):
         """
     )
 
-    for tr in data.traces:
+    for tr, _ in data.traces_with_duplicates:
         ev = data.trace_to_ev[tr]
         wrcpp(f'std::cerr << "\\n  {tr.c_name()}["<< cfg.pos_{tr.c_name()} <<"]: ";\n')
         wrcpp(
@@ -935,7 +1012,9 @@ def debug_code_transition(wrcpp, data):
         for r in (data.automaton.registers() or ())
     )
     r_str = r_str + " << " if r_str else ""
-    new_positions = '<< ", " <<'.join(f"n_cfg.pos_{tr.c_name()}" for tr in data.traces)
+    new_positions = '<< ", " <<'.join(
+        f"n_cfg.pos_{tr.c_name()}" for tr, _ in data.traces_with_duplicates
+    )
     wrcpp(
         "#ifdef DEBUG_PRINTS\n"
         "    const auto& n_cfg = _cfgs.back_new();\n"
