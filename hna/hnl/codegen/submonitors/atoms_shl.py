@@ -610,20 +610,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         transitions = data.automaton.transitions_from(state)
 
         for t in transitions:
-            label = t.label
             self.handle_transition(t, data, wrcpp)
-            ### Handle epsilon steps
-        # if label.is_eps():
-        #    self.handle_epsilon_step(t, data, wrcpp)
-        # elif label.is_input_eps():
-        #    ### Handle left-epsilon steps
-        #    self.handle_left_epsilon_step(t, data, wrcpp)
-        # elif label.is_output_eps():
-        #    ### Handle right-epsilon steps
-        #    self.handle_right_epsilon_step(t, data, wrcpp)
-        # else:
-        #    ### Handle letters
-        #    self.handle_symbols(t, data, wrcpp)
+
         dump_codegen_position(wrcpp)
         wrcpp("if (matched) { return; }")
         # otherwise the matching failed
@@ -652,78 +640,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         debug_code_transition(wrcpp, automaton.registers() or ())
         # wrcpp("}\n")
         wrcpp("}\n")
-
-    def handle_symbols(self, t: Transition, data, wrcpp):
-        dump_codegen_position(wrcpp)
-        symbol = t.label.symbols
-        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
-        wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
-        debug_code_transition_check(t, data, wrcpp)
-        # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
-        var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
-        update_registers = update_registers_code(data.automaton, t, var_map)
-        wrcpp(
-            f"   matched = true;\n "
-            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
-        )
-        debug_code_transition(wrcpp, automaton.registers() or ())
-        # wrcpp("}\n")
-        wrcpp("}\n")
-
-    def handle_right_epsilon_step(self, t, data, wrcpp):
-        dump_codegen_position(wrcpp)
-        symbol = t.label.symbols
-        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
-        wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
-        debug_code_transition_check(t, data, wrcpp)
-        # wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
-        update_registers = args_str(
-            f"&cfg.{r.c_name()}" for r in automaton.registers() or ()
-        )
-        wrcpp(
-            f"   matched = true;\n "
-            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 {update_registers.comma_prefixed()});\n "
-        )
-        debug_code_transition(wrcpp, automaton.registers() or ())
-        # wrcpp("}\n")
-        wrcpp("}\n")
-
-    def handle_left_epsilon_step(self, t, data, wrcpp):
-
-        dump_codegen_position(wrcpp)
-        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
-        wrcpp(f" if (ev2 != nullptr && {cond}) {{\n")
-        debug_code_transition_check(t, data, wrcpp)
-        # wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
-
-        var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
-        update_registers = update_registers_code(automaton, t, var_map)
-        wrcpp(
-            f"   matched = true;\n "
-            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
-        )
-        debug_code_transition(wrcpp, automaton.registers() or ())
-        # wrcpp("}\n")
-        wrcpp("}\n")
-
-    def handle_epsilon_step(self, t, data, wrcpp):
-        debug_code_transition_check(data, Eps(), t, wrcpp)
-        automaton = data.automaton
-        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
-        wrcpp(f'/* COND: "{cond}"*/\n')
-        if cond == "false":
-            wrcpp("/* CONDITION UNSAT */")
-        elif cond != "true":
-            wrcpp(f"if ({cond}) ")
-        wrcpp("{")
-        dump_codegen_position(wrcpp)
-        update_registers = update_registers_code(automaton, t, {})
-        wrcpp(f"   matched = true;\n ")
-        wrcpp(
-            f"   _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1, cfg.p2 {update_registers.comma_prefixed()});\n "
-        )
-        debug_code_transition(wrcpp, automaton.registers() or ())
-        wrcpp("}")
 
     def generate_atomic_comparison_automaton(self, bddnode: BDDNode):
         assert isinstance(bddnode, BDDNode), bddnode
