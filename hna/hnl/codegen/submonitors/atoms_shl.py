@@ -800,14 +800,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         else:
             print(f"Hit cache for {nformula.children[1]}")
 
-        A1.remove_redundant_states_once()
-        A2.remove_redundant_states_once()
+        A1 = A1.remove_redundant_states_once()
+        A2 = A2.remove_redundant_states_once()
 
         A = automaton_for_comparison(
             A1, A2, aut_type="pref" if isinstance(nformula, IsPrefix) else "eq"
         )
 
-        A.remove_redundant_states_once()
+        A = A.remove_redundant_states_once()
 
         if self.args.debug:
             with self.new_dbg_file(f"aut-{num}-lhs.dot") as f:

@@ -263,7 +263,7 @@ class AccInitTransitionSystem(TransitionSystem):
         assert isinstance(state, State), (state, type(state))
         return self.has_label(state, "accepting")
 
-    def remove_redundant_states_once(self):
+    def get_usable_part(self):
         """Remove unreachable states and states from which no accepting state is reachable"""
         # raise NotImplementedError("Not working yet")
         # get reachable states
@@ -292,24 +292,16 @@ class AccInitTransitionSystem(TransitionSystem):
         accessible.intersection_update(coaccessible)
 
         changed = len(accessible) < len(self._states)
-        self._states = {s.name(): s for s in self.states() if s in accessible}
-        self._transitions = [
+        states = {s.name(): s for s in self.states() if s in accessible}
+        transitions = [
             t
             for t in self.transitions()
             if t.source in accessible and t.target in accessible
         ]
-        self._labeling["initial"] = [
-            s for s in self.initial_states() if s in accessible
-        ]
-        self._labeling["accepting"] = [
-            s for s in self.accepting_states() if s in accessible
-        ]
+        initial_states = [s for s in self.initial_states() if s in accessible]
+        accepting_states = [s for s in self.accepting_states() if s in accessible]
 
-        # FIXME
-        # Update also mappings, etc.
-        print(
-            "FIXME: update mappings, otherwise the transducers cannot be used after this method"
-        )
+        return states, transitions, initial_states, accepting_states
 
     def to_dot(self, output=stdout):
         print("digraph {", file=output)

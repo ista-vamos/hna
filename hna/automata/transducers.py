@@ -420,17 +420,23 @@ class SymbolicTransducer(Transducer):
         accepting_states: list = None,
         origin=None,
     ):
-        assert states is None or all(isinstance(s, State) for s in states)
-        assert init_states is None or all(isinstance(s, State) for s in init_states)
-        assert init_states is None or all(s in states for s in init_states)
+        assert states is None or all(isinstance(s, State) for s in states), states
+        assert init_states is None or all(
+            isinstance(s, State) for s in init_states
+        ), init_states
+        assert init_states is None or all(s in states for s in init_states), init_states
         assert accepting_states is None or all(
             isinstance(s, State) for s in accepting_states
-        )
-        assert accepting_states is None or all(s in states for s in accepting_states)
-        assert registers is None or all(isinstance(r, Reg) for r in registers)
+        ), accepting_states
+        assert accepting_states is None or all(
+            s in states for s in accepting_states
+        ), accepting_states
+        assert registers is None or all(
+            isinstance(r, Reg) for r in registers
+        ), registers
         assert transitions is None or all(
             isinstance(t, Transition) for t in transitions
-        )
+        ), transitions
 
         self._registers = registers
         # list of traces read by this transducer
@@ -463,6 +469,17 @@ class SymbolicTransducer(Transducer):
         for tr in t.label.symbols.keys():
             self._traces.add(tr)
         super().add_transition(t)
+
+    def remove_redundant_states_once(self):
+        states, trans, init, acc = self.get_usable_part()
+        return SymbolicTransducer(
+            states=list(states.values()),
+            registers=[Reg(reg.value) for reg in self.registers() or ()],
+            transitions=trans,
+            init_states=init,
+            accepting_states=acc,
+            origin=self.origin(),
+        )
 
 
 def concat_transducers(left: SymbolicTransducer, right: SymbolicTransducer):
