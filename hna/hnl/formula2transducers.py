@@ -51,15 +51,16 @@ def constant_transducer(formula):
     )
 
 
-def trace_transducer(trace):
+def trace_transducer(trace, projection: str):
     states = [State("v0"), State("vf")]
+    out = Var("x") if projection is None else Attr(Var("x"), projection)
     return SymbolicTransducer(
         states=states,
         registers=None,
         transitions=[
             Transition(
                 states[0],
-                TransitionMultiLabel({trace: Var("x")}, [], [], Var("x")),
+                TransitionMultiLabel({trace: Var("x")}, [], [], out),
                 states[0],
             ),
             Transition(
@@ -109,7 +110,7 @@ class Formula2Transducer:
         if isinstance(formula, ProgramVariable):
             if isinstance(formula.trace, Function):
                 return self.projection_transducer(formula)
-            return trace_transducer(formula.trace)
+            return trace_transducer(formula.trace, formula.name)
 
         raise NotImplementedError(f"Unhandled formula: {formula}")
 
@@ -176,18 +177,20 @@ def compose_transitions(left_t, right_t, reg_map):
             new_r[t] = newsym
             cond_r = rename(label_r.condition, subst)
             assign_r = rename(label_r.assignment or [], subst)
-            output_r = subst.get(output_r, output_r)
+            output_r = output_r.subst((x, newsym))
         else:
             new_r[t] = x
             cond_r = label_r.condition or []
             assign_r = label_r.assignment or []
     symbols_r = new_r
     output_l = label_l.output
+    print(output_l, output_r)
     # lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
     # rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
     cond = simplify_condition(
         label_l.condition + rename(cond_r, reg_map) + [Eq(output_l, output_r)]
     )
+    print(cond)
     if cond is None:
         # the condition is UNSAT
         return None
@@ -223,6 +226,10 @@ def automaton_for_comparison(
     such that the output of `left` is a prefix of (equal to) the output of `right`.
     We do not have a class for automata with registers, so we return a symbolic transducer
     that has no output.
+    NOTE: the automata for prefixing _rely" on the code generator that it stops reading the traces
+    once the left transducer accepts -- it does not generate a state that consumes the rest of the
+    output from the right transducer, so it cannot be used as a "normal" transducer that accepts
+    by the state after finishing reading all traces.
     """
 
     # Pairs of states that we will later translate to State. But for now, it is more comfortable

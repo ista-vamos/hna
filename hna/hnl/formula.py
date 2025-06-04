@@ -385,6 +385,9 @@ class TraceVariable(TraceFormula):
     def uniq_name(self) -> str:
         return str(self.name)
 
+    def c_name(self) -> str:
+        return self.uniq_name()
+
     def __repr__(self):
         return f"TraceVariable({self.name})"
 

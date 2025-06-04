@@ -105,6 +105,9 @@ class Var(Value):
     def __str__(self):
         return f"{self.value}"
 
+    def c_code(self):
+        return str(self)
+
     def ord(self):
         return "3", self.value, "z"
 
@@ -457,7 +460,8 @@ class SymbolicTransducer(Transducer):
         return any((t.is_eps() for t in self.transitions()))
 
     def add_transition(self, t):
-        self._traces.add(t.label.symbols.values())
+        for tr in t.label.symbols.keys():
+            self._traces.add(tr)
         super().add_transition(t)
 
 
@@ -784,9 +788,11 @@ def propagate_constants(cond, consts):
 
 
 def simplify_condition(cond):
+    print("ORIG", cond)
     # remove repeated terms
     cond = remove_duplicates(cond)
     cond = remove_trivial(cond)
+    print(cond)
 
     # TODO: do this properly with SMT solver?
     eq_classes = get_eq_classes(cond)

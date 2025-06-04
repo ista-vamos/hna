@@ -16,6 +16,37 @@ from .atoms import CodeGenCppAtoms
 from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
 
+class TranslationData:
+    def __init__(self, automaton, atom_formula):
+        self.automaton = automaton
+        self.trace_to_ev = {t: Var(f"ev_{t.c_name()}") for t in automaton.traces}
+        self.atom_formula = atom_formula
+
+    def trace_to_ev_arg(self, t) -> str:
+        return f"const Event *{self.trace_to_ev[t]}"
+
+    def ev_as_args(self) -> str:
+        return ", ".join((self.trace_to_ev_arg(t) for t in self.automaton.traces))
+
+    def var_to_ev(self, transition) -> dict:
+        # map variables of a transition to event pointers in the generated code
+        return {
+            symbol: self.trace_to_ev[tr]
+            for tr, symbol in transition.label.symbols.items()
+        }
+
+    def condition_substitutions(self, t: Transition) -> list:
+        substitution = [
+            (r, Reg(f"(&cfg.{r.c_name()})")) for r in self.automaton.registers() or ()
+        ]
+
+        # map event variables to names of events in the code
+        for tr, x in t.label.symbols.items():
+            substitution.append((x, self.trace_to_ev[tr]))
+
+        return substitution
+
+
 class args_str(str):
     """
     A string representing arguments of a function/method.
@@ -37,19 +68,24 @@ def subst_lst(c, lst):
     return c
 
 
-def condition_code(t, subst=None, trace2ev=None):
+def condition_code(t, data: TranslationData):
     _cond = t.label.condition
-    cond, finished_cond = [], []
+    finished_cond = []
+    # check that the traces read by this transitions have the events on them
+    # (this is done by checking that the event variable for the transition is not nullptr)
+    cond = [data.trace_to_ev[tr] for tr in t.label.symbols.keys()]
     for c in _cond:
-        finished_cond.append(c) if isinstance(c, TraceFinished) else cond.append()
+        finished_cond.append(c) if isinstance(c, TraceFinished) else cond.append(c)
 
+    subst = data.condition_substitutions(t)
+    print(subst)
     if subst:
         cond = [subst_lst(c, subst or []).c_code() for c in cond]
     else:
         cond = [c.c_code() for c in cond]
 
     # The pointer to event is nullptr for traces that finished
-    cond.extend((f"{trace2ev[c.trace]} == nullptr" for c in finished_cond))
+    cond.extend((f"{data.trace_to_ev[c.trace]} == nullptr" for c in finished_cond))
 
     c_cond = "&&".join(cond)
     if c_cond == "":
@@ -57,8 +93,9 @@ def condition_code(t, subst=None, trace2ev=None):
     return c_cond
 
 
-def update_registers_code(automaton, t, var_map):
+def update_registers_code(t, data):
     update_registers = {}
+    var_map = data.var_to_ev
     for assign in t.label.assignment or ():
         assert isinstance(assign.to, Reg), assign
         assert isinstance(assign.val, Value), assign
@@ -68,7 +105,7 @@ def update_registers_code(automaton, t, var_map):
         update_registers[assign.to] = var_map.get(assign.val, assign.val.c_name())
     update_registers = [
         update_registers.get(r, f"&cfg.{r.c_name()}")
-        for r in (automaton.registers() or ())
+        for r in (data.automaton.registers() or ())
     ]
     return args_str(update_registers)
 
@@ -555,46 +592,38 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def gen_handle_state(self, aut_num, atom_formula, automaton, wrcpp):
 
-        lvar = atom_formula.children[0].program_variables()
-        rvar = atom_formula.children[1].program_variables()
-        assert len(lvar) <= 1, lvar
-        assert len(rvar) <= 1, rvar
-        lvar = lvar[0].name if lvar else None
-        rvar = rvar[0].name if rvar else None
-        if not (lvar or rvar):
-            raise NotImplementedError("This case is unsupported yet")
-        if not lvar:
-            raise NotImplementedError("This case is unsupported yet")
+        data = TranslationData(automaton, atom_formula)
 
         for state in automaton.states():
             dump_codegen_position(wrcpp)
             wrcpp(
-                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, const Event *ev1, const Event *ev2) {{\n"
+                f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, {data.ev_as_args()}) {{\n"
             )
 
             wrcpp(" bool matched = false;\n")
 
-            self.gen_transitions_code(automaton, state, lvar, rvar, wrcpp)
+            self.gen_transitions_code(data, state, wrcpp)
 
             wrcpp("}\n\n ")
 
-    def gen_transitions_code(self, automaton, state, lvar, rvar, wrcpp):
-        transitions = automaton.transitions_from(state)
+    def gen_transitions_code(self, data, state, wrcpp):
+        transitions = data.automaton.transitions_from(state)
 
         for t in transitions:
-            symbols = t.label.symbols
+            label = t.label
+            self.handle_transition(t, data, wrcpp)
             ### Handle epsilon steps
-            if not symbols:
-                self.handle_epsilon_step(automaton, t, lvar, rvar, wrcpp)
-            elif t.is_input_eps():
-                ### Handle left-epsilon steps
-                self.handle_left_epsilon_step(automaton, t, lvar, rvar, wrcpp)
-            elif symbol[1].is_eps():
-                ### Handle right-epsilon steps
-                self.handle_right_epsilon_step(automaton, t, lvar, rvar, wrcpp)
-            else:
-                ### Handle letters
-                self.handle_symbols(automaton, t, lvar, rvar, wrcpp)
+        # if label.is_eps():
+        #    self.handle_epsilon_step(t, data, wrcpp)
+        # elif label.is_input_eps():
+        #    ### Handle left-epsilon steps
+        #    self.handle_left_epsilon_step(t, data, wrcpp)
+        # elif label.is_output_eps():
+        #    ### Handle right-epsilon steps
+        #    self.handle_right_epsilon_step(t, data, wrcpp)
+        # else:
+        #    ### Handle letters
+        #    self.handle_symbols(t, data, wrcpp)
         dump_codegen_position(wrcpp)
         wrcpp("if (matched) { return; }")
         # otherwise the matching failed
@@ -608,19 +637,14 @@ class CodeGenCpp(CodeGenCppAtoms):
             "}\n\n"
         )
 
-    def handle_symbols(self, automaton, t: Transition, lvar, rvar, wrcpp):
+    def handle_transition(self, t: Transition, data: TranslationData, wrcpp) -> None:
         dump_codegen_position(wrcpp)
-        symbol = t.label.symbol
-        reg_substitution = [
-            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
-        ]
-        evs = [Var("ev1"), Var("ev2")]
-        cond = condition_code(t, list(zip(symbol, evs)) + reg_substitution, evs)
-        wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
-        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
+        cond = condition_code(t, data)
+        wrcpp(f" if ({cond}) {{\n ")
+        debug_code_transition_check(t, data, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
-        var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
-        update_registers = update_registers_code(automaton, t, var_map)
+        automaton = data.automaton
+        update_registers = update_registers_code(t, data)
         wrcpp(
             f"   matched = true;\n "
             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
@@ -629,18 +653,29 @@ class CodeGenCpp(CodeGenCppAtoms):
         # wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_right_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
+    def handle_symbols(self, t: Transition, data, wrcpp):
         dump_codegen_position(wrcpp)
-        symbol = t.label.symbol
-        reg_substitution = [
-            (r, Reg(f"(&cfg.{r.c_name()})")) for r in automaton.registers() or ()
-        ]
-        cond = condition_code(
-            t,
-            [(symbol[0], Var(f"ev1"))] + reg_substitution,
+        symbol = t.label.symbols
+        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
+        wrcpp(f" if (ev1 && ev2 && {cond}) {{\n ")
+        debug_code_transition_check(t, data, wrcpp)
+        # wrcpp(f" if (ev1->{lvar} == {symbol[0]} && ev2->{rvar} == {symbol[1]}) {{\n")
+        var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
+        update_registers = update_registers_code(data.automaton, t, var_map)
+        wrcpp(
+            f"   matched = true;\n "
+            f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, cfg.p1 + 1, cfg.p2 + 1 {update_registers.comma_prefixed()});\n "
         )
+        debug_code_transition(wrcpp, automaton.registers() or ())
+        # wrcpp("}\n")
+        wrcpp("}\n")
+
+    def handle_right_epsilon_step(self, t, data, wrcpp):
+        dump_codegen_position(wrcpp)
+        symbol = t.label.symbols
+        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
         wrcpp(f" if (ev1 != nullptr && {cond}) {{\n")
-        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
+        debug_code_transition_check(t, data, wrcpp)
         # wrcpp(f" if (ev1->{lvar} == {symbol[0]}) {{\n")
         update_registers = args_str(
             f"&cfg.{r.c_name()}" for r in automaton.registers() or ()
@@ -653,16 +688,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         # wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_left_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
+    def handle_left_epsilon_step(self, t, data, wrcpp):
 
         dump_codegen_position(wrcpp)
-        symbol = t.label.symbol
-        reg_substitution = [
-            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
-        ]
-        cond = condition_code(t, [(symbol[1], Var(f"ev2"))] + reg_substitution)
+        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
         wrcpp(f" if (ev2 != nullptr && {cond}) {{\n")
-        debug_code_transition_check(lvar, rvar, symbol, t, wrcpp)
+        debug_code_transition_check(t, data, wrcpp)
         # wrcpp(f" if (ev2->{rvar} == {symbol[1]}) {{\n")
 
         var_map = {symbol[0]: f"ev1", symbol[1]: f"ev2"}
@@ -675,12 +706,10 @@ class CodeGenCpp(CodeGenCppAtoms):
         # wrcpp("}\n")
         wrcpp("}\n")
 
-    def handle_epsilon_step(self, automaton, t, lvar, rvar, wrcpp):
-        debug_code_transition_check(lvar, rvar, Eps(), t, wrcpp)
-        reg_substitution = [
-            (r, Reg(f"(&cfg.{r.c_name()})")) for r in (automaton.registers() or ())
-        ]
-        cond = condition_code(t, reg_substitution)
+    def handle_epsilon_step(self, t, data, wrcpp):
+        debug_code_transition_check(data, Eps(), t, wrcpp)
+        automaton = data.automaton
+        cond = condition_code(t, get_condition_substitutions(t, data), data.trace_to_ev)
         wrcpp(f'/* COND: "{cond}"*/\n')
         if cond == "false":
             wrcpp("/* CONDITION UNSAT */")
@@ -989,7 +1018,7 @@ def debug_code_transition(wrcpp, registers):
     )
 
 
-def debug_code_transition_check(lvar, rvar, symbol, t, wrcpp):
+def debug_code_transition_check(t, data, wrcpp):
     out = f" [{', '.join(map(str, t.label.condition))}]" if t.label.condition else ""
     assignm = ", ".join(map(str, t.label.assignment or ()))
     wrcpp(
