@@ -431,36 +431,15 @@ class CodeGenCpp(CodeGenCppAtoms):
                     }}
                 """
             )
-            events_args.append(f"&{ev.c_name()}")
+            events_args.append(
+                f"{ev}_status == TraceQuery::END ? nullptr : &{ev.c_name()}"
+            )
             # else:
             #     wrcpp("constexpr auto ev1ty = TraceQuery::END;")
             #
         debug_code_state(ns, data, wrcpp)
 
-        dump_codegen_position(wrcpp)
-
-        if isinstance(atom_formula, IsEq):
-            wrcpp(
-                f"""
-                    if (ev1ty == TraceQuery::END && ev2ty == TraceQuery::END) {{
-                        if (state_is_accepting(cfg.state)) {{
-                            return Verdict::TRUE;
-                        }}
-                    }}
-            """
-            )
-        else:
-            assert isinstance(atom_formula, IsPrefix), formula
-
-            wrcpp(
-                f"""
-                    if (XXX == TraceQuery::END) {{
-                        if (state_is_accepting(cfg.state)) {{
-                            return Verdict::TRUE;
-                        }}
-                    }}
-            """
-            )
+        self._check_accept(data, wrcpp)
 
         wrcpp(f"_step(cfg, {', '.join(events_args)});")
         wrcpp("}\n")
@@ -468,6 +447,33 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(f"_cfgs.rotate();")
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n\n")
+
+    def _check_accept(self, data, wrcpp):
+        dump_codegen_position(wrcpp)
+
+        atom_formula = data.atom_formula
+        if isinstance(atom_formula, IsEq):
+            # all traces must be finished
+            cond = " && ".join(f"{ev}_status == TraceQuery::END" for ev in data.events)
+        else:
+            assert isinstance(atom_formula, IsPrefix), formula
+            # only left traces must be finished
+            left_traces = atom_formula.children[0].trace_variables()
+            cond = " && ".join(
+                f"{data.trace_to_ev[tr]}_status == TraceQuery::END"
+                for tr in data.traces
+                if tr in left_traces
+            )
+
+        wrcpp(
+            f"""
+                 if (state_is_accepting(cfg.state)) {{
+                     if ({cond}) {{
+                         return Verdict::TRUE;
+                     }}
+                 }}
+         """
+        )
 
     def _generate_atom_headers(self, data):
         automaton = data.automaton
@@ -904,6 +910,7 @@ def debug_code_state(ns, data, wrcpp):
 
     for tr in data.traces:
         ev = data.trace_to_ev[tr]
+        wrcpp(f'std::cerr << "\\n  {tr.c_name()}["<< cfg.pos_{tr.c_name()} <<"]: ";\n')
         wrcpp(
             f"""
                 if ({ev}_status == TraceQuery::END) {{
@@ -914,7 +921,6 @@ def debug_code_state(ns, data, wrcpp):
             """
         )
 
-        wrcpp(f'std::cerr << "\\n  {tr.c_name()}["<< cfg.pos_{tr.c_name()} <<"]: ";\n')
     wrcpp(
         f"""
             std::cerr << "\033[0m\\n";
@@ -941,10 +947,10 @@ def debug_code_transition(wrcpp, data):
 def debug_code_transition_check(t, data, wrcpp):
     out = f" [{', '.join(map(str, t.label.condition))}]" if t.label.condition else ""
     assignm = ", ".join(map(str, t.label.assignment or ()))
+    symbols = ", ".join(f"{t}: {x}" for t, x in t.label.symbols.items())
     wrcpp(
         f" /* {t} */\n "
         "#ifdef DEBUG_PRINTS\n"
-        # f' std::cerr << "  -- {lvar}(left) = {symbol[0]}; {rvar}(right) = {symbol[1]} -->\\n";\n'
-        f' std::cerr << "  -- \033[0;0m{t.label.symbols}\033[0m{out} ; {assignm} -->\\n";\n'
+        f' std::cerr << "  -- \033[0;0m({symbols})\033[0m{out} ; {assignm} -->\\n";\n'
         "#endif /* !DEBUG_PRINTS */\n"
     )
