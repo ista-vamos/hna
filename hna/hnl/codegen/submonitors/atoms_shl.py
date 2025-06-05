@@ -466,15 +466,17 @@ class CodeGenCpp(CodeGenCppAtoms):
                 len(automaton.initial_states()) == 1
             ), f"Automaton {num} does not have exactly one initial states"
 
-            # FIXME: this is a guess, we should properly use default constructors for register values...
+            registers = list(automaton.registers() or ())
             registers_defaults = args_str(
-                ("default_register" for _ in (automaton.registers() or ()))
-            )
+                ("default_register" for _ in registers))
+
             initial_positions = args_str(
                 ", ".join(str(0) for _ in data.traces_with_duplicates)
             )
+            if registers:
+                wrcpp("Register default_register;\n")
+
             wrcpp(
-                "Register default_register;\n"
                 f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])} {initial_positions.comma_prefixed()} {registers_defaults.comma_prefixed()});\n"
             )
         wrcpp("}\n\n")
