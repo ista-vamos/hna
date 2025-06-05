@@ -3,7 +3,15 @@ import re
 from os import makedirs
 
 from hna.automata.automaton import Automaton
-from hna.automata.transducers import Var, Reg, Value, Eps, TraceFinished, Transition
+from hna.automata.transducers import (
+    Var,
+    Reg,
+    Value,
+    Eps,
+    TraceFinished,
+    Transition,
+    Attr,
+)
 from hna.codegen_common.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from hna.hnl.formula import (
@@ -178,19 +186,32 @@ def condition_code(t, data: TranslationData):
 
 
 def update_registers_code(t, data):
+    print("-----")
+    print(t.label.assignment)
     update_registers = {}
-    var_map = data.var_to_ev
+    var_map = data.var_to_ev(t)
+    print(var_map)
     for assign in t.label.assignment or ():
         assert isinstance(assign.to, Reg), assign
         assert isinstance(assign.val, Value), assign
         assert (
             assign.to not in update_registers
         ), f"A register updated multiple times: {t.label}"
-        update_registers[assign.to] = var_map.get(assign.val, assign.val.c_name())
+        val = assign.val
+        if isinstance(val, Attr):
+            val = val.subst((val.var, var_map[val.var])).c_name()
+        else:
+            val = var_map[val.var].c_name()
+        update_registers[assign.to] = (
+            val  # var_map.get(assign.val, assign.val.c_name())
+        )
+        print(assign.to, assign.val, update_registers[assign.to])
     update_registers = [
         update_registers.get(r, f"&cfg.{r.c_name()}")
         for r in (data.automaton.registers() or ())
     ]
+    print(update_registers)
+    print("-----")
     return args_str(update_registers)
 
 
@@ -214,6 +235,66 @@ class CodeGenCpp(CodeGenCppAtoms):
             name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
         )
 
+    def _generate_registers(self):
+        with self.new_file("registers.h") as f:
+            wr = f.write
+            wr("#ifndef REGISTERS_H_\n#define REGISTERS_H_\n\n")
+
+            wr('#include "events.h"\n\n')
+
+            dump_codegen_position(wr)
+            if "EVENT" in self.args.data:
+                raise RuntimeError("A name clash for 'EVENT'")
+
+            wr("  enum class RegisterType {\n")
+            wr("    INVALID=0,\n")  # this means the whole event
+            wr("    EVENT, // whole event\n")  # this means the whole event
+            for name, annot_ty in self.args.data:
+                ty, _ = annot_ty
+                wr(f"    {name},")
+            wr("  };\n")
+
+            dump_codegen_position(wr)
+            wr("struct Register {\n")
+            wr(
+                """
+            /* NOTE: we use this field only for debugging (printing) and validity checks,
+               we can remove it for performance reasons. However, then we should check
+               (before generating the code) that that the transducer uses the registers
+               correctly (i.e., every read reads a value of the expected type).
+               We probably want to do that anyway, to catch bugs */
+            """
+            )
+            wr("  RegisterType type{RegisterType::INVALID};\n\n")
+            wr("  union {\n")
+            wr("    Event EVENT; // whole event\n")
+            for name, annot_ty in self.args.data:
+                ty, _ = annot_ty
+                wr(f"    {ty} {name};")
+            wr("  } data;\n\n")
+            wr("};\n\n")
+
+            wr("std::ostream& operator<<(std::ostream& os, const Register& r);\n")
+
+            wr("#endif\n")
+
+        with self.new_file("registers.cpp") as f:
+            wr = f.write
+            wr("#include <iostream>\n\n")
+            wr('#include "registers.h"\n\n')
+            dump_codegen_position(wr)
+            wr("std::ostream& operator<<(std::ostream& os, const Register& r) {\n")
+            wr('  os << "<"')
+            wr("  switch (r.type) {")
+            wr(f"   case RegisterType::EVENT: os << r.data.EVENT; break;")
+            for n, field in enumerate(self.args.data):
+                name, _ = field
+                wr(f"   case RegisterType::{name}: os << r.data.{name}; break;")
+            wr('   << ">";\n')
+            wr("  };\n")
+            wr("return os;\n")
+            wr("}\n")
+
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:
             dump_codegen_position(f)
@@ -231,6 +312,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         Generate a monitor that actually monitors the body of the formula,
         i.e., it creates and moves with atom monitors.
         """
+        self._generate_registers()
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
