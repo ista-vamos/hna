@@ -304,6 +304,11 @@ class NEq(BinaryPredicate):
 
 class Assignment:
     def __init__(self, to: Value, val: Value):
+        assert isinstance(to, Value), to
+        assert isinstance(val, Value), val
+        assert not to.is_eps(), to
+        assert not val.is_eps(), val
+
         self._to = to
         self._val = val
 
