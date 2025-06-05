@@ -164,7 +164,6 @@ def process_args(args):
     args.sources_def = None
     args.cmake_defs = args.D
 
-    args.overwrite_file = [basename(f) for f in args.overwrite_file]
     if args.data:
         types = args.data.split(",")
         tmp_data = (
@@ -180,7 +179,7 @@ def process_args(args):
     if args.reduction:
         args.reduction = list(map(lambda s: s.strip(), args.reduction.split(",")))
 
-    for fl in args.inputs:
+    for fl in args.inputs + args.overwrite_file:
         if (
             fl.endswith(".cpp")
             or fl.endswith(".h")
@@ -194,6 +193,7 @@ def process_args(args):
                 raise RuntimeError("Multiple .vsrc files given")
             args.sources_def = fl
 
+    args.overwrite_file = [basename(f) for f in args.overwrite_file]
     assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
 
     return args
