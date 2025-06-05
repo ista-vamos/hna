@@ -663,12 +663,13 @@ def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
     return T
 
 
-def compose_transducers(
-    inner: SymbolicTransducer, outer: SymbolicTransducer, origin=None
-) -> SymbolicTransducer:
-    """
-    Compute the sequential composition outer(inner).
-    """
+def _check_transducers_for_composition(inner, outer) -> None:
+    if set(inner.traces).intersection(set(outer.traces)):
+        with open("/tmp/inner.dot", "w") as f:
+            inner.to_dot(f)
+        with open("/tmp/outer.dot", "w") as f:
+            outer.to_dot(f)
+        raise RuntimeError("`inner` and `outer` have a common trace")
 
     if inner.has_eps_transitions():
         with open("/tmp/inner.dot", "w") as f:
@@ -682,6 +683,23 @@ def compose_transducers(
         raise RuntimeError(
             "Transducers in the composition cannot have epsilon transitions (see /tmp/outer.dot)"
         )
+
+    # with open("/tmp/inner.dot", "w") as f:
+    #    inner.to_dot(f)
+    # with open("/tmp/outer.dot", "w") as f:
+    #    outer.to_dot(f)
+
+
+def compose_transducers(
+    inner: SymbolicTransducer, outer: SymbolicTransducer, on: TraceVariable, origin=None
+) -> SymbolicTransducer:
+    """
+    Compute the sequential composition `outer(inner)` where the output of `inner`
+    is fed to `outer` into the trace `on`.
+    """
+
+    if __debug__:
+        _check_transducers_for_composition(inner, outer)
 
     # pairs of states that we will later translate to State. But for now, it is more comfortable
     # to work with pairs of states.
@@ -699,11 +717,18 @@ def compose_transducers(
                 continue
             states.add(state_pair)
 
+            # handle input-epsilon steps of outer transducer
             for outer_t in outer.transitions_from(state_pair[1]):
-                # handle epsilon steps of outer transducer
                 if outer_t.label.is_input_eps():
                     new_target = (state_pair[0], outer_t.target)
-                    transitions.append(state_pair, outer_t.label, new_target)
+                    transitions.append((state_pair, outer_t.label, new_target))
+                    new_queue.append(new_target)
+
+            # handle output-epsilon steps of the inner transducer
+            for inner_t in inner.transitions_from(state_pair[0]):
+                if inner_t.label.is_output_eps():
+                    new_target = (inner_t.target, state_pair[1])
+                    transitions.append((state_pair, inner_t.label, new_target))
                     new_queue.append(new_target)
 
             for inner_t, outer_t in (
@@ -711,12 +736,12 @@ def compose_transducers(
                 for it in inner.transitions_from(state_pair[0])
                 for ot in outer.transitions_from(state_pair[1])
             ):
-                if outer_t.label.is_input_eps():
+                if outer_t.label.is_input_eps() or inner_t.label.is_output_eps():
                     # these were handled separately
                     continue
 
                 # combine the transitions
-                new_t = compose_transitions(inner_t, outer_t)
+                new_t = compose_transitions(inner_t, outer_t, on)
                 if new_t is None:
                     # the transition had UNSAT condition
                     continue
@@ -757,19 +782,28 @@ def compose_transducers(
     )
 
 
-def compose_transitions(inner: Transition, outer: Transition) -> Transition:
+def compose_transitions(
+    inner: Transition, outer: Transition, on: TraceVariable
+) -> Transition:
     inner_l: TransitionLabel = inner.label
     outer_l: TransitionLabel = outer.label
 
-    subst = (outer_l.symbol, inner_l.output)
+    symbols = inner_l.symbols.copy()
+    symbols.update(outer_l.symbols)
+    del symbols[on]
+
+    output_l = inner_l.output
+    assert not output_l.is_eps(), inner_l
+    subst = (outer_l.symbols[on], output_l)
     condition = simplify_condition(
         inner_l.condition + substitute_lst(outer_l.condition, subst)
     )
+
     if condition is None:  # UNSAT condition
         return None
 
-    label = TransitionLabel(
-        symbol=inner_l.symbol,
+    label = TransitionMultiLabel(
+        symbols=symbols,
         condition=condition,
         assign=(
             (inner_l.assignment or []) + substitute_lst(outer_l.assignment or [], subst)
@@ -788,6 +822,8 @@ def normalize_term(term):
     This function outputs the smaller of (term.lhs, term.rhs) or (term.rhs, term.lhs).
     NOTE: it modifies the original term!
     """
+    if isinstance(term, TraceFinished):
+        return term
     if not term.lhs < term.rhs:
         term.rhs, term.lhs = term.lhs, term.rhs
     return term

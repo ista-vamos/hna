@@ -79,7 +79,7 @@ def trace_transducer(trace, projection: str):
 
 def positive_slice_transducer(interval):
     # we need some dummy trace that serves as the input to the transducer
-    trace = TraceVariable("<dummy-in>")
+    trace = TraceVariable("𝜏")
     i, j = interval
     assert 0 <= i <= j
     states = [State("b0")]
@@ -164,25 +164,27 @@ class Formula2Transducer:
         raise NotImplementedError(f"Unhandled formula: {formula}")
 
     def stutter_reduce_transducer(self, T: SymbolicTransducer, formula):
+        trace = TraceVariable("𝜏")
         states = [State("st0"), State("st1")]
         r, x = Reg("last"), Var("x")
-        proj = self._proj
         ST = SymbolicTransducer(
             states=states,
             registers=[r],
             transitions=[
                 Transition(
-                    states[0], TransitionLabel(x, [], [Assignment(r, x)], x), states[1]
-                ),
-                Transition(
-                    states[1],
-                    TransitionLabel(x, [Eq(Attr(x, proj), Attr(r, proj))], [], Eps()),
+                    states[0],
+                    TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], x),
                     states[1],
                 ),
                 Transition(
                     states[1],
-                    TransitionLabel(
-                        x, [NEq(Attr(x, proj), Attr(r, proj))], [Assignment(r, x)], x
+                    TransitionMultiLabel({trace: x}, [Eq(x, r)], [], Eps()),
+                    states[1],
+                ),
+                Transition(
+                    states[1],
+                    TransitionMultiLabel(
+                        {trace: x}, [NEq(x, r)], [Assignment(r, x)], x
                     ),
                     states[1],
                 ),
@@ -191,7 +193,7 @@ class Formula2Transducer:
             accepting_states=states,
             origin=formula,
         )
-        return compose_transducers(T, ST, origin=formula)
+        return compose_transducers(T, ST, on=trace, origin=formula)
 
     def slice_transducer(self, T: SymbolicTransducer, formula):
         interval = formula.interval
@@ -202,7 +204,7 @@ class Formula2Transducer:
         else:
             raise NotImplementedError(f"This slicing is not implemented: {formula}")
 
-        return compose_transducers(T, ST, origin=formula)
+        return compose_transducers(T, ST, ST.get_single_trace(), origin=formula)
 
     def projection_transducer(self, formula):
         fn = formula.trace
@@ -223,8 +225,9 @@ def compose_transitions(left_t, right_t, reg_map):
     label_l, label_r = left_t.label, right_t.label
     output_r = reg_map.get(label_r.output, label_r.output)
     symbols_l, symbols_r = label_l.symbols, label_r.symbols
-    # the symbols on transitions are the same variable. We must rename one of them
-    # (we rename the right one, since we are renaming also the right registers)
+
+    # Rename variables to be unique (we rename the right variables,
+    # since we are renaming also the right registers)
     new_r = {}
     cond_r = []
     assign_r = []
@@ -244,8 +247,6 @@ def compose_transitions(left_t, right_t, reg_map):
             assign_r = label_r.assignment or []
     symbols_r = new_r
     output_l = label_l.output
-    # lhs = output_l if isinstance(output_l, Constant) else Attr(output_l, lproj)
-    # rhs = output_r if isinstance(output_r, Constant) else Attr(output_r, rproj)
     cond = simplify_condition(
         label_l.condition + rename(cond_r, reg_map) + [Eq(output_l, output_r)]
     )
