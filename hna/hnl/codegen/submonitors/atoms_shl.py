@@ -214,6 +214,48 @@ def update_registers_code(t, data):
     return args_str(update_registers)
 
 
+def are_independent(t1, t2):
+    if t1.target != t2.target:
+        return False
+
+    l1, l2 = t1.label, t2.label
+    # TODO: We could do better here
+    if l1.assignment or l2.assignment:
+        return False
+
+    if set(l1.symbols.keys()).intersection(set(l2.symbols.keys())):
+        return False
+
+    return True
+
+
+def compute_independent_transitions(transitions):
+    """
+    Get those transitions that are independent in the sense that
+    they create the dimond in the state space: taking them one after another
+    in any order leads to the same effect on the state.
+
+    This function computes only transitions from one state, it means only self-loops.
+    # FIXME: we also return just a single set of independent transitions of size 2,
+    # but there could be more of them (sets and traces in the sets...)
+    """
+    T = {}
+    for t in transitions:
+        hit = False
+        for cls in T.values():
+            if are_independent(cls[0], t):
+                cls.append(t)
+                break
+        if not hit:
+            T[t] = [t]
+
+    for cls in T.values():
+        if len(cls) == 2:
+            return cls
+
+    return []
+
+
 class CodeGenCpp(CodeGenCppAtoms):
     """
     Class for generating monitors in C++.
@@ -793,8 +835,12 @@ class CodeGenCpp(CodeGenCppAtoms):
     def gen_transitions_code(self, data, state, wrcpp):
         transitions = data.automaton.transitions_from(state)
 
-        for t in transitions:
-            self.handle_transition(t, data, wrcpp)
+        T = compute_independent_transitions(transitions)
+        if T:
+            self.handle_indep_transitions(T[0], T[1], data, wrcpp)
+
+        for tr in (t for t in transitions if t not in T):
+            self.handle_transition(tr, data, wrcpp)
 
     def handle_transition(self, t: Transition, data: TranslationData, wrcpp) -> None:
         dump_codegen_position(wrcpp)
@@ -820,6 +866,71 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
         debug_code_transition(wrcpp, data)
         # wrcpp("}\n")
+        wrcpp("}\n")
+
+    def handle_indep_transitions(
+        self, t1: Transition, t2: Transition, data: TranslationData, wrcpp
+    ) -> None:
+        dump_codegen_position(wrcpp)
+
+        automaton = data.automaton
+        assert not t1.label.assignment
+        assert not t2.label.assignment
+        update_registers = update_registers_code(t1, data)
+        cond1 = condition_code(t1, data)
+        cond2 = condition_code(t2, data)
+
+        wrcpp(f" if ({cond1}) {{\n ")
+        debug_code_transition_check(t1, data, wrcpp)
+        wrcpp(f" if ({cond2}) {{\n ")
+        debug_code_transition_check(t2, data, wrcpp)
+        progress_traces = list(t1.label.symbols.keys()) + list(t2.label.symbols.keys())
+        new_positions = args_str(
+            (
+                f"cfg.pos_{tr.c_name()} + 1"
+                if tr in progress_traces
+                else f"cfg.pos_{tr.c_name()}"
+            )
+            for tr, _ in data.traces_with_duplicates
+        )
+        wrcpp(
+            f"  _cfgs.emplace_new({automaton.get_state_id(t1.target)}, {new_positions} {update_registers.comma_prefixed()});\n "
+        )
+        debug_code_transition(wrcpp, data)
+        wrcpp("} else {\n")
+        # cond1 && ! cond2
+        progress_traces = t1.label.symbols.keys()
+        new_positions = args_str(
+            (
+                f"cfg.pos_{tr.c_name()} + 1"
+                if tr in progress_traces
+                else f"cfg.pos_{tr.c_name()}"
+            )
+            for tr, _ in data.traces_with_duplicates
+        )
+        wrcpp(
+            f"  _cfgs.emplace_new({automaton.get_state_id(t1.target)}, {new_positions} {update_registers.comma_prefixed()});\n "
+        )
+        debug_code_transition(wrcpp, data)
+        wrcpp("}\n")
+        wrcpp("} else {\n")
+        #! cond1
+        wrcpp(f" if ({cond2}) {{\n ")
+        debug_code_transition_check(t2, data, wrcpp)
+        progress_traces = t2.label.symbols.keys()
+        new_positions = args_str(
+            (
+                f"cfg.pos_{tr.c_name()} + 1"
+                if tr in progress_traces
+                else f"cfg.pos_{tr.c_name()}"
+            )
+            for tr, _ in data.traces_with_duplicates
+        )
+        wrcpp(
+            f"  _cfgs.emplace_new({automaton.get_state_id(t2.target)}, {new_positions} {update_registers.comma_prefixed()});\n "
+        )
+        debug_code_transition(wrcpp, data)
+        wrcpp("} \n")
         wrcpp("}\n")
 
     def generate_atomic_comparison_automaton(self, bddnode: BDDNode):
