@@ -418,8 +418,9 @@ class Transducer(AccInitTransitionSystem):
         super().__init__(states, transitions, init_states, acc_states, origin=origin)
 
 
+# FIXME: rename to MST (Multi-trace symbolic transducer)
 class SymbolicTransducer(Transducer):
-    """Symbolic finite-state transducer with registers"""
+    """Mutli-tape symbolic finite-state transducer with registers"""
 
     def __init__(
         self,
@@ -461,6 +462,15 @@ class SymbolicTransducer(Transducer):
     @property
     def traces(self):
         return self._traces
+
+    def get_single_trace(self):
+        """
+        Get its only input trace or None if there is no single input trace
+        """
+        T = self.traces
+        if len(T) == 1:
+            return T.iter().next()
+        return None
 
     def copy(self, new_origin=None):
         return SymbolicTransducer(
