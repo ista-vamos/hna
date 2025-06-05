@@ -99,53 +99,60 @@ class CodeGenCpp(CodeGen):
         raise NotImplementedError("Must be overriden")
 
     def _gen_create_instance_reduced(self, formula, wr):
-        raise NotImplementedError("Not re-implemented after chagnes")
         dump_codegen_position(wr)
         if len(formula.quantifier_prefix) > 2:
             raise NotImplementedError(
                 "Reductions work now only with at most 2 quantifiers"
             )
 
+        # if "symmetric" in self.args.reduction:
         dump_codegen_position(wr)
         wr(
             """
-        for (auto &[t2_id, t2_ptr] : _traces) {
-            auto *t2 = t2_ptr.get();
+            auto *t1 = t_new;
+            for (auto &[t2_id, t2_ptr] : traces) {
+                auto *t2 = t2_ptr;
         """
         )
-
-        if "reflexive" in self.args.reduction:
-            wr("if (t1 == t2) { continue;}")
-
-        wr(
-            """
-           auto *instance = new Instance{t1, t2};
-           ++stats.num_instances;
-
-           #ifdef DEBUG_PRINTS
-           std::cerr << "Instance[init"
-                     << ", " << t1->id() << ", " << t2->id() << "]\\n";
-           #endif /* !DEBUG_PRINTS */
-        """
-        )
-
-        if "symmetric" in self.args.reduction:
-            wr("}\n")
-        else:
+        if "reflexivity" in self.args.reduction:
+            dump_codegen_position(wr)
             wr(
                 """
-               if (t1 != t2)  {
-                  auto *instance = new Instance{t2, t1};
-                  ++stats.num_instances;
-
-                  #ifdef DEBUG_PRINTS
-                    std::cerr << "Instance[init"
-                              << ", " << t2->id() << ", " << t1->id() << "]\\n";
-                  #endif /* !DEBUG_PRINTS */
-               }
+            if (t1 == t2) {
+                continue;
             }
             """
             )
+
+        dump_codegen_position(wr)
+        wr(
+            """
+            auto *instance = new Instance{t1, t2, INITIAL_ATOM};
+            ++stats.num_instances;
+            
+            instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+            
+        #ifdef DEBUG_PRINTS
+             std::cerr << "Instance[init, " << t1->id() << ", " << t2->id() << "]\\n";
+        #endif /* !DEBUG_PRINTS */
+        """
+        )
+
+        dump_codegen_position(wr)
+        if not "symmetry" in self.args.reduction:
+            wr(
+                """
+                instance = new Instance{t2, t1, INITIAL_ATOM};
+                ++stats.num_instances;
+                
+                instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+                
+            #ifdef DEBUG_PRINTS
+                std::cerr << "Instance[init, " << t2->id() << ", " << t1->id() << "]\\n";
+            #endif /* !DEBUG_PRINTS */
+            """
+            )
+        wr("}\n")
 
     def input_tracesets(self, formula):
         """
