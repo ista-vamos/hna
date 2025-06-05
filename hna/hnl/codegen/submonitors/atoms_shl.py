@@ -9,6 +9,7 @@ from hna.automata.transducers import (
     Value,
     Eps,
     TraceFinished,
+    BinaryPredicate,
     Transition,
     Attr,
 )
@@ -162,35 +163,37 @@ def rename_trace_variables(formula: Comparison):
 
 
 def condition_code(t, data: TranslationData):
-    _cond = t.label.condition
-    finished_cond = []
     # check that the traces read by this transitions have the events on them
     # (this is done by checking that the event variable for the transition is not nullptr)
-    cond = [data.trace_to_ev[tr] for tr in t.label.symbols.keys()]
-    for c in _cond:
-        finished_cond.append(c) if isinstance(c, TraceFinished) else cond.append(c)
+    condition = [data.trace_to_ev[tr].c_code() for tr in t.label.symbols.keys()]
+    subst = data.condition_substitutions(t) or []
+    for cond in t.label.condition:
+        if isinstance(cond, TraceFinished):
+            condition.append(f"{data.trace_to_ev[cond.trace]} == nullptr")
+            continue
 
-    subst = data.condition_substitutions(t)
-    if subst:
-        cond = [subst_lst(c, subst or []).c_code() for c in cond]
-    else:
-        cond = [c.c_code() for c in cond]
+        assert isinstance(cond, BinaryPredicate), cond
 
-    # The pointer to event is nullptr for traces that finished
-    cond.extend((f"{data.trace_to_ev[c.trace]} == nullptr" for c in finished_cond))
+        # substitute variables for C code variables
+        cond = subst_lst(cond, subst)
+        lhs, rhs = cond.lhs, cond.rhs
+        # we must still apply projection to registers
+        if isinstance(lhs, Reg) and isinstance(rhs, Attr):
+            cond.lhs = Attr(lhs, f"data.{rhs.attr}")
+        if isinstance(rhs, Reg) and isinstance(lhs, Attr):
+            cond.rhs = Attr(rhs, f"data.{lhs.attr}")
 
-    c_cond = "&&".join(cond)
+        condition.append(cond.c_code())
+
+    c_cond = "&&".join(condition)
     if c_cond == "":
         return "true"
     return c_cond
 
 
 def update_registers_code(t, data):
-    print("-----")
-    print(t.label.assignment)
     update_registers = {}
     var_map = data.var_to_ev(t)
-    print(var_map)
     for assign in t.label.assignment or ():
         assert isinstance(assign.to, Reg), assign
         assert isinstance(assign.val, Value), assign
@@ -199,19 +202,15 @@ def update_registers_code(t, data):
         ), f"A register updated multiple times: {t.label}"
         val = assign.val
         if isinstance(val, Attr):
-            val = val.subst((val.var, var_map[val.var])).c_name()
+            val = f"Register{{.type = RegisterType::{val.attr}, .data = {{.{val.attr} = {var_map[val.var]}->{val.attr}}}}}"
         else:
-            val = var_map[val.var].c_name()
-        update_registers[assign.to] = (
-            val  # var_map.get(assign.val, assign.val.c_name())
-        )
-        print(assign.to, assign.val, update_registers[assign.to])
+            val = f"Register{{.type = RegisterType::EVENT, .data = {{.EVENT = *{var_map[val.var].c_name()}}}}}"
+        update_registers[assign.to] = val
     update_registers = [
-        update_registers.get(r, f"&cfg.{r.c_name()}")
+        # default is to copy the old value
+        update_registers.get(r, f"cfg.{r.c_name()}")
         for r in (data.automaton.registers() or ())
     ]
-    print(update_registers)
-    print("-----")
     return args_str(update_registers)
 
 
@@ -279,18 +278,21 @@ class CodeGenCpp(CodeGenCppAtoms):
             wr("#endif\n")
 
         with self.new_file("registers.cpp") as f:
+            # FIXME: do not add it to atoms
+            self._atoms_files.append("registers.cpp")
             wr = f.write
             wr("#include <iostream>\n\n")
             wr('#include "registers.h"\n\n')
             dump_codegen_position(wr)
             wr("std::ostream& operator<<(std::ostream& os, const Register& r) {\n")
-            wr('  os << "<"')
+            wr('  os << "<";\n')
             wr("  switch (r.type) {")
+            wr(f'   case RegisterType::INVALID: os << "INVALID"; break;')
             wr(f"   case RegisterType::EVENT: os << r.data.EVENT; break;")
             for n, field in enumerate(self.args.data):
                 name, _ = field
                 wr(f"   case RegisterType::{name}: os << r.data.{name}; break;")
-            wr('   << ">";\n')
+            wr('   os << ">";\n')
             wr("  };\n")
             wr("return os;\n")
             wr("}\n")
@@ -466,13 +468,13 @@ class CodeGenCpp(CodeGenCppAtoms):
 
             # FIXME: this is a guess, we should properly use default constructors for register values...
             registers_defaults = args_str(
-                ("&default_event" for _ in (automaton.registers() or ()))
+                ("default_register" for _ in (automaton.registers() or ()))
             )
             initial_positions = args_str(
                 ", ".join(str(0) for _ in data.traces_with_duplicates)
             )
             wrcpp(
-                "Event default_event;\n"
+                "Register default_register;\n"
                 f"_cfgs.emplace_back({automaton.get_state_id(automaton.initial_states()[0])} {initial_positions.comma_prefixed()} {registers_defaults.comma_prefixed()});\n"
             )
         wrcpp("}\n\n")
@@ -637,7 +639,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         l_automaton_registers = automaton.origin()[0].registers() or ()
         registers = automaton.registers() or ()
-        reg_types = "\n".join(f"using {r.c_name()}_t = Event;" for r in registers)
+        reg_types = "\n".join(f"using {r.c_name()}_t = Register;" for r in registers)
         reg_fields = "\n".join(
             f"Atom{num}EvaluationState::{r.c_name()}_t {r.c_name()};" for r in registers
         )
@@ -669,6 +671,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@namespace_start@": self.namespace_start(),
                 "@namespace_end@": self.namespace_end(),
                 "@atom_num@": str(num),
+                "@include_headers@": '#include "registers.h"' if reg_fields else "",
                 "@position_args@": position_args.comma_prefixed(),
                 "@position_pass_args@": position_pass_args.comma_prefixed(),
                 "@position_fields@": position_fields,
@@ -676,14 +679,14 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "@registers_types@": reg_types,
                 "@registers_fields@": reg_fields,
                 "@registers_args@": args_str(
-                    f"const Atom{num}EvaluationState::{r.c_name()}_t *{r.c_name()}"
+                    f"const Atom{num}EvaluationState::{r.c_name()}_t& {r.c_name()}"
                     for r in registers
                 ).comma_prefixed(),
                 "@registers_pass_args@": args_str(
                     r.c_name() for r in registers
                 ).comma_prefixed(),
                 "@registers_ctor@": args_str(
-                    f"{r.c_name()}(*{r.c_name()})" for r in registers
+                    f"{r.c_name()}({r.c_name()})" for r in registers
                 ).comma_prefixed(),
             },
         )

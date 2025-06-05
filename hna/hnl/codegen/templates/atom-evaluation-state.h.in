@@ -4,18 +4,14 @@
 #include <vector>
 
 #include "events.h"
+@include_headers@
 
 @namespace_start@
 
 using State = int;
 
-struct EvaluationState {
-  State state;
-
-  EvaluationState(State s) : state(s) {}
-};
-
-struct Atom@atom_num@EvaluationState : public EvaluationState {
+struct Atom@atom_num@EvaluationState {
+    State state;
 
     // position in the traces
     @position_fields@
@@ -25,7 +21,7 @@ struct Atom@atom_num@EvaluationState : public EvaluationState {
     @registers_fields@
     
     Atom@atom_num@EvaluationState(State s @position_args@ @registers_args@)
-    : EvaluationState(s) @position_ctor@ @registers_ctor@ {}
+    : state(s) @position_ctor@ @registers_ctor@ {}
 };
 
 /**
