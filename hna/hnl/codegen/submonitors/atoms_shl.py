@@ -285,14 +285,14 @@ class CodeGenCpp(CodeGenCppAtoms):
             wr('#include "registers.h"\n\n')
             dump_codegen_position(wr)
             wr("std::ostream& operator<<(std::ostream& os, const Register& r) {\n")
-            wr('  os << "<";\n')
+            #wr('  os << "<";\n')
             wr("  switch (r.type) {")
             wr(f'   case RegisterType::INVALID: os << "INVALID"; break;')
             wr(f"   case RegisterType::EVENT: os << r.data.EVENT; break;")
             for n, field in enumerate(self.args.data):
                 name, _ = field
                 wr(f"   case RegisterType::{name}: os << r.data.{name}; break;")
-            wr('   os << ">";\n')
+            #wr('   os << ">";\n')
             wr("  };\n")
             wr("return os;\n")
             wr("}\n")
