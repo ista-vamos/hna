@@ -313,7 +313,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             wrcpp(f" /* {state} */\n ")
             wrcpp(f" case {automaton.get_state_id(state)}:\n ")
             if not transitions:
-                wrcpp("/* DROP CFG */\n\n")
+                wrcpp("/* DROP CFG */\nbreak;\n\n")
                 continue
             else:
                 wrcpp(f"stepState_{automaton.get_state_id(state)}(cfg, ev1, ev2);\n")

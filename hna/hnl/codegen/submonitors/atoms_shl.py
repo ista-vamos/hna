@@ -467,8 +467,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             ), f"Automaton {num} does not have exactly one initial states"
 
             registers = list(automaton.registers() or ())
-            registers_defaults = args_str(
-                ("default_register" for _ in registers))
+            registers_defaults = args_str(("default_register" for _ in registers))
 
             initial_positions = args_str(
                 ", ".join(str(0) for _ in data.traces_with_duplicates)
@@ -545,7 +544,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             wrcpp(f" /* {state} */\n ")
             wrcpp(f" case {automaton.get_state_id(state)}:\n ")
             if not transitions:
-                wrcpp("/* DROP CFG */\n\n")
+                wrcpp("/* DROP CFG */\nbreak;\n\n")
                 continue
             else:
                 wrcpp(
@@ -787,8 +786,6 @@ class CodeGenCpp(CodeGenCppAtoms):
                 f"void AtomMonitor{aut_num}::stepState_{automaton.get_state_id(state)}(Atom{aut_num}EvaluationState& cfg, {data.evs_as_args()}) {{\n"
             )
 
-            wrcpp(" bool matched = false;\n")
-
             self.gen_transitions_code(data, state, wrcpp)
 
             wrcpp("}\n\n ")
@@ -798,19 +795,6 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         for t in transitions:
             self.handle_transition(t, data, wrcpp)
-
-        dump_codegen_position(wrcpp)
-        wrcpp("if (matched) { return; }")
-        # otherwise the matching failed
-        wrcpp(
-            "else {  \n"
-            "     #ifdef DEBUG_PRINTS\n"
-            f'    std::cerr << "    => no transition matched\\n";\n'
-            "     #endif /* !DEBUG_PRINTS */\n"
-            "     /* drop the cfg */\n"
-            "     return;"
-            "}\n\n"
-        )
 
     def handle_transition(self, t: Transition, data: TranslationData, wrcpp) -> None:
         dump_codegen_position(wrcpp)
@@ -832,7 +816,6 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
         )
         wrcpp(
-            f"   matched = true;\n "
             f"  _cfgs.emplace_new({automaton.get_state_id(t.target)}, {new_positions} {update_registers.comma_prefixed()});\n "
         )
         debug_code_transition(wrcpp, data)
