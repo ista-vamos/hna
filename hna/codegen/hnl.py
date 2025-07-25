@@ -1721,7 +1721,7 @@ class CodeGenCpp(CodeGen):
         # it knows all the generated files
         self.generate_cmake()
 
-        self.format_generated_code()
+        # self.format_generated_code()
 
     def generate_embedded(self, formula, alphabet, embedding_data: dict):
         """
@@ -1751,7 +1751,7 @@ class CodeGenCpp(CodeGen):
             overwrite_keys={"@MONITOR_NAME@": f'"{embedding_data["monitor_name"]}"'},
             embedded=True,
         )
-        self.format_generated_code()
+        # self.format_generated_code()
 
     def format_generated_code(self):
         # format the files if we have clang-format

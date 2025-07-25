@@ -4,12 +4,14 @@ Runtime verification of hypernode automata and (extended) hypernode logic.
 
 ## Setup
 
-#### Setup python virtual environment (required on newer systems).
+#### Setup python virtual environment (required on newer systems)
+
 ```
 python3 -mvenv venv
 ```
 
 #### Install python dependencies
+
 ```
 # If you use Python virtual environment, this command
 # must be run in every terminal in which you work with this project.
@@ -19,10 +21,12 @@ pip install -r requirements.txt
 ```
 
 #### Checkout and build VAMOS
+
 ```
 git submodule update --init
 ./build-vamos.sh -j4
 ```
+
 Feel free to change the options in `./build-vamos.sh` if you need some extra
 components to be built. If you are rebuilding VAMOS, it may be necessary
 to do `cd vamos && make reset` before running `./build-vamos.sh`.
@@ -34,7 +38,6 @@ cmake . && make
 ```
 
 And its done! If you want to run the tests, use `make test`.
-
 
 ## Usage
 
@@ -78,6 +81,7 @@ events):
 ### Hypernode automata
 
 The automata are given in the YAML format, an example automaton could be:
+
 ```yaml
 automaton:
   init: q0
@@ -97,6 +101,7 @@ automaton:
 ```
 
 Run the script `./hna.py` to generate the monitor.
+
 ```
 ./hna.py automaton.yml
 ```
