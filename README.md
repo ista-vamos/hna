@@ -1,7 +1,6 @@
 # RVHyno
 
-Library for the construction, manipulation and runtime verification of hypernode automata
-and (extended) hypernode logic.
+This tools generates monitors for hypernode logic and hypernode automata specifications.
 
 ## Setup
 
@@ -20,10 +19,15 @@ pip install -r requirements.txt
 ```
 
 #### Checkout and build VAMOS
+
+The code of RVHyno depends (for now) on some python packages that are part of the [VAMOS project](https://github.com/ista-vamos/vamos).
+You must setup VAMOS before using RVHyno.
+
 ```
 git submodule update --init
 ./build-vamos.sh -j4
 ```
+
 Feel free to change the options in `./build-vamos.sh` if you need some extra
 components to be built. If you are rebuilding VAMOS, it may be necessary
 to do `cd vamos && make reset` before running `./build-vamos.sh`.
@@ -35,7 +39,6 @@ cmake . && make
 ```
 
 And its done! If you want to run the tests, use `make test`.
-
 
 ## Usage
 
@@ -63,13 +66,18 @@ To generate debugging files (e.g., the automata in GraphViz), use the `--debug`
 flag. The debugging files will be stored into `dbg/` sub-directory in the output
 directory. For other options, see `./hnl.py --help`.
 
-If the traces are read from CSV (the default and now the only option),
+If the traces are read from CSV files (the default and now the only option),
 we assume one trace per file. Also, you need to specify the type of events
-through `--csv-header` and possibly the alphabet (values that can appear in the
+through `--data` and possibly the alphabet (values that can appear in the
 events):
 ```
-./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --csv-header='x: char, y: char'
+./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --data='x: char, y: char'
 ```
+
+#### References
+
+- Chalupa, M., Henzinger, T.A., da Costa, A.O. (2025).
+  [Monitoring Extended Hypernode Logic](https://link.springer.com/chapter/10.1007/978-3-031-76554-4_9) In: Integrated Formal Methods. IFM 2024
 
 ### Hypernode automata
 
@@ -101,6 +109,12 @@ The output of the script is similar to the output of `hnl.py`: a C++ code with c
 that is stored into `/tmp/hna` (if not specified otherwise with `--out-dir`).
 Similarly to `hnl.py`, you migh (need to) use the parameters `--csv-header`, `--alphabet`,
 and `--debug`.
+
+#### References
+
+- Bartocci, Ezio and Henzinger, Thomas A. and Nickovic, Dejan and Oliveira da Costa, Ana (2023).
+ [Hypernode Automata](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CONCUR.2023.21). ArXiv.
+
 
 ### Generting code is slow
 
