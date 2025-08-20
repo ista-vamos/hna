@@ -150,26 +150,8 @@ class CodeGenCpp(CodeGen):
         self.gen_config(cmakelists, "CMakeLists.txt", values)
 
     def _generate_events(self):
-        with self.new_file("events.h") as f:
-            wr = f.write
-            wr("#ifndef EVENTS_H_\n#define EVENTS_H_\n\n")
-            wr("#include <iostream>\n")
-            wr("#include <cstdint>\n\n")
-
-            dump_codegen_position(wr)
-            wr("struct Event {\n")
-            for name, annot_ty in self.args.data:
-                ty, vals_range = annot_ty
-                wr(f"  {ty} {name};")
-                if vals_range is not None:
-                    wr(f" /* '{name}' in [{vals_range[0]}..{vals_range[1]}] */\n")
-                else:
-                    wr("\n")
-            wr("};\n\n")
-
-            wr("std::ostream& operator<<(std::ostream& os, const Event& ev);\n")
-
-            wr("#endif\n")
+        self.gen_file("events.h.in", "events.h",
+                      {'data': self.args.data})
 
         with self.new_file("events.cpp") as f:
             wr = f.write

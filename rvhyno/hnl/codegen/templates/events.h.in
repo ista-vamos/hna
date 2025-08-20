@@ -1,0 +1,20 @@
+#ifndef EVENTS_H_
+#define EVENTS_H_
+
+
+#include <iostream>
+#include <cstdint>
+
+struct Event {
+{% for name, annot_ty in data %}
+    {%- set ty, vals_range = annot_ty %}
+    {{ty}} {{name}};
+    {%- if vals_range -%}
+    /* '{name}' in [{vals_range[0]}..{vals_range[1]}] */\n")
+    {% endif %}
+{% endfor %}
+};
+
+std::ostream& operator<<(std::ostream& os, const Event& ev);
+
+#endif
