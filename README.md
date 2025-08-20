@@ -20,20 +20,6 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### Checkout and build VAMOS
-
-The code of RVHyno depends (for now) on some python packages that are part of the [VAMOS project](https://github.com/ista-vamos/vamos).
-You must setup VAMOS before using RVHyno.
-
-```
-git submodule update --init
-./build-vamos.sh -j4
-```
-
-Feel free to change the options in `./build-vamos.sh` if you need some extra
-components to be built. If you are rebuilding VAMOS, it may be necessary
-to do `cd vamos && make reset` before running `./build-vamos.sh`.
-
 #### Configure and build
 
 ```
