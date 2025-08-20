@@ -1,0 +1,36 @@
+#ifndef REGISTERS_H_
+#define REGISTERS_H_
+
+#include "events.h"
+
+enum class RegisterType {
+    INVALID=0,
+    EVENT, // whole event
+{% for name, annot_ty in cg.args.data -%}
+    {%- set ty, _ = annot_ty %}
+    {{name}},
+{%- endfor %}
+};
+
+
+struct Register {
+
+    // NOTE: we use the following field only for debugging (printing) and validity checks,
+    // we can remove it for performance reasons. However, then we should check
+    // (before generating the code) that that the transducer uses the registers
+    // correctly (i.e., every read reads a value of the expected type).
+    // We probably want to do that anyway, to catch bugs
+    RegisterType type{RegisterType::INVALID};
+
+    union {
+        Event EVENT; // whole event
+        {%- for name, annot_ty in cg.args.data %}
+        {%- set ty, _ = annot_ty %}
+        {{ty}} {{name}};
+        {%- endfor %}
+    } data;
+};
+
+std::ostream& operator<<(std::ostream& os, const Register& r);
+
+#endif

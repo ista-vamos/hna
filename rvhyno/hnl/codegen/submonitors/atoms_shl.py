@@ -264,67 +264,15 @@ class CodeGenCpp(CodeGenCppAtoms):
         super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
     def _generate_registers(self):
-        with self.new_file("registers.h") as f:
-            wr = f.write
-            wr("#ifndef REGISTERS_H_\n#define REGISTERS_H_\n\n")
+        if "EVENT" in self.args.data:
+            raise RuntimeError("A clash of names, an event cannot be called `EVENT`")
 
-            wr('#include "events.h"\n\n')
+        self.gen_file("registers.h.in", "registers.h",
+                      {'cg': self})
+        self.gen_file("registers.cpp.in", "registers.cpp",
+                      {'cg': self})
+        self._add_gen_files.append("registers.cpp")
 
-            dump_codegen_position(wr)
-            if "EVENT" in self.args.data:
-                raise RuntimeError("A name clash for 'EVENT'")
-
-            wr("  enum class RegisterType {\n")
-            wr("    INVALID=0,\n")  # this means the whole event
-            wr("    EVENT, // whole event\n")  # this means the whole event
-            for name, annot_ty in self.args.data:
-                ty, _ = annot_ty
-                wr(f"    {name},")
-            wr("  };\n")
-
-            dump_codegen_position(wr)
-            wr("struct Register {\n")
-            wr(
-                """
-            /* NOTE: we use this field only for debugging (printing) and validity checks,
-               we can remove it for performance reasons. However, then we should check
-               (before generating the code) that that the transducer uses the registers
-               correctly (i.e., every read reads a value of the expected type).
-               We probably want to do that anyway, to catch bugs */
-            """
-            )
-            wr("  RegisterType type{RegisterType::INVALID};\n\n")
-            wr("  union {\n")
-            wr("    Event EVENT; // whole event\n")
-            for name, annot_ty in self.args.data:
-                ty, _ = annot_ty
-                wr(f"    {ty} {name};")
-            wr("  } data;\n\n")
-            wr("};\n\n")
-
-            wr("std::ostream& operator<<(std::ostream& os, const Register& r);\n")
-
-            wr("#endif\n")
-
-        with self.new_file("registers.cpp") as f:
-            # FIXME: do not add it to atoms
-            self._atoms_files.append("registers.cpp")
-            wr = f.write
-            wr("#include <iostream>\n\n")
-            wr('#include "registers.h"\n\n')
-            dump_codegen_position(wr)
-            wr("std::ostream& operator<<(std::ostream& os, const Register& r) {\n")
-            # wr('  os << "<";\n')
-            wr("  switch (r.type) {")
-            wr(f'   case RegisterType::INVALID: os << "INVALID"; break;')
-            wr(f"   case RegisterType::EVENT: os << r.data.EVENT; break;")
-            for n, field in enumerate(self.args.data):
-                name, _ = field
-                wr(f"   case RegisterType::{name}: os << r.data.{name}; break;")
-            # wr('   os << ">";\n')
-            wr("  };\n")
-            wr("return os;\n")
-            wr("}\n")
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:

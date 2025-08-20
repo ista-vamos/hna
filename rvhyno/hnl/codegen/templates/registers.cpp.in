@@ -1,0 +1,16 @@
+#include <iostream>
+#include "registers.h"
+
+std::ostream& operator<<(std::ostream& os, const Register& r) {
+    os << "<";
+    switch (r.type) {
+      case RegisterType::INVALID: os << "INVALID"; break;
+      case RegisterType::EVENT: os << r.data.EVENT; break;
+    {% for field in cg.args.data %}
+        {% set name, _ = field %}
+        case RegisterType::{{name}}: os << r.data.{{name}}; break;
+    {% endfor %}
+    os << ">";
+    };
+    return os;
+}
