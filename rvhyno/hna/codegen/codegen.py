@@ -96,8 +96,8 @@ class CodeGenCpp(CodeGen):
             "CMakeLists.txt.in",
             "CMakeLists.txt",
             {
-                "@vamos-buffers_DIR@": vamos_buffers_DIR,
-                "@additional_sources@": " ".join(
+                "vamos-buffers_DIR": vamos_buffers_DIR,
+                "additional_sources": " ".join(
                     (
                         basename(f)
                         for f in self.args.cpp_files
@@ -105,17 +105,17 @@ class CodeGenCpp(CodeGen):
                         + self._add_gen_files
                     )
                 ),
-                "@additional_cflags@": " ".join((d for d in self.args.cflags)),
-                "@CMAKE_BUILD_TYPE@": build_type,
-                "@ADD_SUBDIRS@": "".join(
+                "additional_cflags": " ".join((d for d in self.args.cflags)),
+                "CMAKE_BUILD_TYPE": build_type,
+                "ADD_SUBDIRS": "".join(
                     f"add_subdirectory({subdir})\n" for subdir in subdirs
                 ),
-                "@LINK_HNL_MONITORS@": "".join(
+                "LINK_HNL_MONITORS": "".join(
                     f"target_link_libraries(monitor PUBLIC top{monitor_name})\n"
                     for monitor_name in monitor_names
                 ),
-                # "@hnl_subdirs@": " ".join(subdirs),
-                "@hnl_ids@": " ".join(
+                # "hnl_subdirs": " ".join(subdirs),
+                "hnl_ids": " ".join(
                     (str(hna.get_state_id(state)) for state in hna.states())
                 ),
             },
@@ -424,9 +424,9 @@ class CodeGenCpp(CodeGen):
         self._gen_do_step(hna)
 
         values = {
-            "@hnl_monitors_decls@": self._gen_hnl_monitors_decls(hna),
-            "@hna_node_types@": self._gen_hna_node_types(hna),
-            "@slice_tree_node_dtor@": self._gen_slice_node_dtor(hna),
+            "hnl_monitors_decls": self._gen_hnl_monitors_decls(hna),
+            "hna_node_types": self._gen_hna_node_types(hna),
+            "slice_tree_node_dtor": self._gen_slice_node_dtor(hna),
         }
 
         self.gen_file("slice-tree.h.in", "slice-tree.h", values)

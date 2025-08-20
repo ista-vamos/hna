@@ -9,7 +9,7 @@
 #include "csvreader.h"
 #include "hnl-monitor.h"
 
-@namespace_using@
+{{namespace_using}}
 
 int main(int argc, char *argv[]) {
   std::ios::sync_with_stdio(false);

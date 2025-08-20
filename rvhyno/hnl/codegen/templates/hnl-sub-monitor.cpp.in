@@ -4,7 +4,7 @@
 
 #include "hnl-monitor.h"
 
-@namespace_start@
+{{namespace_start}}
 
 /* GENERATED */
 #include "functions.h"
@@ -37,7 +37,7 @@ Verdict HNLMonitor::step() {
           _instances[n].reset();
           ++empty_slots;
 
-          @process_submonitor_verdict@
+          {{process_submonitor_verdict}}
           if (verdict == Verdict::FALSE) {
               // FIXME: we leak memory (which is bad, because this FALSE may not be the final result
               // and the monitors may run further)
@@ -64,7 +64,7 @@ bool HNLMonitor::inputs_finished() {
     if (_inputs_finished)
         return true;
 
-    @inputs_finished@
+    {{inputs_finished}}
 
     _inputs_finished = true;
     return true;
@@ -87,4 +87,4 @@ void HNLMonitor::condenseWbg() {
     _instances.swap(tmp);
 }
 
-@namespace_end@
+{{namespace_end}}

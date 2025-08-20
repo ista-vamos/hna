@@ -1,11 +1,11 @@
-#ifndef FINISHED_ATOM_MONITOR__@monitor_name@
-#define FINISHED_ATOM_MONITOR__@monitor_name@
+#ifndef FINISHED_ATOM_MONITOR__{{monitor_name}}
+#define FINISHED_ATOM_MONITOR__{{monitor_name}}
 
 #include "atom-monitor.h"
 #include "atom-identifier.h"
 #include "verdict.h"
 
-@namespace_start@
+{{namespace_start}}
 
 /**
 * A wrapper around verdict that we can use to cache results and it is also suitable to be used
@@ -24,6 +24,6 @@ public:
   Verdict step(unsigned n = 0) { return _verdict; }
 };
 
-@namespace_end@
+{{namespace_end}}
 
-#endif // FINISHED_ATOM_MONITOR__@monitor_name@
+#endif // FINISHED_ATOM_MONITOR__{{monitor_name}}

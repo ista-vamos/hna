@@ -38,8 +38,8 @@ class CodeGenCpp(CodeGenCpp):
             build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
-            "@vamos-buffers_DIR@": vamos_buffers_DIR,
-            "@additional_sources@": " ".join(
+            "vamos-buffers_DIR": vamos_buffers_DIR,
+            "additional_sources": " ".join(
                 (
                     basename(f)
                     for f in self.args.cpp_files
@@ -47,16 +47,16 @@ class CodeGenCpp(CodeGenCpp):
                     + self._add_gen_files
                 )
             ),
-            "@additional_cflags@": " ".join((d for d in self.args.cflags)),
-            "@CMAKE_BUILD_TYPE@": build_type,
-            "@monitor_name@": self.name(),
-            "@add_submonitors@": "\n".join(
+            "additional_cflags": " ".join((d for d in self.args.cflags)),
+            "CMAKE_BUILD_TYPE": build_type,
+            "monitor_name": self.name(),
+            "add_submonitors": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
                     for submon_dir in (d["out_dir"] for d in self._submonitors)
                 )
             ),
-            "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
+            "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),
         }
         if overwrite_keys:
             values.update(overwrite_keys)
@@ -173,7 +173,7 @@ class CodeGenCpp(CodeGenCpp):
                 "main.cpp.in",
                 "main.cpp",
                 {
-                    "@namespace_using@": (
+                    "namespace_using": (
                         f"using namespace {self._namespace};" if self._namespace else ""
                     )
                 },
@@ -225,18 +225,18 @@ class CodeGenCpp(CodeGenCpp):
         inputs_finished = self._inputs_finished(formula)
 
         values = {
-            "@monitor_name@": self.name(),
-            "@namespace@": self.namespace(),
-            "@sub-namespace@": self.sub_namespace(),
-            "@namespace_start@": self.namespace_start(),
-            "@namespace_end@": self.namespace_end(),
-            "@input_traces@": input_traces,
-            "@inputs_finished@": inputs_finished,
-            "@ctors_dtors@": "\n".join(ctors_dtors),
-            "@process_submonitor_verdict@": (
+            "monitor_name": self.name(),
+            "namespace": self.namespace(),
+            "sub-namespace": self.sub_namespace(),
+            "namespace_start": self.namespace_start(),
+            "namespace_end": self.namespace_end(),
+            "input_traces": input_traces,
+            "inputs_finished": inputs_finished,
+            "ctors_dtors": "\n".join(ctors_dtors),
+            "process_submonitor_verdict": (
                 "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""
             ),
-            "@info@": f"Monitor for '{formula}'",
+            "info": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)

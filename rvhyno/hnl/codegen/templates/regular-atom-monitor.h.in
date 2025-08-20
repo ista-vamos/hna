@@ -1,12 +1,12 @@
-#ifndef REGULAR_ATOM_MONITOR__@monitor_name@
-#define REGULAR_ATOM_MONITOR__@monitor_name@
+#ifndef REGULAR_ATOM_MONITOR__{{monitor_name}}
+#define REGULAR_ATOM_MONITOR__{{monitor_name}}
 
 #include "verdict.h"
 #include "atom-monitor.h"
 
-// @include_headers@
+// {{include_headers}}
 
-@namespace_start@
+{{namespace_start}}
 
 /**
  * Class encapsulating the evaluation of an atom on a pair of traces
@@ -18,6 +18,6 @@ public:
   Verdict step(const unsigned step_num);
 };
 
-@namespace_end@
+{{namespace_end}}
 
-#endif // REGULAR_ATOM_MONITOR__@monitor_name@
+#endif // REGULAR_ATOM_MONITOR__{{monitor_name}}

@@ -1,19 +1,19 @@
-#ifndef _ATOM_@atom_num@_H__@monitor_name@
-#define _ATOM_@atom_num@_H__@monitor_name@
+#ifndef _ATOM_{{atom_num}}_H__{{monitor_name}}
+#define _ATOM_{{atom_num}}_H__{{monitor_name}}
 
 #include "atom-identifier.h"
 #include "regular-atom-monitor.h"
 
-@namespace_start@
+{{namespace_start}}
 
-/* Formula: @formula@ */
-class AtomMonitor@atom_num@ : public RegularAtomMonitor {
+/* Formula: {{formula}} */
+class AtomMonitor{{atom_num}} : public RegularAtomMonitor {
 public:
-    AtomMonitor@atom_num@(const Instance& instance);
-    AtomMonitor@atom_num@(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt);
+    AtomMonitor{{atom_num}}(const Instance& instance);
+    AtomMonitor{{atom_num}}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt);
 
-    Verdict step(unsigned num = 0) { return @verdict@; }
+    Verdict step(unsigned num = 0) { return {{verdict}}; }
 };
 
-@namespace_end@
+{{namespace_end}}
 #endif

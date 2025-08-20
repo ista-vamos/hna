@@ -14,16 +14,16 @@
 #include "functions.h"
 #include "alltracesets.h"
 
-@namespace_start@
+{{namespace_start}}
 
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
 //
-// @info@
+// {{info}}
 class HNLMonitor : public ::MonitorWithTraces {
   CmdArgs *_cmd;
 
-  @functions@
+  {{functions}}
 
   // An object containing a reference to _traces and all functions.
   // We use it to pass these references around to monitors.
@@ -36,8 +36,8 @@ class HNLMonitor : public ::MonitorWithTraces {
 public:
   HNLMonitor(CmdArgs *cmd = nullptr)
     : _cmd(cmd)
-      @functions_init@,
-      allTraceSets(@alltracesets_init@),
+      {{functions_init}},
+      allTraceSets({{alltracesets_init}}),
       _monitor(allTraceSets) {}
 
   /// This method calls `step` for the function traces generators
@@ -58,6 +58,6 @@ public:
   } stats;
 };
 
-@namespace_end@
+{{namespace_end}}
 
 #endif // HNLMONITOR_H_

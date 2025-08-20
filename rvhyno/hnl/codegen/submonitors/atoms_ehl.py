@@ -784,7 +784,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             "CMakeLists-atoms-tests.txt.in",
             "tests/CMakeLists.txt",
             {
-                "@submonitors_libs@": " ".join(self._submonitors),
+                "submonitors_libs": " ".join(self._submonitors),
             },
         )
 
@@ -836,17 +836,17 @@ class CodeGenCpp(CodeGenCppAtoms):
             "test-atom.cpp.in",
             f"tests/test-atom-{num}-{test_num}.cpp",
             {
-                "@TRACE@": f'#include "test-trace-{num}-{test_num}.cpp"',
-                "@TRACE_VARIABLES@": ", ".join(
+                "TRACE": f'#include "test-trace-{num}-{test_num}.cpp"',
+                "TRACE_VARIABLES": ", ".join(
                     (f"trace{i+1}" for i, v in enumerate(vars) if v is not None)
                 ),
-                "@ATOM_NUM@": str(num),
-                "@FORMULA@": str(F),
-                "@MAX_TRACE_LEN@": str(len(path)),
-                "@EXPECTED_VERDICT@": (
+                "ATOM_NUM": str(num),
+                "FORMULA": str(F),
+                "MAX_TRACE_LEN": str(len(path)),
+                "EXPECTED_VERDICT": (
                     "Verdict::TRUE" if is_accepting else "Verdict::FALSE"
                 ),
-                "@namespace_using@": (
+                "namespace_using": (
                     f"using namespace {self._namespace};" if self._namespace else ""
                 ),
             },
@@ -875,7 +875,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "main.cpp.in",
                 "main.cpp",
                 {
-                    "@namespace_using@": (
+                    "namespace_using": (
                         f"using namespace {self._namespace};" if self._namespace else ""
                     )
                 },
@@ -896,14 +896,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         inputs_finished = self._inputs_finished(formula)
 
         values = {
-            "@monitor_name@": self.name(),
-            "@namespace@": self.namespace(),
-            "@namespace_start@": self.namespace_start(),
-            "@namespace_end@": self.namespace_end(),
-            "@input_traces@": input_traces,
-            "@inputs_finished@": inputs_finished,
-            "@ctors_dtors@": "\n".join(ctors_dtors),
-            "@info@": f"Monitor for '{formula}'",
+            "monitor_name": self.name(),
+            "namespace": self.namespace(),
+            "namespace_start": self.namespace_start(),
+            "namespace_end": self.namespace_end(),
+            "input_traces": input_traces,
+            "inputs_finished": inputs_finished,
+            "ctors_dtors": "\n".join(ctors_dtors),
+            "info": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)
@@ -911,7 +911,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
 
-        values.update({"@include_headers@": '# include "ehl-evaluation-stateset.h"'})
+        values.update({"include_headers": '# include "ehl-evaluation-stateset.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         # there is no sub-formula, this is the monitor for the body of the formula

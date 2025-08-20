@@ -7,7 +7,7 @@
 
 #include "slice-tree-node.h"
 
-@hnl_monitors_decls@
+{{hnl_monitors_decls}}
 
 class SlicesTree {
   SliceTreeNode root;

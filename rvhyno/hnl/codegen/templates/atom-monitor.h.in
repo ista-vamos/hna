@@ -1,11 +1,11 @@
-#ifndef ATOM_MONITOR__@monitor_name@
-#define ATOM_MONITOR__@monitor_name@
+#ifndef ATOM_MONITOR__{{monitor_name}}
+#define ATOM_MONITOR__{{monitor_name}}
 
 #include "atom-base.h"
 #include "instance.h"
 #include "atom-identifier.h"
 
-@namespace_start@
+{{namespace_start}}
 
 class AtomMonitor : public AtomBase<Instance> {
   const AtomIdentifier _id;
@@ -21,6 +21,6 @@ public:
   const AtomIdentifier& id() const { return _id; }
 };
 
-@namespace_end@
+{{namespace_end}}
 
-#endif // ATOM_MONITOR__@monitor_name@
+#endif // ATOM_MONITOR__{{monitor_name}}

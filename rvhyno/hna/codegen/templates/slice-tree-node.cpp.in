@@ -4,7 +4,7 @@
 SliceTreeNode::~SliceTreeNode() {
     // we need to cast the unique_ptr to the right type
     // so that the right dtor is called
-    @slice_tree_node_dtor@
+    {{slice_tree_node_dtor}}
 }
 
 SliceTreeNode *HNAMonitor::getOrCreateSlice(SliceTreeNode *current_node,

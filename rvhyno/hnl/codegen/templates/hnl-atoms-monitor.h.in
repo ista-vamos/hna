@@ -3,8 +3,8 @@
 // normal include guards. However, they must be different for each HNL
 // monitor
 
-#ifndef HNL_ATOMS_MONITOR_H__@monitor_name@
-#define HNL_ATOMS_MONITOR_H__@monitor_name@
+#ifndef HNL_ATOMS_MONITOR_H__{{monitor_name}}
+#define HNL_ATOMS_MONITOR_H__{{monitor_name}}
 
 #include <vector>
 #include <list>
@@ -33,14 +33,14 @@
 #include "atom-identifier.h"
 #include "alltracesets.h"
 
-@namespace_start@
+{{namespace_start}}
 
 
 ///
 // Monitor for monitoring the body of an HNL formula
 //  preceded by universal quantification.
 //
-// @info@
+// {{info}}
 class HNLMonitor : public ::Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors
@@ -54,7 +54,7 @@ protected:
   std::map<AtomIdentifier, FinishedAtomMonitor> _finished_atoms;
 #endif
 
-  @input_traces@
+  {{input_traces}}
 
   // check for new traces and create Instances for them if there are some
   void addNewTraces();
@@ -71,7 +71,7 @@ protected:
   CmdArgs *_cmd;
 
 public:
-  @ctors_dtors@
+  {{ctors_dtors}}
 
   Verdict step();
 
@@ -98,6 +98,6 @@ public:
   } stats;
 };
 
-#endif // !HNL_ATOMS_MONITOR_H__@monitor_name@
+#endif // !HNL_ATOMS_MONITOR_H__{{monitor_name}}
 
-@namespace_end@
+{{namespace_end}}

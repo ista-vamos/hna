@@ -10,7 +10,7 @@ foreach(file ${inputs})
         set(TARGET_NAME "${monitor_name}-${NAME}")
         add_executable(${TARGET_NAME} ${NAME}.cpp)
         target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
-        target_link_libraries(${TARGET_NAME} trace atoms${monitor_name} events @submonitors_libs@)
+        target_link_libraries(${TARGET_NAME} trace atoms${monitor_name} events {{submonitors_libs}})
         target_compile_options(${TARGET_NAME} PRIVATE -Wno-missing-field-initializers)
 
         add_test(NAME ${TARGET_NAME}

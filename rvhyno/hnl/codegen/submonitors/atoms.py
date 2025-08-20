@@ -75,8 +75,8 @@ class CodeGenCppAtoms(CodeGenCppShared):
             build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
-            "@vamos-buffers_DIR@": vamos_buffers_DIR,
-            "@additional_sources@": " ".join(
+            "vamos-buffers_DIR": vamos_buffers_DIR,
+            "additional_sources": " ".join(
                 (
                     basename(f)
                     for f in self.args.cpp_files
@@ -84,17 +84,17 @@ class CodeGenCppAtoms(CodeGenCppShared):
                     + self._add_gen_files
                 )
             ),
-            "@atoms_sources@": " ".join((basename(f) for f in self._atoms_files)),
-            "@additional_cflags@": " ".join((d for d in self.args.cflags)),
-            "@CMAKE_BUILD_TYPE@": build_type,
-            "@monitor_name@": self.name(),
-            "@add_submonitors@": "\n".join(
+            "atoms_sources": " ".join((basename(f) for f in self._atoms_files)),
+            "additional_cflags": " ".join((d for d in self.args.cflags)),
+            "CMAKE_BUILD_TYPE": build_type,
+            "monitor_name": self.name(),
+            "add_submonitors": "\n".join(
                 (
                     f"add_subdirectory({submon_dir})"
                     for submon_dir in (d["out_dir"] for d in self._submonitors)
                 )
             ),
-            "@submonitors_libs@": " ".join(self._submonitors),
+            "submonitors_libs": " ".join(self._submonitors),
         }
         if overwrite_keys:
             values.update(overwrite_keys)

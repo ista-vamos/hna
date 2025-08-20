@@ -122,8 +122,8 @@ class CodeGenCpp(CodeGen):
             build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
-            "@vamos-buffers_DIR@": vamos_buffers_DIR,
-            "@additional_sources@": " ".join(
+            "vamos-buffers_DIR": vamos_buffers_DIR,
+            "additional_sources": " ".join(
                 (
                     basename(f)
                     for f in self.args.cpp_files
@@ -131,12 +131,12 @@ class CodeGenCpp(CodeGen):
                     + self._add_gen_files
                 )
             ),
-            "@additional_cflags@": " ".join((d for d in self.args.cflags)),
-            "@CMAKE_BUILD_TYPE@": build_type,
-            "@monitor_name@": self.name(),
-            "@top_monitor_dir@": self._out_dir,
-            "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
-            "@submonitors@": "\n".join(
+            "additional_cflags": " ".join((d for d in self.args.cflags)),
+            "CMAKE_BUILD_TYPE": build_type,
+            "monitor_name": self.name(),
+            "top_monitor_dir": self._out_dir,
+            "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),
+            "submonitors": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
             ),
         }
@@ -509,16 +509,16 @@ class CodeGenCpp(CodeGen):
         )
 
         values = {
-            "@monitor_name@": self.name(),
-            "@namespace@": self.namespace(),
-            "@namespace_start@": self.namespace_start(),
-            "@namespace_end@": self.namespace_end(),
-            "@functions@": funs,
-            "@functions_init@": funs_init,
-            "@functions_step@": funs_step,
-            "@functions_finished@": funs_finished,
-            "@alltracesets_init@": alltracesets_init,
-            "@info@": f"Monitor for '{formula}'",
+            "monitor_name": self.name(),
+            "namespace": self.namespace(),
+            "namespace_start": self.namespace_start(),
+            "namespace_end": self.namespace_end(),
+            "functions": funs,
+            "functions_init": funs_init,
+            "functions_step": funs_step,
+            "functions_finished": funs_finished,
+            "alltracesets_init": alltracesets_init,
+            "info": f"Monitor for '{formula}'",
         }
 
         self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
@@ -529,7 +529,7 @@ class CodeGenCpp(CodeGen):
             "main.cpp.in",
             "main.cpp",
             {
-                "@namespace_using@": (
+                "namespace_using": (
                     f"using namespace {self._namespace};" if self._namespace else ""
                 ),
             },

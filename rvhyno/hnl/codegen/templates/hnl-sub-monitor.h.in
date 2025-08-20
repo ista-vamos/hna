@@ -1,7 +1,7 @@
 // template: hnl-sub-monitor.h.in
 
-#ifndef HNL_SUB_MONITOR_H__@monitor_name@
-#define HNL_SUB_MONITOR_H__@monitor_name@
+#ifndef HNL_SUB_MONITOR_H__{{monitor_name}}
+#define HNL_SUB_MONITOR_H__{{monitor_name}}
 
 #include <vector>
 #include <memory>
@@ -14,7 +14,7 @@
 #include "alltracesets.h"
 #include "instance.h"
 
-@namespace_start@
+{{namespace_start}}
 
 ///
 // This class is an HNL monitor that does not handle atoms but nested monitors
@@ -23,14 +23,14 @@
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
 //
-// @info@
+// {{info}}
 class HNLMonitor : public ::Monitor {
   const AllTraceSets& TS;
 
-  @input_traces@
+  {{input_traces}}
 
   // here we store the running monitors
-  //std::vector<std::unique_ptr<@sub-namespace@::HNLMonitor>> _monitors_wbg;
+  //std::vector<std::unique_ptr<{{sub-namespace}}::HNLMonitor>> _monitors_wbg;
   std::vector<std::unique_ptr<Instance>> _instances;
 
   void addNewTraces();
@@ -40,7 +40,7 @@ class HNLMonitor : public ::Monitor {
   bool inputs_finished();
 
 public:
-  @ctors_dtors@
+  {{ctors_dtors}}
 
   Verdict step();
 
@@ -61,6 +61,6 @@ public:
   } stats;
 };
 
-#endif // !HNL_SUB_MONITOR_H__@monitor_name@
+#endif // !HNL_SUB_MONITOR_H__{{monitor_name}}
 
-@namespace_end@
+{{namespace_end}}

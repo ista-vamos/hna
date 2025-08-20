@@ -6,14 +6,14 @@
 
 #include "hnl-monitor.h"
 
-@namespace_start@
+{{namespace_start}}
 
 Verdict HNLMonitor::step() {
     // generate function traces
-    @functions_step@
+    {{functions_step}}
 
     // step the monitor(s)
     return _monitor.step();
 }
 
-@namespace_end@
+{{namespace_end}}

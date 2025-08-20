@@ -14,7 +14,7 @@
 #include "hnl-state.h"
 /* generated part END */
 
-@namespace_start@
+{{namespace_start}}
 
 // must be inside the namespace
 #include "bdd-structure.h"
@@ -196,7 +196,7 @@ bool HNLMonitor::inputs_finished() {
     if (_inputs_finished)
         return true;
 
-    @inputs_finished@
+    {{inputs_finished}}
 
     _inputs_finished = true;
     return true;
@@ -231,4 +231,4 @@ void HNLMonitor::condenseWbg() {
     _monitors_wbg.swap(tmp);
 }
 
-@namespace_end@
+{{namespace_end}}

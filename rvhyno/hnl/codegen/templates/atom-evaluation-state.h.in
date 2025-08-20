@@ -1,27 +1,27 @@
-#ifndef ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
-#define ATOM_@atom_num@_EVALUATION_STATE__@monitor_name@
+#ifndef ATOM_{{atom_num}}_EVALUATION_STATE__{{monitor_name}}
+#define ATOM_{{atom_num}}_EVALUATION_STATE__{{monitor_name}}
 
 #include <vector>
 
 #include "events.h"
-@include_headers@
+{{include_headers}}
 
-@namespace_start@
+{{namespace_start}}
 
 using State = int;
 
-struct Atom@atom_num@EvaluationState {
+struct Atom{{atom_num}}EvaluationState {
     State state;
 
     // position in the traces
-    @position_fields@
+    {{position_fields}}
     
     // registers
-    @registers_types@
-    @registers_fields@
+    {{registers_types}}
+    {{registers_fields}}
     
-    Atom@atom_num@EvaluationState(State s @position_args@ @registers_args@)
-    : state(s) @position_ctor@ @registers_ctor@ {}
+    Atom{{atom_num}}EvaluationState(State s {{position_args}} {{registers_args}})
+    : state(s) {{position_ctor}} {{registers_ctor}} {}
 };
 
 /**
@@ -29,13 +29,13 @@ struct Atom@atom_num@EvaluationState {
  * storage and are moved to the main storage only on an explicit call.
  * This is because we iterate over the vector when adding.
  */
-class Atom@atom_num@EvaluationStateSet
-    : public std::vector<Atom@atom_num@EvaluationState> {
-  std::vector<Atom@atom_num@EvaluationState> _new_cfgs;
+class Atom{{atom_num}}EvaluationStateSet
+    : public std::vector<Atom{{atom_num}}EvaluationState> {
+  std::vector<Atom{{atom_num}}EvaluationState> _new_cfgs;
 
 public:
-  void emplace_new(State s @position_args@ @registers_args@) {
-    _new_cfgs.emplace_back(s @position_pass_args@ @registers_pass_args@);
+  void emplace_new(State s {{position_args}} {{registers_args}}) {
+    _new_cfgs.emplace_back(s {{position_pass_args}} {{registers_pass_args}});
   }
 
   auto back_new() -> auto { return _new_cfgs.back(); }
@@ -48,6 +48,6 @@ public:
   }
 };
 
-@namespace_end@
+{{namespace_end}}
 
 #endif
