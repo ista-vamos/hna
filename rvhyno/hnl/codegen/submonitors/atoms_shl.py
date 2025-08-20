@@ -273,19 +273,6 @@ class CodeGenCpp(CodeGenCppAtoms):
                       {'cg': self})
         self._add_gen_files.append("registers.cpp")
 
-
-    def _generate_atom_monitor(self):
-        with self.new_file("create-atom-monitor.h") as f:
-            dump_codegen_position(f)
-            f.write("switch(monitor_type) {\n")
-            for nd in self._bdd_nodes:
-                num = nd.get_id()
-                f.write(
-                    f"case ATOM_{num}: monitor = new AtomMonitor{num}(instance); break;\n"
-                )
-            f.write("default: abort();\n")
-            f.write("}\n\n")
-
     def _generate_monitor(self, formula):
         """
         Generate a monitor that actually monitors the body of the formula,
@@ -296,7 +283,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
         self._generate_automata_code(formula)
-        self._generate_atom_monitor()
 
     def _generate_trivial_atom(self, nd):
         num, F = nd.get_id(), nd.formula
@@ -980,6 +966,16 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.format_generated_code()
 
     def generate_monitor(self, formula: PrenexFormula):
+        # there is no sub-formula, this is the monitor for the body of the formula
+        self._gen_bdd_from_formula(formula)
+
+        for nd in self._bdd_nodes:
+            # no automaton for this one, we'll handle that explicitly
+            if isinstance(nd, ConstBDDNode):
+                continue
+            nd.automaton, nd.renaming = self.generate_atomic_comparison_automaton(nd)
+
+        # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
         assert not formula.has_quantifier_alternation(), formula
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
@@ -988,6 +984,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         inputs_finished = self._inputs_finished(formula)
 
         values = {
+            "cg": self,
             "monitor_name": self.name(),
             "namespace": self.namespace(),
             "namespace_start": self.namespace_start(),
@@ -1004,15 +1001,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         # values.update({"include_headers": '# include "atom-evaluation-state.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
-
-        # there is no sub-formula, this is the monitor for the body of the formula
-        self._gen_bdd_from_formula(formula)
-
-        for nd in self._bdd_nodes:
-            # no automaton for this one, we'll handle that explicitly
-            if isinstance(nd, ConstBDDNode):
-                continue
-            nd.automaton, nd.renaming = self.generate_atomic_comparison_automaton(nd)
 
         self._generate_monitor(formula)
 

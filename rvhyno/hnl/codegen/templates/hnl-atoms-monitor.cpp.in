@@ -165,8 +165,12 @@ AtomMonitor *HNLMonitor::createAtomMonitor(FormulaEvaluationState monitor_type, 
 #endif // !CACHE_ATOMS_RESULTS
 
     if (!monitor) {
-        /* GENERATED */
-        #include "create-atom-monitor.h"
+        switch(monitor_type) {
+        {% for nd in cg._bdd_nodes %}
+          case ATOM_{{nd.get_id()}}: monitor = new AtomMonitor{{nd.get_id()}}(instance); break;
+        {%- endfor %}
+          default: abort();
+        }
 
         assert(monitor && "Monitor not found/created");
         //_atom_monitors.emplace_back(monitor);
