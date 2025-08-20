@@ -146,8 +146,8 @@ class CodeGenCpp(CodeGenCppAtoms):
                     self._atoms_files.append(f"atom-{num}.cpp")
                 continue
 
-            with self.new_file(f"atom-{num}.h") as fh:
-                self._generate_atom_header(F, nd.automaton, num, fh.write)
+            self.gen_file("atom-ehl.h.in", f"atom-{num}.h",
+                          {'cg': self, 'num': num, 'automaton': nd.automaton})
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 self._generate_atom(fcpp.write, formula, nd)
@@ -433,42 +433,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n\n")
 
-    def _generate_atom_header(self, atom_formula, automaton, num, wrh):
-        wrh(
-            f"""
-        #ifndef _ATOM_{num}_H__{self.name()}
-        #define _ATOM_{num}_H__{self.name()}
-        """
-        )
-        dump_codegen_position(wrh)
-        wrh('#include "regular-atom-monitor.h"\n\n')
-        wrh('#include "atom-identifier.h"\n\n')
-        wrh('#include "evaluation-state.h"\n')
-        wrh('#include "ehl-evaluation-stateset.h"\n\n')
-
-        wrh(self.namespace_start())
-        wrh("\n\n")
-
-        dump_codegen_position(wrh)
-        wrh(f"/* {atom_formula}*/\n")
-        wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
-        wrh(f" EvaluationStateSet _cfgs;\n\n")
-        for state in automaton.states():
-            dump_codegen_position(wrh)
-            wrh(
-                f"void stepState_{automaton.get_state_id(state)}(EvaluationState& cfg, const Event *ev1, const Event *ev2);\n"
-            )
-        wrh(f"void _step(EvaluationState &cfg, const Event *ev1, const Event *ev2);\n")
-        wrh("public:\n")
-        wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
-        wrh(
-            f"AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, Trace *lt, Trace *rt);\n\n"
-        )
-        wrh(f"Verdict step(unsigned num = 0);\n\n")
-        wrh("};\n\n")
-        wrh(self.namespace_end())
-        wrh("\n\n")
-        wrh("#endif\n")
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         num, atom_formula = nd.get_id(), nd.formula

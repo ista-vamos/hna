@@ -1,0 +1,30 @@
+#ifndef _ATOM_{{num}}_H__{{cg.name()}}
+#define _ATOM_{{num}}_H__{{cg.name()}}
+
+#include "regular-atom-monitor.h"
+#include "atom-{{num}}-evaluation-state.h"
+
+{{cg.namespace_start()}}
+
+/* {{data.atom_formula}}*/
+class AtomMonitor{{num}} : public RegularAtomMonitor {
+    Atom{{num}}EvaluationStateSet _cfgs;
+
+    {% for tr in data.traces -%}
+    Trace *{{tr.c_name()}};
+    {% endfor %}
+    {% for state in automaton.states() -%}
+    void stepState_{{automaton.get_state_id(state)}}(Atom{{num}}EvaluationState& cfg, {{data.evs_as_args()}});
+    {% endfor %}
+
+    void _step(Atom{{num}}EvaluationState &cfg, {{data.evs_as_args()}});
+  public:
+    AtomMonitor{{num}}(const Instance& instance);
+    AtomMonitor{{num}}(const Instance& instance, FormulaEvaluationState st, {{data.traces_as_args()}});
+
+    Verdict step(unsigned num = 0);
+};
+
+{{cg.namespace_end()}}
+
+#endif

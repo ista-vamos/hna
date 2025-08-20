@@ -726,43 +726,9 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def _generate_atom_header(self, data, wrh):
         automaton, num = data.automaton, data.num
-        wrh(
-            f"""
-        #ifndef _ATOM_{num}_H__{self.name()}
-        #define _ATOM_{num}_H__{self.name()}
-        """
-        )
-        dump_codegen_position(wrh)
-        wrh('#include "regular-atom-monitor.h"\n\n')
-        wrh('#include "atom-identifier.h"\n\n')
-        wrh(f'#include "atom-{num}-evaluation-state.h"\n\n')
 
-        wrh(self.namespace_start())
-        wrh("\n\n")
-
-        dump_codegen_position(wrh)
-        wrh(f"/* {data.atom_formula}*/\n")
-        wrh(f"class AtomMonitor{num} : public RegularAtomMonitor {{\n\n")
-        wrh(f" Atom{num}EvaluationStateSet _cfgs;\n\n")
-        for tr in data.traces:
-            wrh(f"  Trace *{tr.c_name()};\n")
-        wrh("\n")
-        for state in automaton.states():
-            dump_codegen_position(wrh)
-            wrh(
-                f"void stepState_{automaton.get_state_id(state)}(Atom{num}EvaluationState& cfg, {data.evs_as_args()});\n"
-            )
-        wrh(f"void _step(Atom{num}EvaluationState &cfg, {data.evs_as_args()});\n")
-        wrh("public:\n")
-        wrh(f"AtomMonitor{num}(const Instance& instance);\n\n")
-        wrh(
-            f"AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st, {data.traces_as_args()});\n\n"
-        )
-        wrh(f"Verdict step(unsigned num = 0);\n\n")
-        wrh("};\n\n")
-        wrh(self.namespace_end())
-        wrh("\n\n")
-        wrh("#endif\n")
+        self.gen_file("atom-shl.h.in", f"atom-{num}.h",
+                      {'cg': self, 'num': num, 'automaton': automaton, 'data': data})
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         raise NotImplementedError("Not re-implemented for transducers")
