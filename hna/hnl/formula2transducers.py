@@ -118,6 +118,38 @@ def positive_slice_transducer(interval):
         origin=None,
     )
 
+def last_elem_transducer():
+    # we need some dummy trace that serves as the input to the transducer
+    trace = TraceVariable("𝜏")
+    states = [State("q0"), State("q1"), State("q2")]
+    r, x = Reg("last"), Var("x")
+    transitions = [
+        Transition(
+            states[0], TransitionMultiLabel({}, [TraceFinished(trace)], [], Eps()), states[2]
+        ),
+        Transition(
+            states[0], TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()), states[1]
+        ),
+        Transition(
+            states[1], TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()), states[1]
+        ),
+        Transition(
+            states[1], TransitionMultiLabel({}, [TraceFinished(trace)], [], r), states[2]
+        ),
+    ]
+
+    return SymbolicTransducer(
+        states=states,
+        registers=[r],
+        transitions=transitions,
+        init_states=[states[0]],
+        accepting_states=[states[2]],
+        origin=None,
+    )
+
+
+
+
 
 class Formula2Transducer:
     def __init__(self, data_funs=()):
@@ -199,6 +231,8 @@ class Formula2Transducer:
         interval = formula.interval
         if 0 <= interval[0] <= interval[1]:
             ST = positive_slice_transducer(interval)
+        elif interval[0] == interval[1] == -1:
+            ST = last_elem_transducer()
             with open("/tmp/t.dot", "w") as f:
                 ST.to_dot(f)
         else:

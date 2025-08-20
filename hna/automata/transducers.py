@@ -469,7 +469,7 @@ class SymbolicTransducer(Transducer):
         """
         T = self.traces
         if len(T) == 1:
-            return T.iter().next()
+            return next(iter(T))
         return None
 
     def copy(self, new_origin=None):
@@ -721,7 +721,12 @@ def compose_transducers(
             for outer_t in outer.transitions_from(state_pair[1]):
                 if outer_t.label.is_input_eps():
                     new_target = (state_pair[0], outer_t.target)
-                    transitions.append((state_pair, outer_t.label, new_target))
+                    label = outer_t.label
+
+                    transitions.append((state_pair,#TransitionMultiLabel(label.symbols, condition, assign,
+                                                   #                     label.output.subst(subst)),
+                                        label,
+                                        new_target))
                     new_queue.append(new_target)
 
             # handle output-epsilon steps of the inner transducer
