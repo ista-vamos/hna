@@ -110,7 +110,7 @@ class CodeGen:
             self._generated_files.append(filename)
         return open(filename, "w")
 
-    def get_path(self, name: str) -> str:
+    def get_output_path(self, name: str) -> str:
         return pathjoin(self._out_dir, name)
 
     def new_dbg_file(self, name: str):
@@ -189,7 +189,7 @@ class CodeGen:
     def try_clang_format_file(self, name):
         from subprocess import run
 
-        run(["clang-format", "-i", self.get_path(name)])
+        run(["clang-format", "-i", self.get_output_path(name)])
 
     def format_generated_code(self, dir_path=None):
         # format the files if we have clang-format
