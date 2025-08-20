@@ -5,8 +5,7 @@ from pyeda.boolalg.bdd import bddvar
 
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from rvhyno.hnl.formula import Comparison, IsPrefix, And, Or, Not, TrivialTrue
-
+from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue
 from .codegen_shared import CodeGenCpp as CodeGenCppShared
 
 
@@ -150,6 +149,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
     def _generate_bdd_code(self, formula):
 
+        self.gen_file("formula-state.h.in", "formula-state.h",
+                      {'cg': self })
+
         def bdd_to_action(bdd):
             if bdd.is_one():
                 return "RESULT_TRUE"
@@ -158,9 +160,6 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
             nd = self._bdd_vars_to_nodes[bdd.top]
             return f"ATOM_{nd.get_id()}"
-
-        self.gen_file("formula-state.h.in", "formula-state.h",
-                      {'cg': self })
 
         # this is so stupid, but I just cannot get the variable
         # for the node, because PyEDA does not have getters for `_VARS`
