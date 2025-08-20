@@ -732,45 +732,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         raise NotImplementedError("Not re-implemented for transducers")
-        #
-        # num, atom_formula = nd.get_id(), nd.formula
-        #
-        # wrh(
-        #     f"""
-        # #ifndef _ATOM_{num}_H__{self.name()}
-        # #define _ATOM_{num}_H__{self.name()}
-        # """
-        # )
-        # dump_codegen_position(wrh)
-        # wrh(f'#include "atom-{duplicate_of}.h"\n\n')
-        #
-        # wrh(self.namespace_start())
-        # wrh("\n\n")
-        #
-        # dump_codegen_position(wrh)
-        # wrh(f"/* {atom_formula} */\n\n")
-        # wrh(
-        #     f"/* This atom is a duplicate of AtomMonitor{duplicate_of} (but possibly trace inputs) */\n"
-        # )
-        # wrh(
-        #     f"class AtomMonitor{num} : public AtomMonitor{duplicate_of} {{\n"
-        #     "public:\n"
-        #     f"  AtomMonitor{num}(const Instance&);\n"
-        #     f"}};\n"
-        # )
-        #
-        # wrh(self.namespace_end())
-        # wrh("\n\n")
-        # wrh("#endif\n")
-        #
-        # wrcpp(f'#include "atom-{num}.h"\n\n')
-        # if self._namespace:
-        #     wrcpp(f"using namespace {self._namespace};\n\n")
-        #
-        # dump_codegen_position(wrcpp)
-        # wrcpp(
-        #     f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance) \n  : AtomMonitor{duplicate_of}(instance, ATOM_{num}, instance.{nd.ltrace}, instance.{nd.rtrace}) {{}}\n\n"
-        # )
+
 
     def gen_handle_state(self, aut_num, data, wrcpp):
 
