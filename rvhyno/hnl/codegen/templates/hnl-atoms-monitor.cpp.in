@@ -7,12 +7,7 @@
 #include "hnl-monitor.h"
 #include "atom-monitor.h"
 #include "atoms.h"
-
-
-
-/* generated part START */
-#include "hnl-state.h"
-/* generated part END */
+#include "formula-state.h"
 
 {{namespace_start}}
 

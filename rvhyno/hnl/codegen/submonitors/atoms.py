@@ -159,34 +159,8 @@ class CodeGenCppAtoms(CodeGenCppShared):
             nd = self._bdd_vars_to_nodes[bdd.top]
             return f"ATOM_{nd.get_id()}"
 
-        with self.new_file("hnl-state.h") as f:
-            f.write(
-                f"""
-            #ifndef _HNL_STATE_H__{self.name()}
-            #define _HNL_STATE_H__{self.name()}
-            """
-            )
-            f.write(self.namespace_start())
-            f.write("\n\n")
-
-            dump_codegen_position(f)
-            f.write(
-                "// FIXME: rename (or create a new enum with atom types that will coincide with this one) \n"
-            )
-            f.write("enum FormulaEvaluationState {\n")
-            f.write("  INVALID      =  0,\n")
-            f.write("  FINISHED     = -1, // the atom finished \n")
-            f.write("  RESULT_TRUE  = -2, // the atom got result TRUE\n")
-            f.write("  RESULT_FALSE = -3, // the atom got result FALSE \n")
-            for nd in self._bdd_nodes:
-                f.write(
-                    f"  ATOM_{nd.get_id()} = {nd.get_id()}, // the atom is atom {nd.get_id()} \n"
-                )
-            f.write("};\n")
-
-            f.write(self.namespace_end())
-            f.write("\n\n")
-            f.write("#endif\n")
+        self.gen_file("formula-state.h.in", "formula-state.h",
+                      {'cg': self })
 
         # this is so stupid, but I just cannot get the variable
         # for the node, because PyEDA does not have getters for `_VARS`
@@ -291,7 +265,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
       #     """
       #     )
       #     wr("#include <cassert>\n\n")
-      #     wr('#include "hnl-state.h"\n')
+      #     wr('#include "formula-state.h"\n')
       #     wr('#include "trace.h"\n\n')
       #     wr('#include "atom-identifier.h"\n\n')
 

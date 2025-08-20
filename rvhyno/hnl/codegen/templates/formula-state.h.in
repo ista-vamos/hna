@@ -1,0 +1,19 @@
+#ifndef _HNL_STATE_H__{{cg.name()}}
+#define _HNL_STATE_H__{{cg.name()}}
+
+{{cg.namespace_start()}}
+
+// FIXME: rename (or create a new enum with atom types that will coincide with this one)
+
+enum FormulaEvaluationState {
+  INVALID      =  0,
+  FINISHED     = -1, // the atom finished
+  RESULT_TRUE  = -2, // the atom got result TRUE
+  RESULT_FALSE = -3, // the atom got result FALSE
+{%- for nd in cg._bdd_nodes %}
+  ATOM_{{nd.get_id()}} = {{nd.get_id()}}, // the atom is atom {{nd.get_id()}}
+{%- endfor %}
+};
+
+{{cg.namespace_end()}}
+#endif

@@ -2,7 +2,7 @@
 #define _HNL_INSTANCE_H__{{cg.name()}}
 
 #include <cassert>
-#include "hnl-state.h"
+#include "formula-state.h"
 #include "trace.h"
 #include "atom-identifier.h"
 
