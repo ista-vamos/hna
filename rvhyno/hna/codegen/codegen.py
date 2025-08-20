@@ -92,7 +92,7 @@ class CodeGenCpp(CodeGen):
         if not build_type:
             build_type = '"Debug"' if self.args.debug else "Release"
 
-        self.gen_config(
+        self.gen_file(
             "CMakeLists.txt.in",
             "CMakeLists.txt",
             {

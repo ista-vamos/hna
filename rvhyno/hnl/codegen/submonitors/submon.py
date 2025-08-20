@@ -65,7 +65,7 @@ class CodeGenCpp(CodeGenCpp):
             cmakelists = "CMakeLists-sub-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-sub.txt.in"
-        self.gen_config(cmakelists, "CMakeLists.txt", values)
+        self.gen_file(cmakelists, "CMakeLists.txt", values)
 
     def _generate_hnlinstances(self, formula):
         with self.new_file("instance.h") as f:

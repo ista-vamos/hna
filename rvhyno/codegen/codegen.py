@@ -169,8 +169,6 @@ class CodeGen:
     def get_template_path(self, template: str) -> str:
         return pathjoin(self.templates_path, template)
 
-    gen_config = gen_file
-
     def input_file(self, stream, name: str):
         """
         Write the contents of the file `name` into the stream `stream`.
@@ -184,10 +182,6 @@ class CodeGen:
             for line in infl:
                 write(line)
 
-    def try_clang_format_file(self, name):
-        from subprocess import run
-
-        run(["clang-format", "-i", self.get_output_path(name)])
 
     def format_generated_code(self, dir_path=None):
         # format the files if we have clang-format
@@ -195,6 +189,6 @@ class CodeGen:
         try:
             for path in listdir(dir_path or self._out_dir):
                 if path.endswith(".h") or path.endswith(".cpp"):
-                    run(["clang-format", "-i", f"{self._out_dir}/{path}"])
+                    run(["clang-format", "-i", f"{self.get_output_path(path)}"])
         except FileNotFoundError:
             pass

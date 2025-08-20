@@ -103,7 +103,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
             cmakelists = "CMakeLists-atoms-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-atoms.txt.in"
-        self.gen_config(cmakelists, "CMakeLists.txt", values)
+        self.gen_file(cmakelists, "CMakeLists.txt", values)
 
     def _gen_bdd_from_formula(self, formula):
         """

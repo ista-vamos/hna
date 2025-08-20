@@ -996,7 +996,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         print("-- Generating tests --")
         makedirs(f"{self._out_dir}/tests", exist_ok=True)
 
-        self.gen_config(
+        self.gen_file(
             "CMakeLists-atoms-tests.txt.in",
             "tests/CMakeLists.txt",
             {

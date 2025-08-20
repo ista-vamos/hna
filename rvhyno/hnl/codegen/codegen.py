@@ -5,12 +5,12 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 from rvhyno.codegen.codegen import CodeGen
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from rvhyno.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 from rvhyno.hnl.formula import (
     Constant,
     Function,
     PrenexFormula,
 )
-from rvhyno.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):
@@ -115,14 +115,14 @@ class CodeGenCpp(CodeGen):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
-        from config import vamos_buffers_DIR
+        # from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
         if not build_type:
             build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
-            "vamos-buffers_DIR": vamos_buffers_DIR,
+            # "vamos-buffers_DIR": vamos_buffers_DIR,
             "additional_sources": " ".join(
                 (
                     basename(f)
@@ -147,7 +147,7 @@ class CodeGenCpp(CodeGen):
             cmakelists = "CMakeLists-top-embedded.txt.in"
         else:
             cmakelists = "CMakeLists-top.txt.in"
-        self.gen_config(cmakelists, "CMakeLists.txt", values)
+        self.gen_file(cmakelists, "CMakeLists.txt", values)
 
     def _generate_events(self):
         self.gen_file("events.h.in", "events.h",
