@@ -1,8 +1,8 @@
-from hna.codegen_common.codegen import CodeGen
+from hna.codegen.codegen import CodeGen
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
-from hna.codegen_common.utils import dump_codegen_position
+from hna.codegen.utils import dump_codegen_position
 from hna.hnl.formula import ForAllFromFun
 
 

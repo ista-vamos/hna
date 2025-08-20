@@ -1,7 +1,7 @@
 from itertools import chain
 from os.path import basename
 
-from hna.codegen_common.utils import dump_codegen_position
+from hna.codegen.utils import dump_codegen_position
 from hna.hnl.formula import (
     Exists,
 )

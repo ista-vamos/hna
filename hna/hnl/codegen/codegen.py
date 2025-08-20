@@ -2,8 +2,8 @@ from itertools import chain
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
-from hna.codegen_common.codegen import CodeGen
-from hna.codegen_common.utils import dump_codegen_position
+from hna.codegen.codegen import CodeGen
+from hna.codegen.utils import dump_codegen_position
 from hna.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
 from hna.hnl.formula import (
     Constant,

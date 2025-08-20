@@ -2,7 +2,7 @@ import random
 from os import makedirs
 
 from hna.automata.automaton import Automaton
-from hna.codegen_common.utils import dump_codegen_position
+from hna.codegen.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode
 from hna.hnl.formula import (
     IsPrefix,

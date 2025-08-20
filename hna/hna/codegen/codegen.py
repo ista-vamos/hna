@@ -1,8 +1,8 @@
 from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
-from hna.codegen_common.codegen import CodeGen
-from hna.codegen_common.utils import dump_codegen_position, FIXME
+from hna.codegen.codegen import CodeGen
+from hna.codegen.utils import dump_codegen_position, FIXME
 from hna.hna.automaton import HyperNodeAutomaton
 from hna.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
 from hna.hnl.formula import Constant

@@ -3,7 +3,7 @@ from os.path import basename
 
 from pyeda.boolalg.bdd import bddvar
 
-from hna.codegen_common.utils import dump_codegen_position
+from hna.codegen.utils import dump_codegen_position
 from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from hna.hnl.formula import Comparison, IsPrefix, And, Or, Not, TrivialTrue
 
