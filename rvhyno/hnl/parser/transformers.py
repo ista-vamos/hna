@@ -1,6 +1,6 @@
 from lark import Transformer
 
-from hna.hnl.formula import *
+from rvhyno.hnl.formula import *
 
 
 class ProcessAST(Transformer):

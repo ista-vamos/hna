@@ -1,5 +1,5 @@
-from hna.hnl.codegen.submonitors.atoms_shl import CodeGenCpp as CodeGen_sHL
-from hna.hnl.codegen.submonitors.atoms_ehl import CodeGenCpp as CodeGen_eHL
+from rvhyno.hnl.codegen.submonitors.atoms_shl import CodeGenCpp as CodeGen_sHL
+from rvhyno.hnl.codegen.submonitors.atoms_ehl import CodeGenCpp as CodeGen_eHL
 
 
 def get_atoms_codegen(logic: str):

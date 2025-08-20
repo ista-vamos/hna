@@ -1,14 +1,14 @@
 import random
 from os import makedirs
 
-from hna.automata.automaton import Automaton
-from hna.codegen.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode
-from hna.hnl.formula import (
+from rvhyno.automata.automaton import Automaton
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.codegen.bdd import BDDNode
+from rvhyno.hnl.formula import (
     IsPrefix,
     PrenexFormula,
 )
-from hna.hnl.formula2automata import (
+from rvhyno.hnl.formula2automata import (
     formula_to_automaton,
     compose_automata,
     to_priority_automaton,

@@ -1,12 +1,12 @@
 from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
-from hna.codegen.codegen import CodeGen
-from hna.codegen.utils import dump_codegen_position, FIXME
-from hna.hna.automaton import HyperNodeAutomaton
-from hna.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
-from hna.hnl.formula import Constant
-from hna.hnl.parser import Parser as HNLParser
+from rvhyno.codegen.codegen import CodeGen
+from rvhyno.codegen.utils import dump_codegen_position, FIXME
+from rvhyno.hna.automaton import HyperNodeAutomaton
+from rvhyno.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
+from rvhyno.hnl.formula import Constant
+from rvhyno.hnl.parser import Parser as HNLParser
 
 
 class CodeGenCpp(CodeGen):

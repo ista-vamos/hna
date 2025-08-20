@@ -6,12 +6,12 @@ from os.path import basename
 from subprocess import run
 
 from config import vamos_common_PYTHONPATH
-from hna.cmdargs import create_cmdargs_parser, process_args
-from hna.hna.parser.parser import YamlParser as Parser
+from rvhyno.cmdargs import create_cmdargs_parser, process_args
+from rvhyno.hna.parser.parser import YamlParser as Parser
 
 sys.path.append(vamos_common_PYTHONPATH)
 
-from hna.hna.codegen import CodeGenCpp
+from rvhyno.hna.codegen import CodeGenCpp
 
 script_name = basename(sys.argv[0])
 

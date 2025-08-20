@@ -6,12 +6,12 @@ from os.path import isfile, basename
 from subprocess import run
 
 from config import vamos_common_PYTHONPATH
-from hna.cmdargs import create_cmdargs_parser, process_args
-from hna.hnl.parser import Parser
+from rvhyno.cmdargs import create_cmdargs_parser, process_args
+from rvhyno.hnl.parser import Parser
 
 sys.path.append(vamos_common_PYTHONPATH)
 
-from hna.hnl.codegen import CodeGenCpp
+from rvhyno.hnl.codegen import CodeGenCpp
 
 script_name = basename(sys.argv[0])
 

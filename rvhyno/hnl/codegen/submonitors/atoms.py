@@ -3,9 +3,9 @@ from os.path import basename
 
 from pyeda.boolalg.bdd import bddvar
 
-from hna.codegen.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from hna.hnl.formula import Comparison, IsPrefix, And, Or, Not, TrivialTrue
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
+from rvhyno.hnl.formula import Comparison, IsPrefix, And, Or, Not, TrivialTrue
 
 from .codegen_shared import CodeGenCpp as CodeGenCppShared
 

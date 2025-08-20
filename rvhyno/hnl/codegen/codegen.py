@@ -2,15 +2,15 @@ from itertools import chain
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
-from hna.codegen.codegen import CodeGen
-from hna.codegen.utils import dump_codegen_position
-from hna.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
-from hna.hnl.formula import (
+from rvhyno.codegen.codegen import CodeGen
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from rvhyno.hnl.formula import (
     Constant,
     Function,
     PrenexFormula,
 )
-from hna.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
+from rvhyno.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 
 
 def _check_functions(functions):
@@ -361,7 +361,7 @@ class CodeGenCpp(CodeGen):
         if not self.args.data_fun:
             return
 
-        from hna.automata.transducers import transducer_from_yaml
+        from rvhyno.automata.transducers import transducer_from_yaml
 
         data_funs = {}
         for fn in self.args.data_fun:

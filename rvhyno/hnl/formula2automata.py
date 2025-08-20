@@ -1,6 +1,6 @@
 from itertools import chain
 
-from hna.automata.automaton import Automaton
+from rvhyno.automata.automaton import Automaton
 from ..automata.transition_system import State, Transition
 from .formula import EPSILON, Constant, EPSILON_CONSTANT
 

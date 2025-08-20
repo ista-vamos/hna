@@ -1,8 +1,8 @@
 from copy import copy
 from itertools import chain
 
-from hna.automata.transition_system import AccInitTransitionSystem, Transition, State
-from hna.hnl.formula import TraceVariable
+from rvhyno.automata.transition_system import AccInitTransitionSystem, Transition, State
+from rvhyno.hnl.formula import TraceVariable
 
 
 class Value:
@@ -938,7 +938,7 @@ def parse_condition(cond, var, attrs):
 
 def transducer_from_yaml(path, attrs):
     from yaml import safe_load
-    from hna.hna.parser.parser import parse_edge
+    from rvhyno.hna.parser.parser import parse_edge
 
     attrs = set(x[0] for x in attrs)
     T = SymbolicTransducer(origin=path)

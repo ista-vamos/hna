@@ -1,13 +1,13 @@
 from itertools import chain
 from os.path import basename
 
-from hna.codegen.utils import dump_codegen_position
-from hna.hnl.formula import (
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.formula import (
     Exists,
 )
 from .codegen_shared import CodeGenCpp
-from hna.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
-from hna.hnl.codegen.utils import _split_formula
+from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from rvhyno.hnl.codegen.utils import _split_formula
 
 
 class CodeGenCpp(CodeGenCpp):

@@ -1,6 +1,6 @@
 from os import makedirs
 
-from hna.automata.transducers import (
+from rvhyno.automata.transducers import (
     Var,
     Reg,
     Value,
@@ -9,9 +9,9 @@ from hna.automata.transducers import (
     Transition,
     Attr,
 )
-from hna.codegen.utils import dump_codegen_position
-from hna.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from hna.hnl.formula import (
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
+from rvhyno.hnl.formula import (
     IsPrefix,
     PrenexFormula,
     Function,

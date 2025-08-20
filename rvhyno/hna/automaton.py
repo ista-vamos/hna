@@ -1,5 +1,5 @@
-from hna.automata.automaton import Automaton
-from hna.automata.transition_system import State
+from rvhyno.automata.automaton import Automaton
+from rvhyno.automata.transition_system import State
 
 
 class HypernodeState(State):

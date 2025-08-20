@@ -1,4 +1,4 @@
-from hna.automata.transition_system import (
+from rvhyno.automata.transition_system import (
     AccInitTransitionSystem,
 )
 

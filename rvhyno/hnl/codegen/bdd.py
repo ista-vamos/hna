@@ -1,4 +1,4 @@
-from hna.hnl.formula import Comparison
+from rvhyno.hnl.formula import Comparison
 
 
 class ConstBDDNode:

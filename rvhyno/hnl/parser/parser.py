@@ -4,8 +4,8 @@ from os.path import isfile
 
 from lark import Lark, logger
 
-from hna.hnl.formula import IsPrefix
-from hna.hnl.formula2automata import formula_to_automaton, compose_automata
+from rvhyno.hnl.formula import IsPrefix
+from rvhyno.hnl.formula2automata import formula_to_automaton, compose_automata
 from .transformers import transform_ast
 
 
@@ -90,7 +90,7 @@ def main():
 
     # formula.visit(der)
 
-    from hna.codegen.hnl import CodeGenCpp
+    from rvhyno.codegen.hnl import CodeGenCpp
 
     cg = CodeGenCpp()
     cg.generate(formula)

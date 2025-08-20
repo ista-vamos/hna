@@ -1,4 +1,4 @@
-from hna.hnl.formula import PrenexFormula, ForAll, Not, Constant
+from rvhyno.hnl.formula import PrenexFormula, ForAll, Not, Constant
 
 
 def _same_quantifiers_prefix(formula: PrenexFormula):
