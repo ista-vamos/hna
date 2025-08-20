@@ -120,7 +120,7 @@ def create_cmdargs_parser(out_dir):
 
 def parse_type(ty: str):
     ty = ty.strip()
-    matched = match("(.+)\s*\[\s*(\d+b|-?\d+\.\.-?\d+)\s*\]", ty)
+    matched = match(r"(.+)\s*\[\s*(\d+b|-?\d+\.\.-?\d+)\s*\]", ty)
     if matched:
         c_type = matched[1].strip()
         num_range = None
