@@ -20,15 +20,12 @@ class CodeGenCppAtoms(CodeGenCppShared):
         self,
         name,
         args,
-        ctx,
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
         embedded: bool = False,
     ):
-        super().__init__(
-            name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
-        )
+        super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
         self.BDD = None
         self._bdd_nodes = []

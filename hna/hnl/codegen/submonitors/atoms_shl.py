@@ -1,13 +1,9 @@
-import random
-import re
 from os import makedirs
 
-from hna.automata.automaton import Automaton
 from hna.automata.transducers import (
     Var,
     Reg,
     Value,
-    Eps,
     TraceFinished,
     BinaryPredicate,
     Transition,
@@ -19,15 +15,9 @@ from hna.hnl.formula import (
     IsPrefix,
     PrenexFormula,
     Function,
-    TrivialTrue,
     IsEq,
     TraceVariable,
     Comparison,
-)
-from hna.hnl.formula2automata import (
-    formula_to_automaton,
-    compose_automata,
-    to_priority_automaton,
 )
 from .atoms import CodeGenCppAtoms
 from ...formula2transducers import Formula2Transducer, automaton_for_comparison
@@ -266,15 +256,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         self,
         name,
         args,
-        ctx,
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
         embedded: bool = False,
     ):
-        super().__init__(
-            name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
-        )
+        super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
     def _generate_registers(self):
         with self.new_file("registers.h") as f:
@@ -1007,7 +994,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def generate_tests(self):
         print("-- Generating tests --")
-        makedirs(f"{self.out_dir}/tests", exist_ok=True)
+        makedirs(f"{self._out_dir}/tests", exist_ok=True)
 
         self.gen_config(
             "CMakeLists-atoms-tests.txt.in",

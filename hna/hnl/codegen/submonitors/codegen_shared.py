@@ -15,14 +15,13 @@ class CodeGenCpp(CodeGen):
         self,
         name,
         args,
-        ctx,
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
         embedded: bool = False,
     ):
         super().__init__(
-            name, args, ctx, out_dir=out_dir, namespace=namespace, embedded=embedded
+            name, args, out_dir=out_dir, namespace=namespace, embedded=embedded
         )
 
         self_dir = abspath(

@@ -723,10 +723,14 @@ def compose_transducers(
                     new_target = (state_pair[0], outer_t.target)
                     label = outer_t.label
 
-                    transitions.append((state_pair,#TransitionMultiLabel(label.symbols, condition, assign,
-                                                   #                     label.output.subst(subst)),
-                                        label,
-                                        new_target))
+                    transitions.append(
+                        (
+                            state_pair,  # TransitionMultiLabel(label.symbols, condition, assign,
+                            #                     label.output.subst(subst)),
+                            label,
+                            new_target,
+                        )
+                    )
                     new_queue.append(new_target)
 
             # handle output-epsilon steps of the inner transducer

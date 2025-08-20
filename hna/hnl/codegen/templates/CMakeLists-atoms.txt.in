@@ -3,10 +3,6 @@
 cmake_minimum_required(VERSION 3.9)
 project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
 
-set(vamos-buffers_DIR @vamos-buffers_DIR@)
-
-find_package(vamos-buffers REQUIRED)
-
 set(monitor_name "@monitor_name@")
 
 set(CMAKE_BUILD_TYPE @CMAKE_BUILD_TYPE@ CACHE STRING "" FORCE)
@@ -76,18 +72,6 @@ if (ENABLE_IPO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif(ENABLE_IPO)
 
-
-get_target_property(vamos-buffers_vamos-buffers-lib vamos-buffers-lib LOCATION)
-get_target_property(vamos-buffers_vamos-buffers-ringbuf vamos-buffers-ringbuf LOCATION)
-get_target_property(vamos-buffers_vamos-buffers-shmbuf vamos-buffers-shmbuf LOCATION)
-get_target_property(vamos-buffers_vamos-buffers-streams vamos-buffers-streams LOCATION)
-get_filename_component(vamos-buffers_LIBRARIES_DIRS_lib ${vamos-buffers_vamos-buffers-lib} DIRECTORY)
-get_filename_component(vamos-buffers_LIBRARIES_DIRS_core ${vamos-buffers_vamos-buffers-ringbuf} DIRECTORY)
-get_filename_component(vamos-buffers_LIBRARIES_DIRS_shmbuf ${vamos-buffers_vamos-buffers-shmbuf} DIRECTORY)
-get_filename_component(vamos-buffers_LIBRARIES_DIRS_streams ${vamos-buffers_vamos-buffers-streams} DIRECTORY)
-
-get_filename_component(vamos-buffers_DIR ${vamos-buffers_DIR} ABSOLUTE)
-
 add_library(events STATIC events.cpp)
 add_library(trace STATIC trace.cpp)
 add_library(traceset STATIC traceset.cpp sharedtraceset.cpp tracesetview.cpp)
@@ -98,7 +82,6 @@ target_include_directories(atoms${monitor_name} PRIVATE ${CMAKE_SOURCE_DIR})
 
 set(LIBRARY_NAME "top${monitor_name}")
 add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
-target_include_directories(${LIBRARY_NAME} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR})
 target_compile_definitions(${LIBRARY_NAME} PRIVATE @additional_cflags@)
 target_link_libraries(${LIBRARY_NAME} PUBLIC atoms${monitor_name} @submonitors_libs@  traceset trace events)
@@ -106,7 +89,6 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC atoms${monitor_name} @submonitors_l
 if (BUILD_EXE)
 add_executable(${monitor_name} main.cpp cmd.cpp @additional_sources@)
 target_link_libraries(${monitor_name} ${LIBRARY_NAME} pthread)
-target_include_directories(${monitor_name} PUBLIC ${vamos-buffers_INCLUDE_DIRS})
 target_compile_definitions(${monitor_name} PRIVATE @additional_cflags@)
 endif()
 

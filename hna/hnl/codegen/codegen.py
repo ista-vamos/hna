@@ -67,13 +67,12 @@ class CodeGenCpp(CodeGen):
     def __init__(
         self,
         args,
-        ctx,
         out_dir: str = None,
         namespace: str = None,
         name="monitor",
         embedded=False,
     ):
-        super().__init__(name, args, ctx, out_dir, namespace, embedded)
+        super().__init__(name, args, out_dir, namespace, embedded)
 
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
@@ -135,7 +134,7 @@ class CodeGenCpp(CodeGen):
             "@additional_cflags@": " ".join((d for d in self.args.cflags)),
             "@CMAKE_BUILD_TYPE@": build_type,
             "@monitor_name@": self.name(),
-            "@top_monitor_dir@": self.out_dir,
+            "@top_monitor_dir@": self._out_dir,
             "@submonitors_libs@": " ".join((d["name"] for d in self._submonitors)),
             "@submonitors@": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
@@ -412,7 +411,7 @@ class CodeGenCpp(CodeGen):
         # where the formula alternates.
         submon_name = self.sub_name()
         nested_out_dir_rel = "submonitor"
-        nested_out_dir = f"{self.out_dir}/{nested_out_dir_rel}"
+        nested_out_dir = f"{self._out_dir}/{nested_out_dir_rel}"
         nested_namespace = self.sub_namespace()
         self._submonitors = [
             {
@@ -427,7 +426,6 @@ class CodeGenCpp(CodeGen):
             codegen = CodeGenCppSubMon(
                 submon_name,
                 self.args,
-                self.ctx,
                 out_dir=nested_out_dir,
                 namespace=nested_namespace,
                 embedded=True,
@@ -436,7 +434,6 @@ class CodeGenCpp(CodeGen):
             codegen = get_atoms_codegen(self.args.logic)(
                 submon_name,
                 self.args,
-                self.ctx,
                 out_dir=nested_out_dir,
                 namespace=nested_namespace,
                 embedded=True,

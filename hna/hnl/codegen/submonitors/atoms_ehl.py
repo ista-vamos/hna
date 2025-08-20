@@ -96,15 +96,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         self,
         name,
         args,
-        ctx,
         fixed_quantifiers=None,
         out_dir: str = None,
         namespace: str = None,
         embedded: bool = False,
     ):
-        super().__init__(
-            name, args, ctx, fixed_quantifiers, out_dir, namespace, embedded
-        )
+        super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
     def _generate_atom_monitor(self):
         with self.new_file("create-atom-monitor.h") as f:

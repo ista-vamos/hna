@@ -1,21 +1,41 @@
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
-from vamos_common.codegen.codegen import CodeGen as CG
+from sys import stderr, stdout
+
+from os import mkdir, listdir
+from os.path import join as pathjoin, abspath, dirname
+from re import compile as re_compile
+from shutil import rmtree, copy as shutilcopy
+from subprocess import run
+from sys import stderr
 
 
-class CodeGen(CG):
+def msg(cls, *args, **kwargs):
+    fl = kwargs.get("file", stdout)
+    cl = kwargs.get("color")
+    if cl is None:
+        if cls == "info":
+            cl = "\033[0;36m"
+        elif cls == "warn":
+            cl = "\033[1;33m"
+    if cl:
+        print(cl, file=fl, end="")
+    print(f"[{cls.upper()}]", *args, "\033[0m", file=fl)
+
+
+class CodeGen:
     def __init__(
         self,
         name: str,
         args,
-        ctx,
         out_dir: str = None,
         namespace: str = None,
         embedded=False,
     ):
-        super().__init__(args, ctx, out_dir)
+        self._out_dir = abspath(out_dir or args.out_dir)
 
+        self.args = args
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
@@ -27,8 +47,78 @@ class CodeGen(CG):
         # is this code a subdirectory of a top-level cmake-based project?
         self._embedded = embedded
 
+        self._generated_files = []
         self._add_gen_files = []
         self._submonitors = []
+
+        out_dir_overwrite = args.out_dir_overwrite
+        msg(
+            "info",
+            f"output dir: {out_dir} {'(overwriting not allowed)' if not out_dir_overwrite else ''}",
+            file=stderr,
+        )
+
+        self.create_out_dir(out_dir_overwrite)
+
+        if args.debug:
+            try:
+                mkdir(f"{self.out_dir}/dbg")
+            except OSError:
+                pass  # exists
+
+    def create_out_dir(self, overwrite_if_exists: bool = False):
+        try:
+            mkdir(self._out_dir)
+        except OSError:
+            if overwrite_if_exists:
+                msg(
+                    "warn",
+                    "the output dir exists, overwriting its contents",
+                    file=stderr,
+                )
+                rmtree(self._out_dir)
+                mkdir(self._out_dir)
+
+    def copy_file(self, name: str, to: str = None, from_dir: str = None):
+        """
+        Copy the file `name` into `out_dir`. If `name` is not an absolute path,
+        it is looked for in `from_dir` if given, otherwise in `self.templates_path`.
+        If `to` is given, the file is copied into `out_dir/to`.
+        (All the directories subsumed by `to` must exist)
+        ```
+        in = name is relative ? (from_dir ? from_dir : templates_path/name) : name
+        out = to ? out_dir/to : out_dir
+        cp in out
+        ```
+        """
+        if name[0] == "/":
+            path = name
+        else:
+            path = pathjoin(from_dir if from_dir else self.templates_path, name)
+
+        if to:
+            shutilcopy(path, f"{self._out_dir}/{to}")
+        else:
+            shutilcopy(path, self._out_dir)
+
+    def new_file(self, name: str):
+        if name in self.args.overwrite_file:
+            filename = "/dev/null"
+        else:
+            filename = pathjoin(self._out_dir, name)
+            assert filename not in self._generated_files, (
+                filename,
+                self._generated_files,
+            )
+            self._generated_files.append(filename)
+        return open(filename, "w")
+
+    def get_path(self, name: str) -> str:
+        return pathjoin(self._out_dir, name)
+
+    def new_dbg_file(self, name: str):
+        filename = pathjoin(self._out_dir, "dbg/", name)
+        return open(filename, "w")
 
     def name(self) -> str:
         return self._name
@@ -60,3 +150,56 @@ class CodeGen(CG):
 
     def submonitors(self):
         return self._submonitors
+
+    def gen_file(self, infile, outfile, values):
+        """
+        (A simple version of `gen_file`, to be removed in the future.)
+
+        Generate configuration file by replacing key-values pairs in the `infile`
+        and writing the resulting file into `outfile`. Each key is of the form `@KEY@`
+        and values is a dictionary mapping the keys into the values, e.g.:
+        {"@A@": "value1", "@B" : "value2"}
+        """
+        if outfile in self.args.overwrite_file:
+            return
+        inpath = pathjoin(self.templates_path, infile)
+        outpath = pathjoin(self._out_dir, outfile)
+        with open(inpath, "r") as infl:
+            with open(outpath, "w") as outfl:
+                for line in infl:
+                    if "@" in line:
+                        for v, s in values.items():
+                            assert v.startswith("@"), v
+                            assert v.endswith("@"), v
+                            line = line.replace(v, s)
+                    outfl.write(line)
+
+    gen_config = gen_file
+
+    def input_file(self, stream, name: str):
+        """
+        Write the contents of the file `name` into the stream `stream`.
+
+        :param stream:  stream to write to
+        :param name:  name of the file (residing in `self.templates_path`) to write into `stream`
+        """
+        inpath = pathjoin(self.templates_path, name)
+        with open(inpath, "r") as infl:
+            write = stream.write
+            for line in infl:
+                write(line)
+
+    def try_clang_format_file(self, name):
+        from subprocess import run
+
+        run(["clang-format", "-i", self.get_path(name)])
+
+    def format_generated_code(self, dir_path=None):
+        # format the files if we have clang-format
+        # FIXME: check clang-format properly instead of catching the exception
+        try:
+            for path in listdir(dir_path or self._out_dir):
+                if path.endswith(".h") or path.endswith(".cpp"):
+                    run(["clang-format", "-i", f"{self._out_dir}/{path}"])
+        except FileNotFoundError:
+            pass

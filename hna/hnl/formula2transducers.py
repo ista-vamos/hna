@@ -118,6 +118,7 @@ def positive_slice_transducer(interval):
         origin=None,
     )
 
+
 def last_elem_transducer():
     # we need some dummy trace that serves as the input to the transducer
     trace = TraceVariable("𝜏")
@@ -125,16 +126,24 @@ def last_elem_transducer():
     r, x = Reg("last"), Var("x")
     transitions = [
         Transition(
-            states[0], TransitionMultiLabel({}, [TraceFinished(trace)], [], Eps()), states[2]
+            states[0],
+            TransitionMultiLabel({}, [TraceFinished(trace)], [], Eps()),
+            states[2],
         ),
         Transition(
-            states[0], TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()), states[1]
+            states[0],
+            TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()),
+            states[1],
         ),
         Transition(
-            states[1], TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()), states[1]
+            states[1],
+            TransitionMultiLabel({trace: x}, [], [Assignment(r, x)], Eps()),
+            states[1],
         ),
         Transition(
-            states[1], TransitionMultiLabel({}, [TraceFinished(trace)], [], r), states[2]
+            states[1],
+            TransitionMultiLabel({}, [TraceFinished(trace)], [], r),
+            states[2],
         ),
     ]
 
@@ -146,9 +155,6 @@ def last_elem_transducer():
         accepting_states=[states[2]],
         origin=None,
     )
-
-
-
 
 
 class Formula2Transducer:
