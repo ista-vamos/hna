@@ -1,4 +1,4 @@
 lark
 pyeda
 pyyaml
-mako
+jinja2

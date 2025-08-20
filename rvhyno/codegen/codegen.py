@@ -4,9 +4,9 @@ from os.path import islink
 from os.path import join as pathjoin, abspath, dirname
 from shutil import rmtree, copy as shutilcopy
 from subprocess import run
-from sys import stderr
-from sys import stdout
+from sys import stderr, stdout
 
+from jinja2 import Environment, FileSystemLoader
 
 def msg(cls, *args, **kwargs):
     fl = kwargs.get("file", stdout)
@@ -148,28 +148,26 @@ class CodeGen:
     def submonitors(self):
         return self._submonitors
 
-    def gen_file(self, infile, outfile, values):
+    def gen_file(self, template, outfile, values):
         """
-        (A simple version of `gen_file`, to be removed in the future.)
-
-        Generate configuration file by replacing key-values pairs in the `infile`
-        and writing the resulting file into `outfile`. Each key is of the form `@KEY@`
-        and values is a dictionary mapping the keys into the values, e.g.:
-        {"@A@": "value1", "@B" : "value2"}
+        Generate a file from a template `template` and writing the resulting
+        file into `outfile`.
         """
         if outfile in self.args.overwrite_file:
             return
-        inpath = pathjoin(self.templates_path, infile)
-        outpath = pathjoin(self._out_dir, outfile)
-        with open(inpath, "r") as infl:
-            with open(outpath, "w") as outfl:
-                for line in infl:
-                    if "@" in line:
-                        for v, s in values.items():
-                            assert v.startswith("@"), v
-                            assert v.endswith("@"), v
-                            line = line.replace(v, s)
-                    outfl.write(line)
+
+        outfile = self.get_output_path(outfile)
+        msg('dbg', f'gen `{template}` -> `{outfile}`')
+
+        tenv = Environment(loader=FileSystemLoader(self.templates_path))
+        template = tenv.get_template(template)
+
+        with open(outfile, 'w') as ofl:
+            ofl.write(template.render(**values))
+
+
+    def get_template_path(self, template: str) -> str:
+        return pathjoin(self.templates_path, template)
 
     gen_config = gen_file
 
@@ -180,7 +178,7 @@ class CodeGen:
         :param stream:  stream to write to
         :param name:  name of the file (residing in `self.templates_path`) to write into `stream`
         """
-        inpath = pathjoin(self.templates_path, name)
+        inpath = self.get_template_path(name)
         with open(inpath, "r") as infl:
             write = stream.write
             for line in infl:
