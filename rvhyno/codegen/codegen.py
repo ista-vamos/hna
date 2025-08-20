@@ -1,14 +1,11 @@
-from os import readlink
-from os.path import abspath, dirname, islink, join as pathjoin
-
-from sys import stderr, stdout
-
 from os import mkdir, listdir
+from os import readlink
+from os.path import islink
 from os.path import join as pathjoin, abspath, dirname
-from re import compile as re_compile
 from shutil import rmtree, copy as shutilcopy
 from subprocess import run
 from sys import stderr
+from sys import stdout
 
 
 def msg(cls, *args, **kwargs):
