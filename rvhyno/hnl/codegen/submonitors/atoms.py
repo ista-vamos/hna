@@ -271,74 +271,85 @@ class CodeGenCppAtoms(CodeGenCppShared):
         )
 
     def _generate_hnlinstances(self, formula):
-        with self.new_file("instance.h") as f:
-            wr = f.write
-            wr(
-                f"""
-            #ifndef _HNL_INSTANCE_H__{self.name()}
-            #define _HNL_INSTANCE_H__{self.name()}
-            """
-            )
-            wr("#include <cassert>\n\n")
-            wr('#include "hnl-state.h"\n')
-            wr('#include "trace.h"\n\n')
-            wr('#include "atom-identifier.h"\n\n')
 
-            f.write(self.namespace_start())
-            f.write("\n\n")
+        def trace_variables(nd):
+            return [t.name for t in nd.formula.trace_variables()]
 
-            wr("class AtomMonitor;\n\n")
-            dump_codegen_position(wr)
-            wr("struct Instance {\n")
-            wr("  /* variable traces */\n")
-            for q in formula.quantifier_prefix:
-                wr(f"  Trace *{q.var};\n")
-            wr("  /* fixed traces */\n")
-            for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
-            wr("\n  /* Currently evaluated atom automaton */\n")
-            wr(f"  FormulaEvaluationState state;\n\n")
-            wr("  /* The monitor this configuration waits for */\n")
-            wr("  AtomMonitor *monitor{nullptr};\n\n")
-            args = (
-                f"Trace *{q.var}"
-                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
-            )
-            wr(
-                f"  Instance({', '.join(args)}, FormulaEvaluationState init_state)\n  : "
-            )
+        self.gen_file("instance.h.in", "instance.h",
+                      {'cg': self, 'formula': formula,
+                       'args': [f'Trace *{q.var.name}' for q in
+                                chain(formula.quantifier_prefix, self._fixed_quantifiers or ())],
+                       'trace_variables': trace_variables
+                       })
 
-            wr(
-                ", ".join(
-                    (
-                        f"{q.var}({q.var})"
-                        for q in chain(
-                            formula.quantifier_prefix, self._fixed_quantifiers or ()
-                        )
-                    )
-                )
-            )
-            wr(", state(init_state) { assert(state != INVALID); }\n\n")
+      # with self.new_file("instance.h") as f:
+      #     wr = f.write
+      #     wr(
+      #         f"""
+      #     #ifndef _HNL_INSTANCE_H__{self.name()}
+      #     #define _HNL_INSTANCE_H__{self.name()}
+      #     """
+      #     )
+      #     wr("#include <cassert>\n\n")
+      #     wr('#include "hnl-state.h"\n')
+      #     wr('#include "trace.h"\n\n')
+      #     wr('#include "atom-identifier.h"\n\n')
 
-            wr("AtomIdentifier createMonitorID(int monitor_type) {")
-            wr("switch (monitor_type) {")
-            for nd in self._bdd_nodes:
-                identifier = f"AtomIdentifier{{ATOM_{nd.get_id()}"
-                trace_variables = [t.name for t in nd.formula.trace_variables()]
-                for q in formula.quantifiers():
-                    if q.var.name in trace_variables:
-                        identifier += f", {q.var.name}->id()"
-                    else:
-                        identifier += ",0"
-                identifier += "}"
-                wr(f"case ATOM_{nd.get_id()}: return {identifier};\n")
-            wr(f"default: abort();\n")
-            wr("};\n")
-            wr("}\n\n")
+      #     f.write(self.namespace_start())
+      #     f.write("\n\n")
 
-            wr("};\n\n")
+      #     wr("class AtomMonitor;\n\n")
+      #     dump_codegen_position(wr)
+      #     wr("struct Instance {\n")
+      #     wr("  /* variable traces */\n")
+      #     for q in formula.quantifier_prefix:
+      #         wr(f"  Trace *{q.var};\n")
+      #     wr("  /* fixed traces */\n")
+      #     for q in self._fixed_quantifiers or ():
+      #         wr(f"  Trace *{q.var};\n")
+      #     wr("\n  /* Currently evaluated atom automaton */\n")
+      #     wr(f"  FormulaEvaluationState state;\n\n")
+      #     wr("  /* The monitor this configuration waits for */\n")
+      #     wr("  AtomMonitor *monitor{nullptr};\n\n")
+      #     args = (
+      #         f"Trace *{q.var}"
+      #         for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+      #     )
+      #     wr(
+      #         f"  Instance({', '.join(args)}, FormulaEvaluationState init_state)\n  : "
+      #     )
 
-            f.write(self.namespace_end())
-            f.write("\n\n")
+      #     wr(
+      #         ", ".join(
+      #             (
+      #                 f"{q.var}({q.var})"
+      #                 for q in chain(
+      #                     formula.quantifier_prefix, self._fixed_quantifiers or ()
+      #                 )
+      #             )
+      #         )
+      #     )
+      #     wr(", state(init_state) { assert(state != INVALID); }\n\n")
 
-            wr("#endif\n")
+      #     wr("AtomIdentifier createMonitorID(int monitor_type) {")
+      #     wr("switch (monitor_type) {")
+      #     for nd in self._bdd_nodes:
+      #         identifier = f"AtomIdentifier{{ATOM_{nd.get_id()}"
+      #         trace_variables = [t.name for t in nd.formula.trace_variables()]
+      #         for q in formula.quantifiers():
+      #             if q.var.name in trace_variables:
+      #                 identifier += f", {q.var.name}->id()"
+      #             else:
+      #                 identifier += ",0"
+      #         identifier += "}"
+      #         wr(f"case ATOM_{nd.get_id()}: return {identifier};\n")
+      #     wr(f"default: abort();\n")
+      #     wr("};\n")
+      #     wr("}\n\n")
+
+      #     wr("};\n\n")
+
+      #     f.write(self.namespace_end())
+      #     f.write("\n\n")
+
+      #     wr("#endif\n")

@@ -67,95 +67,13 @@ class CodeGenCpp(CodeGenCpp):
             cmakelists = "CMakeLists-sub.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
-    def _generate_hnlinstances(self, formula):
-        with self.new_file("instance.h") as f:
-            wr = f.write
-            wr(
-                f"""
-            #ifndef HNL_INSTANCE_H__{self.name()}
-            #define HNL_INSTANCE_H__{self.name()}
-            """
-            )
-            wr("#include <cassert>\n\n")
-            wr('#include "trace.h"\n\n')
-            wr('#include "submonitor/hnl-monitor.h"\n\n')
-
-            wr("class Monitor;\n\n")
-
-            wr(self.namespace_start())
-            wr("\n\n")
-
-            dump_codegen_position(wr)
-            wr("struct Instance {\n")
-            wr("  /* variable traces */\n")
-            for q in formula.quantifier_prefix:
-                wr(f"  Trace *{q.var};\n")
-            wr("  /* fixed traces */\n")
-            for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
-            wr("  /* The monitor this configuration waits for */\n")
-            wr("  sub::HNLMonitor *monitor{nullptr};\n\n")
-            args = (
-                f"Trace *{q.var}"
-                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
-            )
-            wr(f"  Instance({', '.join(args)})\n  : ")
-            wr(
-                ", ".join(
-                    (
-                        f"{q.var}({q.var})"
-                        for q in chain(
-                            formula.quantifier_prefix, self._fixed_quantifiers or ()
-                        )
-                    )
-                )
-            )
-            # wr(", monitor(new sub::HNLMonitor()")
-            wr("{}\n\n")
-
-            wr("};\n\n")
-
-            wr(self.namespace_end())
-            wr("\n\n")
-
-            wr("#endif\n")
-
-    def _create_instance(self, formula, wr):
-        dump_codegen_position(wr)
-        args = ",".join(
-            chain(
-                (str(q.var) for q in formula.quantifier_prefix),
-                (f"/* fixed */ {q.var}" for q in self._fixed_quantifiers or ()),
-            )
-        )
-
-        wr(f"\n  auto *instance = new Instance({args});\n")
-        args = ",".join(
-            chain(
-                (f"{q.var}" for q in self._fixed_quantifiers or ()),
-                (str(q.var) for q in formula.quantifier_prefix),
-            )
-        )
-        wr(
-            f"    instance->monitor = new sub::HNLMonitor(TS{', ' if args else ''}{args});\n"
-        )
-        wr(f"    _instances.emplace_back(instance);\n")
-        wr("++stats.num_instances;\n\n")
-        ns = f"{self._namespace}::" if self._namespace else ""
-        wr("#ifdef DEBUG_PRINTS\n")
-        print_args = '<< ", " <<'.join(
-            (f"{q.var}->id()" for q in formula.quantifier_prefix)
-        )
-        wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
-        wr("#endif /* !DEBUG_PRINTS */\n")
-
-    def _generate_monitor(self, formula):
-        """
-        Generate a monitor that actually monitors the body of the formula,
-        i.e., it creates and moves with atom monitors.
-        """
-        self._generate_hnlinstances(formula)
-        self._generate_create_instances(formula)
+  # def _generate_monitor(self, formula):
+  #     """
+  #     Generate a monitor that actually monitors the body of the formula,
+  #     i.e., it creates and moves with atom monitors.
+  #     """
+  #     self._generate_hnlinstances(formula)
+  #     self._generate_create_instances(formula)
 
     def generate(self, formula, gen_tests=True):
         """

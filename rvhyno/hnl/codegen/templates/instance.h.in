@@ -1,0 +1,58 @@
+#ifndef _HNL_INSTANCE_H__{{cg.name()}}
+#define _HNL_INSTANCE_H__{{cg.name()}}
+
+#include <cassert>
+#include "hnl-state.h"
+#include "trace.h"
+#include "atom-identifier.h"
+
+{{cg.namespace_start()}}
+
+class AtomMonitor;
+
+struct Instance {
+    /* variable traces */
+    {%- for q in formula.quantifier_prefix %}
+    Trace *{{q.var}};
+    {%- endfor %}
+
+    /* fixed traces */
+    {%- for q in cg._fixed_quantifiers or () %}
+    Trace *{{q.var}};
+    {%- endfor %}
+
+    /* Currently evaluated atom automaton */
+    FormulaEvaluationState state;
+
+    /* The monitor this configuration waits for */
+    AtomMonitor *monitor{nullptr};
+
+    Instance({{args | join(', ')}}, FormulaEvaluationState init_state)
+    :
+    {%- for q in formula.quantifier_prefix | list +  (cg._fixed_quantifiers or ()|list) -%}
+      {{q.var}}({{q.var}}),
+    {%- endfor -%}{{' '}}
+    state(init_state) { assert(state != INVALID); }
+
+    AtomIdentifier createMonitorID(int monitor_type) {
+        switch (monitor_type) {
+        {% for nd in cg._bdd_nodes -%}
+            {% set tv = trace_variables(nd) %}
+            case ATOM_{{nd.get_id()}}: return AtomIdentifier(ATOM_{{nd.get_id()}}
+            {%- for q in formula.quantifiers() %}
+                {%- if q.var.name in tv -%}
+                , {{q.var.name}}->id()
+                {%- else %}
+                , 0
+                {%- endif %}
+            {%- endfor -%}
+            );
+        {% endfor -%}
+        default: abort();
+        };
+    }
+};
+
+{{cg.namespace_end()}}
+
+#endif
