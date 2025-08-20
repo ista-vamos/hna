@@ -152,22 +152,11 @@ class CodeGenCpp(CodeGen):
     def _generate_events(self):
         self.gen_file("events.h.in", "events.h",
                       {'data': self.args.data})
+        self.gen_file("events.cpp.in", "events.cpp",
+                      {'data': self.args.data})
 
-        with self.new_file("events.cpp") as f:
-            wr = f.write
-            wr("#include <iostream>\n\n")
-            wr('#include "events.h"\n\n')
-            dump_codegen_position(wr)
-            wr("std::ostream& operator<<(std::ostream& os, const Event& ev) {\n")
-            wr('  os << "{"')
-            for n, field in enumerate(self.args.data):
-                name, _ = field
-                if n > 0:
-                    wr(f'  << ", "')
-                wr(f'  << "{name} = " << ev.{name}')
-            wr('   << "}";\n')
-            wr("return os;\n")
-            wr("}\n")
+        # FIXME: do this more programmer-friendly
+        self._add_gen_files.append("events.cpp")
 
     def _generate_csv_reader(self):
         self.copy_file("csvreader.h", from_dir=self.common_templates_path)

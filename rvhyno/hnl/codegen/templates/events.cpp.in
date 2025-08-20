@@ -1,0 +1,16 @@
+#include <iostream>
+
+#include "events.h"
+
+std::ostream& operator<<(std::ostream& os, const Event& ev) {
+  os << "{"
+  {% for field in data -%}
+      {% set name = field[0] %}
+      {% if loop.index > 0 %}
+          << ", "
+      {% endif %}
+      << "{{name}} = " << ev.{{name}}
+      {% endfor %}
+   << "}";
+return os;
+}
