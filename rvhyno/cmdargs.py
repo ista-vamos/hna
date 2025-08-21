@@ -2,6 +2,8 @@ from re import match
 import argparse
 from os.path import basename, abspath
 
+from rvhyno.utils import msg
+
 
 def create_cmdargs_parser(out_dir):
     parser = argparse.ArgumentParser()
@@ -37,6 +39,12 @@ def create_cmdargs_parser(out_dir):
         "--debug-prints",
         action="store_true",
         help="--debug + print debugging messages to stderr",
+    )
+    parser.add_argument(
+        "--log",
+        action="append",
+        default=['info', 'warn', 'err'],
+        help="Set messages to log, can be used multiple times, default=[info,warn,err], possible=[info,warn,err,dbg]",
     )
     parser.add_argument(
         "--exit-on-error", action="store_true", help="Stop when a violation is found"
@@ -145,10 +153,11 @@ def parse_type(ty: str):
         return c_type, num_range
 
     # this is just an incomplete check
-    types = ("int", "char", "short", "long", "float", "double", "bool")
+    types = ("int", "char", "short", "long", "float", "double", "bool",
+             "uint64_t", "int64_t", "uint32_t", "int32_t")
     if ty not in types and ty not in ("unsigned",):
         if ty not in (f"{sign} {t}" for t in types for sign in ("signed", "unsigned")):
-            print(f"WARNING: I do not know this C type: '{ty}', but I proceed.")
+            msg('warn', f"I do not know this C type: '{ty}', but I proceed.")
     # this is a C type without range annotations
     return ty, None
 
@@ -172,7 +181,6 @@ def process_args(args):
         for name_type in types:
             name, ty = name_type.split(":")
             tmp_data.append((name.strip(), parse_type(ty)))
-            print(tmp_data)
 
         args.data = tmp_data
 

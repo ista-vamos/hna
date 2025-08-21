@@ -22,6 +22,8 @@ from rvhyno.hnl.formula import (
 from .atoms import CodeGenCppAtoms
 from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
+from rvhyno.utils import msg, log
+
 
 class TranslationData:
     def __init__(self, bddnode):
@@ -312,7 +314,7 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         for nd in self._bdd_nodes:
             num, atom_formula = nd.get_id(), nd.formula
-            print("Generating code for", nd.get_id(), ":", atom_formula)
+            log('dbg', "Generating code for automaton", nd.get_id(), ":", f'`{atom_formula}`', section=4)
 
             # check duplicate atoms
             # duplicate_num = generated_automata.get(
@@ -820,7 +822,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
             self._automata[nformula.children[0]] = A1
         else:
-            print(f"Hit cache for {nformula.children[0]}")
+            log('dbg', f"Hit cache for {nformula.children[0]}")
         A2 = self._automata.get(nformula.children[1])
         if A2 is None:
             A2 = Formula2Transducer(self.args.data_fun).formula_to_transducer(
@@ -828,7 +830,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
             self._automata[nformula.children[1]] = A2
         else:
-            print(f"Hit cache for {nformula.children[1]}")
+            log('dbg', f"Hit cache for {nformula.children[1]}")
 
         A1 = A1.remove_redundant_states_once()
         A2 = A2.remove_redundant_states_once()
@@ -855,7 +857,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         return A, renaming
 
     def generate_tests(self):
-        print("-- Generating tests --")
+        msg('info', "Generating tests", section=4)
         makedirs(f"{self._out_dir}/tests", exist_ok=True)
 
         self.gen_file(
@@ -866,7 +868,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-        print("FIXME: not generating tests")
+        msg("FIXME", "not generating tests")
 
     # for nd in self._bdd_nodes:
     #    num = nd.get_id()
@@ -967,14 +969,18 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def generate_monitor(self, formula: PrenexFormula):
         # there is no sub-formula, this is the monitor for the body of the formula
+        msg('info', "Generating BDD for the formula", section=3)
         self._gen_bdd_from_formula(formula)
 
+        msg('info', "Generating atomic comparison automata", section=3)
         for nd in self._bdd_nodes:
             # no automaton for this one, we'll handle that explicitly
             if isinstance(nd, ConstBDDNode):
                 continue
+            log('dbg', f"Generating atomic comparison automaton {nd.get_id()}", section=4)
             nd.automaton, nd.renaming = self.generate_atomic_comparison_automaton(nd)
 
+        msg('info', "Generating monitor code", section=3)
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
         assert not formula.has_quantifier_alternation(), formula
         input_traces = self._traces_attribute_str(formula)

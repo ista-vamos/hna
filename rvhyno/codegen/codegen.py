@@ -8,7 +8,7 @@ from sys import stderr
 
 from jinja2 import Environment, FileSystemLoader
 
-from rvhyno.utils import msg
+from rvhyno.utils import msg, log
 
 
 class CodeGen:
@@ -41,7 +41,7 @@ class CodeGen:
         out_dir_overwrite = args.out_dir_overwrite
         msg(
             "info",
-            f"output dir: {out_dir} {'(overwriting not allowed)' if not out_dir_overwrite else ''}",
+            f"output dir: {self._out_dir} {'(overwriting not allowed)' if not out_dir_overwrite else ''}",
             file=stderr,
         )
 
@@ -147,7 +147,7 @@ class CodeGen:
             return
 
         outfile = self.get_output_path(outfile)
-        msg('dbg', f'gen `{template}` -> `{outfile}`')
+        log('dbg', f'gen `{template}` -> `{outfile}`')
 
         tenv = Environment(loader=FileSystemLoader(self.templates_path))
         template = tenv.get_template(template)
