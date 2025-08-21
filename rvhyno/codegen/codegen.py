@@ -4,21 +4,11 @@ from os.path import islink
 from os.path import join as pathjoin, abspath, dirname
 from shutil import rmtree, copy as shutilcopy
 from subprocess import run
-from sys import stderr, stdout
+from sys import stderr
 
 from jinja2 import Environment, FileSystemLoader
 
-def msg(cls, *args, **kwargs):
-    fl = kwargs.get("file", stdout)
-    cl = kwargs.get("color")
-    if cl is None:
-        if cls == "info":
-            cl = "\033[0;36m"
-        elif cls == "warn":
-            cl = "\033[1;33m"
-    if cl:
-        print(cl, file=fl, end="")
-    print(f"[{cls.upper()}]", *args, "\033[0m", file=fl)
+from rvhyno.utils import msg
 
 
 class CodeGen:

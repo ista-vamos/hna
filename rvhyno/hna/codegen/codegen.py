@@ -2,7 +2,8 @@ from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from rvhyno.codegen.codegen import CodeGen
-from rvhyno.codegen.utils import dump_codegen_position, FIXME
+from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.utils import FIXME
 from rvhyno.hna.automaton import HyperNodeAutomaton
 from rvhyno.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
 from rvhyno.hnl.formula import Constant

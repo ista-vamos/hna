@@ -1,6 +1,5 @@
 import inspect
 from os.path import basename
-from sys import stderr
 
 
 def dump_codegen_position(f, end="\n"):
@@ -16,17 +15,3 @@ def dump_codegen_position(f, end="\n"):
             f(msg)
         else:
             f.write(msg)
-
-
-def FIXME(f, msg, only_comment=False, to_stderr=True):
-    dump_codegen_position(f)
-    if only_comment:
-        msg = f"/* FIXME: {msg} */\n"
-    else:
-        msg = f'std::cerr << "FIXME: {msg} \\n";'
-    if to_stderr:
-        print(f"/* FIXME: {msg} */", file=stderr)
-    if callable(f):
-        f(msg)
-    else:
-        f.write(msg)

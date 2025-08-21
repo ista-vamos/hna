@@ -1,7 +1,7 @@
-from rvhyno.codegen.codegen import CodeGen
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
+from rvhyno.codegen.codegen import CodeGen
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.formula import ForAllFromFun
 
