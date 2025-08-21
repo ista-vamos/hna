@@ -4,13 +4,12 @@
 
 std::ostream& operator<<(std::ostream& os, const Event& ev) {
   os << "{"
-  {% for field in data -%}
-      {% set name = field[0] %}
-      {% if loop.index > 0 %}
-          << ", "
-      {% endif %}
-      << "{{name}} = " << ev.{{name}}
-      {% endfor %}
-   << "}";
+  {%- for field in data %}
+     << "{{field[0]}} = " << ev.{{field[0]}}{{' '}}
+     {%- if not loop.last  -%}
+         << ", "{{' '}}
+     {%- endif -%}
+     {% endfor %}
+     << "}";
 return os;
 }
