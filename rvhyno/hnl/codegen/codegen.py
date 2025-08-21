@@ -148,6 +148,7 @@ class CodeGenCpp(CodeGen):
         else:
             cmakelists = "CMakeLists-top.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
+        self.copy_file("CMakeLists-options.txt")
 
     def _generate_events(self):
         self.gen_file("events.h.in", "events.h",
