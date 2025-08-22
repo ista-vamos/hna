@@ -497,8 +497,8 @@ class CodeGenCpp(CodeGen):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("hnl-monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("hnl-monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("formula-monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
     def generate_main(self):
         self.gen_file(

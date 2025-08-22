@@ -313,10 +313,10 @@ class CodeGenCpp(CodeGen):
                     )
 
     def _gen_create_hnl_monitor(self, hna):
-        with self.new_file("create-hnl-monitor.h") as f:
+        with self.new_file("create-formula-monitor.h") as f:
             wr = f.write
             dump_codegen_position(wr)
-            wr("MonitorWithTraces *createHNLMonitor(HNANodeType node) {")
+            wr("MonitorWithTraces *createFormulaMonitor(HNANodeType node) {")
             wr(" switch (node) {")
             for state in hna.states():
                 state_id = hna.get_state_id(state)
@@ -350,22 +350,22 @@ class CodeGenCpp(CodeGen):
 
                 wr(f'#include "verdict.h"\n\n')
                 wr(f'#include "monitor.h"\n')
-                wr(f'#include "hnl-monitor.h"\n\n')
+                wr(f'#include "formula-monitor.h"\n\n')
                 wr(f'#include "hna-monitor.h"\n\n')
 
                 wr(f"namespace hnl_{state_id} {{")
                 wr(f"Verdict step_monitor(SliceTreeNode *node) {{")
                 wr(
-                    f"  return static_cast <HNLMonitor * > (node->monitor.get())->step();"
+                    f"  return static_cast <FormulaMonitor * > (node->monitor.get())->step();"
                 )
                 wr("}\n\n")
 
                 wr(f"MonitorWithTraces *new_monitor() {{")
-                wr(f"  return new HNLMonitor();")
+                wr(f"  return new FormulaMonitor();")
                 wr("}\n\n")
 
                 wr(f"void delete_monitor(Monitor *M) {{")
-                wr(f"  delete static_cast<HNLMonitor*>(M);")
+                wr(f"  delete static_cast<FormulaMonitor*>(M);")
                 wr("}\n\n")
                 wr(f"}} /* namespace hnl_{state_id} */")
 
@@ -387,7 +387,7 @@ class CodeGenCpp(CodeGen):
             lines.append(
                 f"""
             namespace hnl_{state_id} {{
-                class HNLMonitor;
+                class FormulaMonitor;
                 Verdict step_monitor(SliceTreeNode*);
                 MonitorWithTraces *new_monitor();
                 void delete_monitor(Monitor *M);

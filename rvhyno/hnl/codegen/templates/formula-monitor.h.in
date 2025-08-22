@@ -1,4 +1,4 @@
-// template: hnl-monitor.h.in
+// template: formula-monitor.h.in
 
 #ifndef HNLMONITOR_H_
 #define HNLMONITOR_H_
@@ -9,7 +9,7 @@
 #include "traceset.h"
 #include "function.h"
 #include "cmd.h"
-#include "submonitor/hnl-monitor.h"
+#include "submonitor/formula-monitor.h"
 
 #include "functions.h"
 #include "alltracesets.h"
@@ -20,7 +20,7 @@
 // The top-level class for HNL monitor for an arbitrary HNL formula
 //
 // {{info}}
-class HNLMonitor : public ::MonitorWithTraces {
+class FormulaMonitor : public ::MonitorWithTraces {
   CmdArgs *_cmd;
 
   {{functions}}
@@ -31,10 +31,10 @@ class HNLMonitor : public ::MonitorWithTraces {
 
   // This class is a wrapper and a container for traces (including function traces).
   // The actual monitoring happens in this submonitor.
-  sub::HNLMonitor _monitor;
+  sub::FormulaMonitor _monitor;
 
 public:
-  HNLMonitor(CmdArgs *cmd = nullptr)
+  FormulaMonitor(CmdArgs *cmd = nullptr)
     : _cmd(cmd)
       {{functions_init}},
       allTraceSets({{alltracesets_init}}),

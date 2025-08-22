@@ -1006,8 +1006,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         }
 
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
-        self.gen_file("atoms/monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("atoms/monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("atoms/monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("atoms/monitor.cpp.in", "formula-monitor.cpp", values)
         self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 

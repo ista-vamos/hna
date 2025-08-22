@@ -4,7 +4,7 @@ set(monitor_name "{{monitor_name}}")
 set(top_monitor_dir "{{top_monitor_dir}}")
 
 set(LIBRARY_NAME "top${monitor_name}")
-add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+add_library(${LIBRARY_NAME} STATIC formula-monitor.cpp)
 target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_CURRENT_LIST_DIR} ${top_monitor_dir})
 target_compile_definitions(${LIBRARY_NAME} PRIVATE {{additional_cflags}})
 target_link_libraries(${LIBRARY_NAME} PUBLIC {{submonitors_libs}}  traceset trace events)

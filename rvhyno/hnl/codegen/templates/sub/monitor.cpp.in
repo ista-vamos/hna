@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "hnl-monitor.h"
+#include "formula-monitor.h"
 
 {{namespace_start}}
 
@@ -10,7 +10,7 @@
 #include "functions.h"
 #include "hnl-monitor-ctors-dtors.h"
 
-void HNLMonitor::addNewTraces() {
+void FormulaMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
 }
@@ -20,7 +20,7 @@ static inline Verdict negate_verdict(Verdict v) {
     return v == Verdict::FALSE ? Verdict::TRUE : Verdict::FALSE;
 }
 
-Verdict HNLMonitor::step() {
+Verdict FormulaMonitor::step() {
   Verdict verdict;
 
   unsigned empty_slots{0};
@@ -60,7 +60,7 @@ Verdict HNLMonitor::step() {
   return Verdict::UNKNOWN;
 }
 
-bool HNLMonitor::inputs_finished() {
+bool FormulaMonitor::inputs_finished() {
     if (_inputs_finished)
         return true;
 
@@ -71,7 +71,7 @@ bool HNLMonitor::inputs_finished() {
 }
 
 
-void HNLMonitor::condenseWbg() {
+void FormulaMonitor::condenseWbg() {
     if (_instances.empty())
         return;
 

@@ -10,7 +10,7 @@ target_link_libraries(atoms${monitor_name} PUBLIC events)
 endif()
 
 set(LIBRARY_NAME "${monitor_name}")
-add_library(${LIBRARY_NAME} STATIC hnl-monitor.cpp)
+add_library(${LIBRARY_NAME} STATIC formula-monitor.cpp)
 target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR} ${top_monitor_dir})
 target_compile_definitions(${LIBRARY_NAME} PRIVATE {{additional_cflags}})
 target_link_libraries(${LIBRARY_NAME} PUBLIC  atoms${monitor_name} {{submonitors_libs}}  traceset trace events)

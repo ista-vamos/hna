@@ -26,7 +26,7 @@ class SlicesTree {
   void unlock() { _mtx.unlock(); }
 
 public:
-#include "create-hnl-monitor.h"
+#include "create-formula-monitor.h"
 #include "hna-next-slice.h"
 #include "slices-tree-ctor.h"
 
@@ -55,7 +55,7 @@ public:
       return nullptr;
     }
 
-    auto *hnl_monitor = createHNLMonitor(next_node);
+    auto *hnl_monitor = createFormulaMonitor(next_node);
 
     lock();
     auto &slice =

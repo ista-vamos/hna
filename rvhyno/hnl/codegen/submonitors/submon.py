@@ -85,7 +85,7 @@ class CodeGenCpp(CodeGenCpp):
             )
         )
         wr(
-            f"    instance->monitor = new sub::HNLMonitor(TS{', ' if args else ''}{args});\n"
+            f"    instance->monitor = new sub::FormulaMonitor(TS{', ' if args else ''}{args});\n"
         )
         wr(f"    _instances.emplace_back(instance);\n")
         wr("++stats.num_instances;\n\n")
@@ -108,7 +108,7 @@ class CodeGenCpp(CodeGenCpp):
             )
             wr("#include <cassert>\n\n")
             wr('#include "trace.h"\n\n')
-            wr('#include "submonitor/hnl-monitor.h"\n\n')
+            wr('#include "submonitor/formula-monitor.h"\n\n')
 
             wr("class Monitor;\n\n")
 
@@ -124,7 +124,7 @@ class CodeGenCpp(CodeGenCpp):
             for q in self._fixed_quantifiers or ():
                 wr(f"  Trace *{q.var};\n")
             wr("  /* The monitor this configuration waits for */\n")
-            wr("  sub::HNLMonitor *monitor{nullptr};\n\n")
+            wr("  sub::FormulaMonitor *monitor{nullptr};\n\n")
             args = (
                 f"Trace *{q.var}"
                 for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
@@ -140,7 +140,7 @@ class CodeGenCpp(CodeGenCpp):
                     )
                 )
             )
-            # wr(", monitor(new sub::HNLMonitor()")
+            # wr(", monitor(new sub::FormulaMonitor()")
             wr("{}\n\n")
 
             wr("};\n\n")
@@ -242,7 +242,7 @@ class CodeGenCpp(CodeGenCpp):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("sub/monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("sub/monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("sub/monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("sub/monitor.cpp.in", "formula-monitor.cpp", values)
 
         self._generate_monitor(formula)

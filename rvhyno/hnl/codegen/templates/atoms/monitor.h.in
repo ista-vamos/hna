@@ -41,7 +41,7 @@
 //  preceded by universal quantification.
 //
 // {{info}}
-class HNLMonitor : public ::Monitor {
+class FormulaMonitor : public ::Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors
   std::vector<AtomMonitor *> _monitors_wbg;

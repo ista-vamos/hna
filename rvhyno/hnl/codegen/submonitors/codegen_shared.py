@@ -199,7 +199,7 @@ class CodeGenCpp(CodeGen):
             wr = f.write
 
             args = [f"Trace *{q}" for q in fixed]
-            proto = f"HNLMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
+            proto = f"FormulaMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
             decls.append(f"{proto};")
 
             args = [f"{q}({q})" for q in fixed]
@@ -214,10 +214,10 @@ class CodeGenCpp(CodeGen):
                     )
             if with_TS:
                 wr(
-                    f"HNLMonitor::{proto} : TS(TS){', ' if args else ''}{', '.join(args)}"
+                    f"FormulaMonitor::{proto} : TS(TS){', ' if args else ''}{', '.join(args)}"
                 )
             else:
-                wr(f"HNLMonitor::{proto} : {', '.join(args)}")
+                wr(f"FormulaMonitor::{proto} : {', '.join(args)}")
             wr("{}\n\n")
 
         return decls

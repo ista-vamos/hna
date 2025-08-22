@@ -870,8 +870,8 @@ class CodeGenCpp(CodeGenCppAtoms):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("hnl-atoms-monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("hnl-atoms-monitor.cpp.in", "formula-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
 

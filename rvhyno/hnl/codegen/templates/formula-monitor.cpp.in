@@ -4,11 +4,11 @@
 
 #include <cassert>
 
-#include "hnl-monitor.h"
+#include "formula-monitor.h"
 
 {{namespace_start}}
 
-Verdict HNLMonitor::step() {
+Verdict FormulaMonitor::step() {
     // generate function traces
     {{functions_step}}
 

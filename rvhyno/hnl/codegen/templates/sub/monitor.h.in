@@ -24,13 +24,13 @@
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
 //
 // {{info}}
-class HNLMonitor : public ::Monitor {
+class FormulaMonitor : public ::Monitor {
   const AllTraceSets& TS;
 
   {{input_traces}}
 
   // here we store the running monitors
-  //std::vector<std::unique_ptr<{{sub_namespace}}::HNLMonitor>> _monitors_wbg;
+  //std::vector<std::unique_ptr<{{sub_namespace}}::FormulaMonitor>> _monitors_wbg;
   std::vector<std::unique_ptr<Instance>> _instances;
 
   void addNewTraces();

@@ -4,7 +4,7 @@
 
 #include <cassert>
 
-#include "hnl-monitor.h"
+#include "formula-monitor.h"
 #include "atom-monitor.h"
 #include "atoms.h"
 #include "formula-state.h"
@@ -22,12 +22,12 @@ static inline Verdict do_step(AtomMonitor *M) {
 #include "hnl-monitor-ctors-dtors.h"
 
 
-void HNLMonitor::addNewTraces() {
+void FormulaMonitor::addNewTraces() {
   /* GENERATED */
   #include "create-instances.h"
 }
 
-Verdict HNLMonitor::updateInstance(Instance *instance, Verdict verdict) {
+Verdict FormulaMonitor::updateInstance(Instance *instance, Verdict verdict) {
     // FIXME: generate the code that branches on instance->state and verdict
     // instead of having statically compiled BDD in the data segment.
     // (less reads from memory)
@@ -50,7 +50,7 @@ Verdict HNLMonitor::updateInstance(Instance *instance, Verdict verdict) {
     return Verdict::UNKNOWN;
 }
 
-Verdict HNLMonitor::step() {
+Verdict FormulaMonitor::step() {
 #ifdef MEASURE_CPUTIME
     struct timespec start, end;
     clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
@@ -138,7 +138,7 @@ Verdict HNLMonitor::step() {
   return Verdict::UNKNOWN;
 }
 
-AtomMonitor *HNLMonitor::createAtomMonitor(FormulaEvaluationState monitor_type, Instance& instance) {
+AtomMonitor *FormulaMonitor::createAtomMonitor(FormulaEvaluationState monitor_type, Instance& instance) {
     assert(monitor_type > 0 && "Invalid monitor type");
 
     AtomMonitor *monitor{nullptr};
@@ -187,11 +187,11 @@ AtomMonitor *HNLMonitor::createAtomMonitor(FormulaEvaluationState monitor_type, 
     return monitor;
 }
 
-void HNLMonitor::removeInstance(Instance *instance) {
+void FormulaMonitor::removeInstance(Instance *instance) {
     delete instance;
 }
 
-bool HNLMonitor::inputs_finished() {
+bool FormulaMonitor::inputs_finished() {
     if (_inputs_finished)
         return true;
 
@@ -202,7 +202,7 @@ bool HNLMonitor::inputs_finished() {
 }
 
 
-void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
+void FormulaMonitor::deleteAtomMonitor(AtomMonitor *m) {
     delete m;
     /*
     assert(!_atom_monitors.empty());
@@ -214,7 +214,7 @@ void HNLMonitor::deleteAtomMonitor(AtomMonitor *m) {
     */
 }
 
-void HNLMonitor::condenseWbg() {
+void FormulaMonitor::condenseWbg() {
     if (_monitors_wbg.empty())
         return;
 
