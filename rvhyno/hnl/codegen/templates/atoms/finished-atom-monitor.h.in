@@ -8,8 +8,8 @@
 {{namespace_start}}
 
 /**
-* A wrapper around verdict that we can use to cache results and it is also suitable to be used
-* in an HNLInstance, which avoids more complicated code.
+* A wrapper around verdict that we use to cache results of evaluating an atom (an instance of the class
+ `AtomMonitor`). It is a sub-class of AtomMonitor so that we can used in an Instance, which avoids more complicated code.
 */
 class FinishedAtomMonitor : public AtomMonitor {
   Verdict _verdict;

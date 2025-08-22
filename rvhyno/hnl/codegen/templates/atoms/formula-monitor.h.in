@@ -37,10 +37,15 @@
 
 
 ///
-// Monitor for monitoring the body of an HNL formula
-//  preceded by universal quantification.
+// Monitor for monitoring the body of a universally quantified formula,
+// in particular, for:
+//  `{{formula}}`
 //
-// {{info}}
+// That is, this is a monitor with no sub-monitors. It directly evaluates
+// the body of the formula above on tuples of traces from the quantifiers.
+// The evaluation is done by creating an instance of `AtomMonitor`s
+// (which is really an instance of an automaton, despite the name)
+// for each input tuple of traces.
 class FormulaMonitor : public ::Monitor {
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors

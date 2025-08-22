@@ -10,6 +10,10 @@
 
 using State = int;
 
+///
+// Class representing the state of evaluation (configuration) of an automaton.
+// It gathers the information in which state the automaton is,
+// where it is on the input traces, and what are the values of registers.
 struct Atom{{atom_num}}EvaluationState {
     State state;
 
@@ -27,7 +31,9 @@ struct Atom{{atom_num}}EvaluationState {
 /**
  * This is a vector where new elements are pushed into a separate
  * storage and are moved to the main storage only on an explicit call.
- * This is because we iterate over the vector when adding.
+ *
+ * This data structure is used in the main loop of evaluating an atom
+ * (automaton) for keeping the states.
  */
 class Atom{{atom_num}}EvaluationStateSet
     : public std::vector<Atom{{atom_num}}EvaluationState> {

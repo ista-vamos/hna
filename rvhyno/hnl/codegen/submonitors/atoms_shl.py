@@ -311,7 +311,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             "atom_num": str(num),
         }
 
-        self.gen_file("atom-monitor-trivial.h.in", f"atom-{num}.h", values)
+        self.gen_file("atoms/trivial-atom-monitor.h.in", f"atom-{num}.h", values)
 
     def _generate_automata_code(self, formula):
         # generated_automata = {}
@@ -1002,7 +1002,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "ctors_dtors": "\n".join(ctors_dtors),
-            "info": f"Monitor for '{formula}'",
+            "formula": formula,
         }
 
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)

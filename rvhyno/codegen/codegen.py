@@ -138,7 +138,7 @@ class CodeGen:
     def submonitors(self):
         return self._submonitors
 
-    def gen_file(self, template, outfile, values):
+    def gen_file(self, template, outfile, values, creation_header="c++"):
         """
         Generate a file from a template `template` and writing the resulting
         file into `outfile`.
@@ -153,6 +153,9 @@ class CodeGen:
         template = tenv.get_template(template)
 
         with open(outfile, 'w') as ofl:
+            if creation_header == "c++" and\
+                (template.filename.endswith("cpp.in")  or template.filename.endswith("h.in")):
+                ofl.write(f"// Generated from `{template.filename}`\n\n")
             ofl.write(template.render(**values))
 
 

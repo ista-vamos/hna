@@ -8,7 +8,10 @@
 
 {{cg.namespace_start()}}
 
-/* {atom_formula}*/
+/* Monitor that evaluates the *eHL* atom `{atom_formula}`.
+   In other words, this class implements the multi-tape automaton that evaluates
+   the atom formula above.
+*/
 class AtomMonitor{{num}} : public RegularAtomMonitor {
     EvaluationStateSet _cfgs;
 
