@@ -286,7 +286,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_bdd_code(formula)
         msg('info', "Generating code for instances", section=3)
         self._generate_hnlinstances(formula)
-        self._generate_create_instances(formula)
         msg('info', "Generating automata for instances", section=3)
         self._generate_automata_code(formula)
 
@@ -1005,6 +1004,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             "formula": formula,
         }
 
+        # Needed when generating formula-monitor.cpp
+        self._generate_create_instances(formula)
+
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
@@ -1012,6 +1014,24 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
         self._generate_monitor(formula)
+
+    def read_generated_file(self, name):
+        """
+        Args:
+            name: name of the file
+
+        Returns: the contents of the file as string
+
+        Read the contents of a generated file and return it as a string.
+        In some cases, it is easier to generate the whole code in Python instead of creating a template for it
+        (e.g., for creating the instances of formula). In such cases, we can use this method to feed the
+        generated contents into a generated file via a template.
+        """
+        path = self.get_output_path(name)
+        # More efficient would be to return the opened file and then somehow take care of closing it,
+        # but for now, this is good enough
+        with open(path, 'r') as f:
+            return f.readlines()
 
 
 def debug_code_state(ns, data, wrcpp):

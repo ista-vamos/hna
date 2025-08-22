@@ -33,7 +33,7 @@ class CodeGenCpp(CodeGen):
     def _generate_create_instances(self, formula):
         _, _, q2set = self.input_tracesets(formula)
 
-        with self.new_file("create-instances.h") as f:
+        with self.new_file("_create-instances.h") as f:
             wr = f.write
             dump_codegen_position(wr)
             # XXX: here we might check the same traceset for a new trace

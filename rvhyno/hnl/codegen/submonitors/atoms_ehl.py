@@ -122,7 +122,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         """
         self._generate_bdd_code(formula)
         self._generate_hnlinstances(formula)
-        self._generate_create_instances(formula)
         self._generate_automata_code(formula, alphabet)
         self._generate_atom_monitor()
 
@@ -869,6 +868,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             "ctors_dtors": "\n".join(ctors_dtors),
             "info": f"Monitor for '{formula}'",
         }
+
+        # Needed when generating formula-monitor.cpp
+        self._generate_create_instances(formula)
 
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)

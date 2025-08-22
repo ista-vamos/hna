@@ -23,8 +23,9 @@ static inline Verdict do_step(AtomMonitor *M) {
 
 
 void FormulaMonitor::addNewTraces() {
-  /* GENERATED */
-  #include "create-instances.h"
+  {% for line in cg.read_generated_file('_create-instances.h') -%}
+  {{line}}
+  {%- endfor %}
 }
 
 Verdict FormulaMonitor::updateInstance(Instance *instance, Verdict verdict) {
