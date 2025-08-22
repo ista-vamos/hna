@@ -242,7 +242,7 @@ class CodeGenCpp(CodeGenCpp):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("sub/monitor.h.in", "formula-monitor.h", values)
-        self.gen_file("sub/monitor.cpp.in", "formula-monitor.cpp", values)
+        self.gen_file("sub/formula-monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("sub/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
         self._generate_monitor(formula)

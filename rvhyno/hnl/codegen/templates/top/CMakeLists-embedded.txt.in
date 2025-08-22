@@ -1,4 +1,4 @@
-# template: CMakeLists-top-embedded.txt.in
+# template: top/CMakeLists-embedded.txt.in
 
 set(monitor_name "{{monitor_name}}")
 set(top_monitor_dir "{{top_monitor_dir}}")

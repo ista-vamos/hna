@@ -9,7 +9,10 @@
 {{namespace_start}}
 
 /**
- * Class encapsulating the evaluation of an atom on a pair of traces
+ * Class encapsulating the evaluation of an atom on a pair of traces.
+ * This sub-class of AtomMonitor is the regular monitor that does actual evaluation.
+ * There are other sub-classes (e.g., `FinishedAtomMonitor`) that represent
+ * evaluated atoms, trivially satisfied atoms, etc.
  **/
 class RegularAtomMonitor : public AtomMonitor {
 public:

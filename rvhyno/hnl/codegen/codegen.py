@@ -146,9 +146,9 @@ class CodeGenCpp(CodeGen):
             values.update(overwrite_keys)
 
         if self._embedded:
-            cmakelists = "CMakeLists-top-embedded.txt.in"
+            cmakelists = "top/CMakeLists-embedded.txt.in"
         else:
-            cmakelists = "CMakeLists-top.txt.in"
+            cmakelists = "top/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
         self.copy_file("CMakeLists-options.txt")
 
@@ -497,8 +497,8 @@ class CodeGenCpp(CodeGen):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("formula-monitor.h.in", "formula-monitor.h", values)
-        self.gen_file("formula-monitor.cpp.in", "formula-monitor.cpp", values)
+        self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("top/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
     def generate_main(self):
         self.gen_file(

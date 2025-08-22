@@ -870,9 +870,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("hnl-atoms-monitor.h.in", "formula-monitor.h", values)
-        self.gen_file("hnl-atoms-monitor.cpp.in", "formula-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
+        self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
+        self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
         self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
 
         values.update({"include_headers": '#include "ehl-evaluation-stateset.h"'})

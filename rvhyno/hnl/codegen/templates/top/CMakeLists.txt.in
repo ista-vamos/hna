@@ -1,4 +1,4 @@
-# template: CMakeLists-top.txt.in
+# template: top/CMakeLists-txt.in
 
 cmake_minimum_required(VERSION 3.10)
 project(hnl-monitor LANGUAGES C CXX VERSION 0.1)

@@ -3,6 +3,8 @@
 
 #include "events.h"
 
+// {{cg.namespace_start()}}
+
 enum class RegisterType {
     INVALID=0,
     EVENT, // whole event
@@ -32,5 +34,7 @@ struct Register {
 };
 
 std::ostream& operator<<(std::ostream& os, const Register& r);
+
+// {{cg.namespace_end()}}
 
 #endif

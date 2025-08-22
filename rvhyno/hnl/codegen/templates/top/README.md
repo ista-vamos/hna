@@ -1,0 +1,1 @@
+# Templates specific for the top-level monitor
