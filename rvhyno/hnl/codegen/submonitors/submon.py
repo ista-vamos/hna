@@ -63,9 +63,9 @@ class CodeGenCpp(CodeGenCpp):
             values.update(overwrite_keys)
 
         if self._embedded:
-            cmakelists = "CMakeLists-sub-embedded.txt.in"
+            cmakelists = "sub/CMakeLists-embedded.txt.in"
         else:
-            cmakelists = "CMakeLists-sub.txt.in"
+            cmakelists = "sub/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
     def _create_instance(self, formula, wr):
@@ -242,7 +242,7 @@ class CodeGenCpp(CodeGenCpp):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("hnl-sub-monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("hnl-sub-monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("sub/monitor.h.in", "hnl-monitor.h", values)
+        self.gen_file("sub/monitor.cpp.in", "hnl-monitor.cpp", values)
 
         self._generate_monitor(formula)

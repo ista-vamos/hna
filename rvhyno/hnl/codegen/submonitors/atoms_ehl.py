@@ -831,7 +831,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             for f in ("atom-base.h", "evaluation-state.h"):
                 if f not in self.args.overwrite_file:
                     self.copy_file(f, from_dir=from_dir)
-            self.copy_file("ehl-evaluation-stateset.h")
+            self.copy_file("atoms/ehl-evaluation-stateset.h")
         else:
             self.copy_files()
 

@@ -22,7 +22,7 @@ from rvhyno.hnl.formula import (
 from .atoms import CodeGenCppAtoms
 from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
-from rvhyno.utils import msg, log, log_indent_incr, log_indent_decr
+from rvhyno.utils import msg, log
 
 
 class TranslationData:
@@ -1011,9 +1011,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
         self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
-        log_indent_incr()
         self._generate_monitor(formula)
-        log_indent_decr()
 
 
 def debug_code_state(ns, data, wrcpp):
