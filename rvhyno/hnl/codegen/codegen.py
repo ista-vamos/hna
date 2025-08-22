@@ -12,6 +12,8 @@ from rvhyno.hnl.formula import (
     PrenexFormula,
 )
 
+from rvhyno.utils import log_indent_incr, log_indent_decr
+
 
 def _check_functions(functions):
     funs = {}
@@ -412,8 +414,10 @@ class CodeGenCpp(CodeGen):
             )
 
         # FIXME: do this more elegantly, this is more or less a hack
+        log_indent_incr()
         self.args.out_dir_overwrite = False
         codegen.generate(formula)
+        log_indent_decr()
 
         self.generate_monitor(formula)
 

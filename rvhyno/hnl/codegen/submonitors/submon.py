@@ -2,12 +2,13 @@ from itertools import chain
 from os.path import basename
 
 from rvhyno.codegen.utils import dump_codegen_position
+from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from rvhyno.hnl.codegen.utils import _split_formula
 from rvhyno.hnl.formula import (
     Exists,
 )
+from rvhyno.utils import msg, log_indent_incr, log_indent_decr
 from .codegen_shared import CodeGenCpp
-from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
-from rvhyno.hnl.codegen.utils import _split_formula
 
 
 class CodeGenCpp(CodeGenCpp):
@@ -67,13 +68,95 @@ class CodeGenCpp(CodeGenCpp):
             cmakelists = "CMakeLists-sub.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
-  # def _generate_monitor(self, formula):
-  #     """
-  #     Generate a monitor that actually monitors the body of the formula,
-  #     i.e., it creates and moves with atom monitors.
-  #     """
-  #     self._generate_hnlinstances(formula)
-  #     self._generate_create_instances(formula)
+    def _create_instance(self, formula, wr):
+        dump_codegen_position(wr)
+        args = ",".join(
+            chain(
+                (str(q.var) for q in formula.quantifier_prefix),
+                (f"/* fixed */ {q.var}" for q in self._fixed_quantifiers or ()),
+            )
+        )
+
+        wr(f"\n  auto *instance = new Instance({args});\n")
+        args = ",".join(
+            chain(
+                (f"{q.var}" for q in self._fixed_quantifiers or ()),
+                (str(q.var) for q in formula.quantifier_prefix),
+            )
+        )
+        wr(
+            f"    instance->monitor = new sub::HNLMonitor(TS{', ' if args else ''}{args});\n"
+        )
+        wr(f"    _instances.emplace_back(instance);\n")
+        wr("++stats.num_instances;\n\n")
+        ns = f"{self._namespace}::" if self._namespace else ""
+        wr("#ifdef DEBUG_PRINTS\n")
+        print_args = '<< ", " <<'.join(
+            (f"{q.var}->id()" for q in formula.quantifier_prefix)
+        )
+        wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
+        wr("#endif /* !DEBUG_PRINTS */\n")
+
+    def _generate_instance_h(self, formula):
+        with self.new_file("instance.h") as f:
+            wr = f.write
+            wr(
+                f"""
+            #ifndef HNL_INSTANCE_H__{self.name()}
+            #define HNL_INSTANCE_H__{self.name()}
+            """
+            )
+            wr("#include <cassert>\n\n")
+            wr('#include "trace.h"\n\n')
+            wr('#include "submonitor/hnl-monitor.h"\n\n')
+
+            wr("class Monitor;\n\n")
+
+            wr(self.namespace_start())
+            wr("\n\n")
+
+            dump_codegen_position(wr)
+            wr("struct Instance {\n")
+            wr("  /* variable traces */\n")
+            for q in formula.quantifier_prefix:
+                wr(f"  Trace *{q.var};\n")
+            wr("  /* fixed traces */\n")
+            for q in self._fixed_quantifiers or ():
+                wr(f"  Trace *{q.var};\n")
+            wr("  /* The monitor this configuration waits for */\n")
+            wr("  sub::HNLMonitor *monitor{nullptr};\n\n")
+            args = (
+                f"Trace *{q.var}"
+                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
+            )
+            wr(f"  Instance({', '.join(args)})\n  : ")
+            wr(
+                ", ".join(
+                    (
+                        f"{q.var}({q.var})"
+                        for q in chain(
+                            formula.quantifier_prefix, self._fixed_quantifiers or ()
+                        )
+                    )
+                )
+            )
+            # wr(", monitor(new sub::HNLMonitor()")
+            wr("{}\n\n")
+
+            wr("};\n\n")
+
+            wr(self.namespace_end())
+            wr("\n\n")
+
+            wr("#endif\n")
+
+    def _generate_monitor(self, formula):
+        """
+        Generate a monitor that actually monitors the body of the formula,
+        i.e., it creates and moves with atom monitors.
+        """
+        self._generate_instance_h(formula)
+        self._generate_create_instances(formula)
 
     def generate(self, formula, gen_tests=True):
         """
@@ -84,6 +167,7 @@ class CodeGenCpp(CodeGenCpp):
 
         # generate this monitor
         self.generate_monitor(top_formula, negate_submonitor_result)
+        # generate the submonitors
         self.generate_submonitors(sub_formula, fixed_quantifiers)
 
         if not self._embedded:
@@ -105,9 +189,9 @@ class CodeGenCpp(CodeGenCpp):
 
     def generate_submonitors(self, sub_formula, universal_prefix: list):
         has_submonitors = sub_formula.has_different_quantifiers()
-        nested_out_dir = f"{self.out_dir}/submonitor"
+        nested_out_dir = f"{self._out_dir}/submonitor"
 
-        print("XXX", sub_formula, has_submonitors)
+        msg("dbg", sub_formula, has_submonitors)
 
         if isinstance(sub_formula.quantifier_prefix[0], Exists):
             sub_formula = sub_formula.negate()
@@ -116,7 +200,6 @@ class CodeGenCpp(CodeGenCpp):
             nested_cg = CodeGenCpp(
                 self.sub_name(),
                 self.args,
-                self.ctx,
                 fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
                 out_dir=nested_out_dir,
                 namespace=self.sub_namespace(),
@@ -126,13 +209,15 @@ class CodeGenCpp(CodeGenCpp):
             nested_cg = get_atoms_codegen(self.args.logic)(
                 self.sub_name(),
                 self.args,
-                self.ctx,
                 fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,
                 out_dir=nested_out_dir,
                 namespace=self.sub_namespace(),
                 embedded=True,
             )
+        log_indent_incr()
         nested_cg.generate(sub_formula)
+        log_indent_decr()
+
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
     def generate_monitor(self, formula, negate_submonitor_result=False):
@@ -145,7 +230,7 @@ class CodeGenCpp(CodeGenCpp):
         values = {
             "monitor_name": self.name(),
             "namespace": self.namespace(),
-            "sub-namespace": self.sub_namespace(),
+            "sub_namespace": self.sub_namespace(),
             "namespace_start": self.namespace_start(),
             "namespace_end": self.namespace_end(),
             "input_traces": input_traces,

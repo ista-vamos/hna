@@ -22,7 +22,7 @@ from rvhyno.hnl.formula import (
 from .atoms import CodeGenCppAtoms
 from ...formula2transducers import Formula2Transducer, automaton_for_comparison
 
-from rvhyno.utils import msg, log
+from rvhyno.utils import msg, log, log_indent_incr, log_indent_decr
 
 
 class TranslationData:
@@ -280,10 +280,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         Generate a monitor that actually monitors the body of the formula,
         i.e., it creates and moves with atom monitors.
         """
+        msg('info', "Generating stuctures for registers", section=3)
         self._generate_registers()
+        msg('info', "Generating BDD code", section=3)
         self._generate_bdd_code(formula)
+        msg('info', "Generating code for instances", section=3)
         self._generate_hnlinstances(formula)
         self._generate_create_instances(formula)
+        msg('info', "Generating automata for instances", section=3)
         self._generate_automata_code(formula)
 
     def _generate_trivial_atom(self, nd):
@@ -307,7 +311,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             "atom_num": str(num),
         }
 
-        self.gen_file("atom-trivial.h.in", f"atom-{num}.h", values)
+        self.gen_file("atom-monitor-trivial.h.in", f"atom-{num}.h", values)
 
     def _generate_automata_code(self, formula):
         # generated_automata = {}
@@ -629,7 +633,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         )
 
         self.gen_file(
-            "atom-evaluation-state.h.in",
+            "atoms/evaluation-state.h.in",
             f"atom-{num}-evaluation-state.h",
             {
                 "monitor_name": self.name(),
@@ -663,7 +667,7 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_atom_header(self, data, wrh):
         automaton, num = data.automaton, data.num
 
-        self.gen_file("atom-shl.h.in", f"atom-{num}.h",
+        self.gen_file("atoms/atom-shl.h.in", f"atom-{num}.h",
                       {'cg': self, 'num': num, 'automaton': automaton, 'data': data})
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
@@ -857,11 +861,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         return A, renaming
 
     def generate_tests(self):
-        msg('info', "Generating tests", section=4)
+        msg('info', "Generating tests", section=3)
         makedirs(f"{self._out_dir}/tests", exist_ok=True)
 
         self.gen_file(
-            "CMakeLists-atoms-tests.txt.in",
+            "atoms/CMakeLists-tests.txt.in",
             "tests/CMakeLists.txt",
             {
                 "submonitors_libs": " ".join(self._submonitors),
@@ -915,7 +919,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                 wr(f"/* Trace {i + 1} length: {n} */\n\n")
 
         self.gen_file(
-            "test-atom.cpp.in",
+            "atoms/test-atom.cpp.in",
             f"tests/test-atom-{num}-{test_num}.cpp",
             {
                 "TRACE": f'#include "test-trace-{num}-{test_num}.cpp"',
@@ -1001,14 +1005,15 @@ class CodeGenCpp(CodeGenCppAtoms):
             "info": f"Monitor for '{formula}'",
         }
 
-        self.gen_file("hnl-atoms-monitor.h.in", "hnl-monitor.h", values)
-        self.gen_file("hnl-atoms-monitor.cpp.in", "hnl-monitor.cpp", values)
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
-        self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
-        # values.update({"include_headers": '# include "atom-evaluation-state.h"'})
-        self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
+        self.gen_file("atoms/monitor.h.in", "hnl-monitor.h", values)
+        self.gen_file("atoms/monitor.cpp.in", "hnl-monitor.cpp", values)
+        self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
+        self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
+        log_indent_incr()
         self._generate_monitor(formula)
+        log_indent_decr()
 
 
 def debug_code_state(ns, data, wrcpp):

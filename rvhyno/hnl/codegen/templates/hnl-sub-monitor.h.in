@@ -30,7 +30,7 @@ class HNLMonitor : public ::Monitor {
   {{input_traces}}
 
   // here we store the running monitors
-  //std::vector<std::unique_ptr<{{sub-namespace}}::HNLMonitor>> _monitors_wbg;
+  //std::vector<std::unique_ptr<{{sub_namespace}}::HNLMonitor>> _monitors_wbg;
   std::vector<std::unique_ptr<Instance>> _instances;
 
   void addNewTraces();

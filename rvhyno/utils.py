@@ -19,6 +19,15 @@ def code_position(f, end="\n"):
 
 _logfile = None
 _max_width = 0
+_ind = 0
+
+def log_indent_incr():
+    global _ind
+    _ind += 2
+
+def log_indent_decr():
+    global _ind
+    _ind -= 2
 
 def open_log(path):
     global _logfile
@@ -40,9 +49,9 @@ def log(cls, *args, **kwargs):
             print("", file=_logfile)
         else:
             if cls:
-                print(f"[{cls.ljust(_max_width)}]", *args, file=_logfile)
+                print('..'*_ind, f"[{cls.ljust(_max_width)}]", *args, file=_logfile)
             else:
-                print(*args, file=_logfile)
+                print('..'*_ind, *args, file=_logfile)
 
 
 def msg(cls, *args, **kwargs):
@@ -70,7 +79,8 @@ def msg(cls, *args, **kwargs):
 
     section = kwargs.get("section") or 0
     if 0 < section < 3:
-        print("------------------------------------------------------------", file=fl)
+        print(' '*_ind, "------------------------------------------------------------", file=fl)
+
     if cl:
         print(cl, file=fl, end="")
 
@@ -78,10 +88,10 @@ def msg(cls, *args, **kwargs):
         print("#" * section, file=fl, end=" ")
 
     if cls is not None:
-        print(f"[{cls.ljust(_max_width)}]", *args, "\033[0m", file=fl)
+        print(' '*_ind, f"[{cls.ljust(_max_width)}]", *args, "\033[0m", file=fl)
     else:
-        print(*args, "\033[0m", file=fl)
+        print(' '*_ind, *args, "\033[0m", file=fl)
 
     if 0 < section < 3:
-        print("------------------------------------------------------------", file=fl)
+        print(' '*_ind, "------------------------------------------------------------", file=fl)
 

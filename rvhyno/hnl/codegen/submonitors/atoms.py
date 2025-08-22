@@ -99,9 +99,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
             values.update(overwrite_keys)
 
         if self._embedded:
-            cmakelists = "CMakeLists-atoms-embedded.txt.in"
+            cmakelists = "atoms/CMakeLists-embedded.txt.in"
         else:
-            cmakelists = "CMakeLists-atoms.txt.in"
+            cmakelists = "atoms/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
     def _gen_bdd_from_formula(self, formula):
@@ -248,7 +248,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
         def trace_variables(nd):
             return [t.name for t in nd.formula.trace_variables()]
 
-        self.gen_file("instance.h.in", "instance.h",
+        self.gen_file("atoms/instance.h.in", "instance.h",
                       {'cg': self, 'formula': formula,
                        'args': [f'Trace *{q.var.name}' for q in
                                 chain(formula.quantifier_prefix, self._fixed_quantifiers or ())],

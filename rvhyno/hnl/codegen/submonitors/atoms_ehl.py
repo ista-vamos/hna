@@ -146,7 +146,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                     self._atoms_files.append(f"atom-{num}.cpp")
                 continue
 
-            self.gen_file("atom-ehl.h.in", f"atom-{num}.h",
+            self.gen_file("atoms/atom-ehl.h.in", f"atom-{num}.h",
                           {'cg': self, 'num': num, 'automaton': nd.automaton})
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:

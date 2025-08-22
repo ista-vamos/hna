@@ -1,3 +1,4 @@
+from rvhyno.utils import log
 from rvhyno.hnl.formula import PrenexFormula, ForAll, Not, Constant
 
 
@@ -44,8 +45,8 @@ def _split_formula(formula: PrenexFormula):
 
     F1 = PrenexFormula(same, Constant("subF"))
     F2 = PrenexFormula(rest, formula.formula)
-    print("Split formula: topF = ", F1)
-    print("Split formula: subF = ", F2)
-    print("Same: ", same)
+    log('dbg', "Split formula: topF = ", F1)
+    log('dbg', "Split formula: subF = ", F2)
+    log('dbg', "Same: ", same)
 
     return F1, F2, same
