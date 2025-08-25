@@ -5,12 +5,12 @@ from multiprocessing import cpu_count
 from os.path import isfile, basename
 from subprocess import run
 
-from config import vamos_common_PYTHONPATH
+# from config import vamos_common_PYTHONPATH
 from rvhyno.cmdargs import create_cmdargs_parser, process_args
 from rvhyno.hnl.parser import Parser
 from rvhyno.utils import msg, open_log, log
 
-sys.path.append(vamos_common_PYTHONPATH)
+# sys.path.append(vamos_common_PYTHONPATH)
 
 from rvhyno.hnl.codegen import CodeGenCpp
 
@@ -48,9 +48,11 @@ def main(args):
 
     problems = formula.problems()
     if args.logic == "ehl" and not formula.is_simple():
-        problems.append("Formula is not simple, we require that for now")
+        problems.append("Formula is not simple, eHL monitors require that")
     for problem in problems:
         msg("err", problem)
+    if problems:
+        raise RuntimeError("Ran into problems, bailing out...")
 
     msg("info", "Generating monitor code", section=2)
     codegen = CodeGenCpp(args, ctx)
