@@ -1,14 +1,14 @@
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
-from rvhyno.codegen.codegen import CodeGen
+from rvhyno.codegen.codegencpp import CodeGenCpp
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.formula import ForAllFromFun
 
 
-class CodeGenCpp(CodeGen):
+class CodeGenCpp(CodeGenCpp):
     """
-    Shared methods for CodeGen from atoms_ehl.py and submon.py
+    Shared methods for CodeGen from atoms/ehl.py, atoms/shl.py and submon.py
     """
 
     def __init__(
@@ -21,7 +21,7 @@ class CodeGenCpp(CodeGen):
         embedded: bool = False,
     ):
         super().__init__(
-            name, args, out_dir=out_dir, namespace=namespace, embedded=embedded
+            name=name, args=args, out_dir=out_dir, namespace=namespace, embedded=embedded
         )
 
         self_dir = abspath(

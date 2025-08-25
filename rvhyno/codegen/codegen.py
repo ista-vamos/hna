@@ -12,12 +12,16 @@ from rvhyno.utils import msg, log
 
 
 class CodeGen:
+    """
+    The super-class for code generation. Particular code generation classes will inherit from this.
+    At this moment, there is only the `CodeGenCpp` and its sub-classes.
+    `CodeGenCpp` is used to generate C++ code for the monitors.
+    """
     def __init__(
         self,
         name: str,
         args,
         out_dir: str = None,
-        namespace: str = None,
         embedded=False,
     ):
         self._out_dir = abspath(out_dir or args.out_dir)
@@ -26,11 +30,14 @@ class CodeGen:
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
+        # these are templates that are common to the whole generated project
         self.common_templates_path = pathjoin(self_dir, "templates/cpp")
-        self.templates_path = None  # must be set by child classes
+        # these are templates specific to the currently generated monitor
+        # This attribute is set by sub-classes
+        self.templates_path = None
 
+        # name of the monitor that this `CodeGen` generates
         self._name = name
-        self._namespace = namespace
         # is this code a subdirectory of a top-level cmake-based project?
         self._embedded = embedded
 
@@ -49,7 +56,7 @@ class CodeGen:
 
         if args.debug:
             try:
-                mkdir(f"{self.out_dir}/dbg")
+                mkdir(f"{self._out_dir}/dbg")
             except OSError:
                 pass  # exists
 
@@ -112,28 +119,6 @@ class CodeGen:
 
     def sub_name(self) -> str:
         return f"sub{self._name}"
-
-    def sub_namespace(self) -> str:
-        return f"{self._namespace}::sub" if self._namespace else "sub"
-
-    def namespace(self) -> str:
-        return self._namespace or ""
-
-    def namespace_start(self) -> str:
-        return "\n".join(
-            (
-                f"namespace {ns} {{"
-                for ns in (self._namespace.split("::") if self._namespace else ())
-            )
-        )
-
-    def namespace_end(self) -> str:
-        return "\n".join(
-            (
-                f"}} /* namespace {ns} */"
-                for ns in (self._namespace.split("::")[::-1] if self._namespace else ())
-            )
-        )
 
     def submonitors(self):
         return self._submonitors
