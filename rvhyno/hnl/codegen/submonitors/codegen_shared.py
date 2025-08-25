@@ -234,3 +234,22 @@ class CodeGenCpp(CodeGen):
             )
         ] + [f"if (!{q}->finished()) {{ return false; }}" for q in (fixed or ())]
         return "\n".join(lines)
+
+
+    def read_generated_file(self, name):
+        """
+        Args:
+            name: name of the file
+
+        Returns: the contents of the file as string
+
+        Read the contents of a generated file and return it as a string.
+        In some cases, it is easier to generate the whole code in Python instead of creating a template for it
+        (e.g., for creating the instances of formula). In such cases, we can use this method to feed the
+        generated contents into a generated file via a template.
+        """
+        path = self.get_output_path(name)
+        # More efficient would be to return the opened file and then somehow take care of closing it,
+        # but for now, this is good enough
+        with open(path, 'r') as f:
+            return f.readlines()

@@ -11,8 +11,9 @@
 #include "hnl-monitor-ctors-dtors.h"
 
 void FormulaMonitor::addNewTraces() {
-  /* GENERATED */
-  #include "create-instances.h"
+  {% for line in cg.read_generated_file('_create-instances.h') -%}
+  {{line}}
+  {%- endfor %}
 }
 
 static inline Verdict negate_verdict(Verdict v) {

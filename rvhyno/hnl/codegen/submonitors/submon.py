@@ -150,14 +150,6 @@ class CodeGenCpp(CodeGenCpp):
 
             wr("#endif\n")
 
-    def _generate_monitor(self, formula):
-        """
-        Generate a monitor that actually monitors the body of the formula,
-        i.e., it creates and moves with atom monitors.
-        """
-        self._generate_instance_h(formula)
-        self._generate_create_instances(formula)
-
     def generate(self, formula, gen_tests=True):
         """
         The top-level function to generate code
@@ -221,6 +213,10 @@ class CodeGenCpp(CodeGenCpp):
         self._submonitors = [{"name": self.sub_name(), "out_dir": nested_out_dir}]
 
     def generate_monitor(self, formula, negate_submonitor_result=False):
+
+        self._generate_instance_h(formula)
+        self._generate_create_instances(formula)
+
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
@@ -228,6 +224,7 @@ class CodeGenCpp(CodeGenCpp):
         inputs_finished = self._inputs_finished(formula)
 
         values = {
+            "cg": self,
             "monitor_name": self.name(),
             "namespace": self.namespace(),
             "sub_namespace": self.sub_namespace(),
@@ -245,4 +242,3 @@ class CodeGenCpp(CodeGenCpp):
         self.gen_file("sub/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("sub/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
-        self._generate_monitor(formula)
