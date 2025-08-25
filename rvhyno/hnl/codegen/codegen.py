@@ -4,7 +4,7 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from rvhyno.codegen.codegen import CodeGen
 from rvhyno.codegen.utils import dump_codegen_position
-from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from rvhyno.hnl.codegen.submonitors.atoms import get_atoms_codegen
 from rvhyno.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
 from rvhyno.hnl.formula import (
     Constant,

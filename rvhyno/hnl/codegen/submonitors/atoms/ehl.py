@@ -13,7 +13,7 @@ from rvhyno.hnl.formula2automata import (
     compose_automata,
     to_priority_automaton,
 )
-from .atoms import CodeGenCppAtoms
+from .shared import CodeGenCppAtoms
 
 
 def random_path(A: Automaton, length: int) -> list:

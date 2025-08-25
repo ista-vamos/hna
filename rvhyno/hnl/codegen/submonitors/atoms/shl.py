@@ -19,8 +19,9 @@ from rvhyno.hnl.formula import (
     TraceVariable,
     Comparison,
 )
-from .atoms import CodeGenCppAtoms
-from ...formula2transducers import Formula2Transducer, automaton_for_comparison
+from .shared import CodeGenCppAtoms
+
+from rvhyno.hnl.formula2transducers import Formula2Transducer, automaton_for_comparison
 
 from rvhyno.utils import msg, log
 

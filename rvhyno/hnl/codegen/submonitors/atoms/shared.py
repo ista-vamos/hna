@@ -6,7 +6,7 @@ from pyeda.boolalg.bdd import bddvar
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue
-from .codegen_shared import CodeGenCpp as CodeGenCppShared
+from ..shared import CodeGenCpp as CodeGenCppShared
 
 
 class CodeGenCppAtoms(CodeGenCppShared):

@@ -2,13 +2,13 @@ from itertools import chain
 from os.path import basename
 
 from rvhyno.codegen.utils import dump_codegen_position
-from rvhyno.hnl.codegen.submonitors.atoms_shared import get_atoms_codegen
+from .atoms import get_atoms_codegen
 from rvhyno.hnl.codegen.utils import _split_formula
 from rvhyno.hnl.formula import (
     Exists,
 )
 from rvhyno.utils import msg, log_indent_incr, log_indent_decr
-from .codegen_shared import CodeGenCpp
+from .shared import CodeGenCpp
 
 
 class CodeGenCpp(CodeGenCpp):
