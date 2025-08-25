@@ -11,8 +11,8 @@
 
 {{namespace_start}}
 
-// must be inside the namespace
-#include "bdd-structure.h"
+
+static constexpr FormulaEvaluationState INITIAL_ATOM = {{cg.get_initial_atom()}};
 
 static inline Verdict do_step(AtomMonitor *M) {
   #include "do_step.h"
@@ -29,10 +29,14 @@ void FormulaMonitor::addNewTraces() {
 }
 
 Verdict FormulaMonitor::updateInstance(Instance *instance, Verdict verdict) {
-    // FIXME: generate the code that branches on instance->state and verdict
-    // instead of having statically compiled BDD in the data segment.
-    // (less reads from memory)
-    auto action = BDD[instance->state][verdict == Verdict::TRUE ? 1 : 2 ];
+    FormulaEvaluationState action = INVALID;
+    switch(instance->state) {
+    {% for atom, acts in cg.get_formula_bdd_actions().items() %}
+    case ATOM_{{atom}}: action = verdict == Verdict::TRUE ? {{acts[True]}} :  {{acts[False]}}; break;
+    {% endfor %}
+    default: abort();
+    }
+
     if (action == RESULT_FALSE) {
         // The whole HNL formula evaluated to FALSE for the traces in `instance`.
         return Verdict::FALSE;

@@ -74,7 +74,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
             build_type = '"Debug"' if self.args.debug else "Release"
 
         values = {
-            "vamos-buffers_DIR": vamos_buffers_DIR,
+            # "vamos-buffers_DIR": vamos_buffers_DIR,
             "additional_sources": " ".join(
                 (
                     basename(f)
@@ -148,9 +148,10 @@ class CodeGenCppAtoms(CodeGenCppShared):
         self.BDD = BDD
 
     def _generate_bdd_code(self, formula):
-
         self.gen_file("formula-state.h.in", "formula-state.h",
                       {'cg': self })
+
+    def get_formula_bdd_actions(self):
 
         def bdd_to_action(bdd):
             if bdd.is_one():
@@ -165,59 +166,50 @@ class CodeGenCppAtoms(CodeGenCppShared):
         # for the node, because PyEDA does not have getters for `_VARS`
         # dictionary. So I'm just generating sub-BDDs from which I
         # can get the root variable.
-        with self.new_file("bdd-structure.h") as f:
-            dump_codegen_position(f)
-            f.write("/* ATOM, ACTION_IF_TRUE, ACTION_IF_FALSE*/\n")
-            f.write("constexpr FormulaEvaluationState BDD[][3] = {\n")
-            f.write("  {INVALID, INVALID, INVALID},\n")
-            rows = {}
+        rows = {}
+        if self.BDD.is_zero() or self.BDD.is_one():
+            rows[1] = {}
+            rows[1][True] = 'RESULT_TRUE'
+            rows[1][False] = 'RESULT_FALSE'
+            return rows
 
-            if self.BDD.is_zero() or self.BDD.is_one():
-                rows[1] = f"  {{ ATOM_1, RESULT_TRUE, RESULT_FALSE }} ,\n"
-            else:
-                seen = set()
-                wbg = set()
-                wbg.add(self.BDD)
-                while wbg:
-                    bdd = wbg.pop()
-                    if bdd in seen:  # or bdd.is_one() or bdd.is_zero():
-                        continue
-                    seen.add(bdd)
+        seen, wbg = set(), set()
+        wbg.add(self.BDD)
+        while wbg:
+            bdd = wbg.pop()
+            if bdd in seen:
+                continue
+            seen.add(bdd)
 
-                    hi = bdd.restrict({bdd: 1})
-                    lo = bdd.restrict({bdd: 0})
-                    wbg.add(hi)
-                    wbg.add(lo)
+            hi = bdd.restrict({bdd: 1})
+            lo = bdd.restrict({bdd: 0})
+            wbg.add(hi)
+            wbg.add(lo)
 
-                    if bdd.top:
-                        nd = self._bdd_vars_to_nodes[bdd.top]
-                        assert nd.get_id() not in rows, rows
-                        rows[nd.get_id()] = (
-                            f"  {{ {bdd_to_action(bdd)}, {bdd_to_action(hi)}, {bdd_to_action(lo)} }} ,\n"
-                        )
-                    else:
-                        if bdd.is_zero():
-                            pass
+            if bdd.top:
+                nd = self._bdd_vars_to_nodes[bdd.top]
+                assert nd.get_id() not in rows, rows
+                atom_id = nd.get_id()
 
-            idxs = sorted(rows)
-            for idx in idxs:
-                f.write(rows[idx])
+                rows[atom_id] = {}
+                rows[atom_id][True] = bdd_to_action(hi)
+                rows[atom_id][False] = bdd_to_action(lo)
+            elif bdd.is_zero():
+                    pass
+        return rows
 
-            f.write("};\n\n")
+    def get_initial_atom(self) -> str:
+        # FIXME: TRUE and FALSE BDDs still may break this code,
+        # we need to handle them on some higher level (ideally just do not create this instance
+        # and immediately solve it)
+        BDD = self.BDD
+        if BDD.top:
+            nd_id = self._bdd_vars_to_nodes[BDD.top].get_id()
+        else:
+            assert BDD.is_one() or BDD.is_zero(), BDD
+            nd_id = 1
+        return f"ATOM_{nd_id}"
 
-            dump_codegen_position(f)
-            # FIXME: TRUE and FALSE BDDs still may break this code,
-            # we need to handle them on some higher level (ideally just do not create this instance
-            # and immediately solve it)
-            BDD = self.BDD
-            if BDD.top:
-                nd_id = self._bdd_vars_to_nodes[BDD.top].get_id()
-            else:
-                assert BDD.is_one() or BDD.is_zero(), BDD
-                nd_id = 1
-            f.write(
-                f"static constexpr FormulaEvaluationState INITIAL_ATOM = ATOM_{nd_id};\n"
-            )
 
     def _create_instance(self, formula, wr):
         dump_codegen_position(wr)
