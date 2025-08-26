@@ -38,7 +38,11 @@ def main(args):
     log("dbg", "Formula simplified: ", f"`{formula.simplify()}`")
     log("dbg", "Quantifiers: ", f"`{[str(q) for q in formula.quantifiers()]}`")
     if not formula.is_hltl():
-        log("dbg", "Trace variables: ", f"`{[str(t) for t in formula.trace_variables()]}`")
+        log(
+            "dbg",
+            "Trace variables: ",
+            f"`{[str(t) for t in formula.trace_variables()]}`",
+        )
         log(
             "dbg",
             "Program variables: ",
