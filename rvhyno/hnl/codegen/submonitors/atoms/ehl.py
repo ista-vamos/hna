@@ -818,6 +818,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                     self.copy_file(f, from_dir=from_dir)
             self.copy_file("atoms/ehl-evaluation-stateset.h")
         else:
+            raise NotImplementedError("This should never be non-embedded in the current code")
             self.copy_files()
 
             self.gen_file(

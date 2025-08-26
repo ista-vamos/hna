@@ -65,6 +65,7 @@ class CodeGenCpp(CodeGenCpp):
         if self._embedded:
             cmakelists = "sub/CMakeLists-embedded.txt.in"
         else:
+            raise NotImplementedError("This should never be non-embedded in the current code")
             cmakelists = "sub/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
@@ -164,6 +165,7 @@ class CodeGenCpp(CodeGenCpp):
         self.generate_submonitors(sub_formula, fixed_quantifiers)
 
         if not self._embedded:
+            raise NotImplementedError("This should never be non-embedded in the current code")
             self.gen_file(
                 "main.cpp.in",
                 "main.cpp",
