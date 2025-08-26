@@ -59,8 +59,11 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
     abort();
   }
 
-  // TODO: force reductions
-  std::cerr << "TODO: force reductions\n";
+  {% set reductions = cg.args.reduction or () -%}
+  // Formula has these properties: {{reductions}}
+  _formula.setProperties(
+  "{{'r' if 'reflexive' in reductions}}{{'s' if 'symmetric' in reductions}}{{'t' if 'transitive' in reductions}}"
+  );
 
   _monitor = std::make_unique<NoLiveMonitoring>(_formula);
 }

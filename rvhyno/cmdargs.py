@@ -119,7 +119,7 @@ def create_cmdargs_parser(out_dir):
     parser.add_argument(
         "--reduction",
         action="store",
-        help="Comma-separated list of 'reflexive','symmetric'",
+        help="Comma-separated list of 'reflexive','symmetric','transitive'",
         default=None,
     )
 
