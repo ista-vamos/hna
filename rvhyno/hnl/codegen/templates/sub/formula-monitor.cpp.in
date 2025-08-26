@@ -89,7 +89,22 @@ bool FormulaMonitor::inputs_finished() {
     if (_inputs_finished)
         return true;
 
-    {{inputs_finished}}
+    {% set fixed, set2q, _ = cg.input_tracesets(formula) %}
+    {% for traceset, _ in set2q.items() -%}
+    if (!
+        {%- if not traceset -%} traces.finished()
+        {%- else -%} traces_{{traceset.c_name()}}.finished()
+        {%- endif -%}
+       ) {
+        return false;
+    }
+    {%- endfor %}
+    {% for q in (fixed or ()) -%}
+    if (!{{q}}->finished()) {
+        return false;
+    }
+    {%- endfor %}
+
 
     _inputs_finished = true;
     return true;

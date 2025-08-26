@@ -220,12 +220,9 @@ class CodeGenCpp(CodeGenCpp):
         self._generate_instance_h(formula)
         self._generate_create_instances(formula)
 
-        inputs_finished = self._inputs_finished(formula)
-
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "inputs_finished": inputs_finished,
             "negate_submonitor_verdict": negate_submonitor_result,
             'formula': formula
         }
