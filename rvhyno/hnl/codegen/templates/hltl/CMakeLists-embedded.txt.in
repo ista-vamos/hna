@@ -1,0 +1,36 @@
+# template: CMakeLists-embedded.txt.in
+
+set(monitor_name "{{monitor_name}}")
+
+# add_library(hltl${monitor_name} STATIC {{sources}})
+# target_compile_definitions(hltl${monitor_name} PRIVATE {{additional_cflags}})
+# target_include_directories(hltl${monitor_name} PUBLIC ${CMAKE_SOURCE_DIR})
+# if (DEBUG_PRINTS)
+# target_link_libraries(hltl${monitor_name} PUBLIC events)
+# endif()
+
+find_library(LIBRVHYPER rvhyper ${RVHYPER_DIR}/build/src)
+message(STATUS "Found RVHyper lib at ${LIBRVHYPER}")
+
+find_library(LIBSPOT spot ${SPOT_DIR}/lib)
+message(STATUS "Found RVHyper lib at ${LIBRVHYPER}")
+
+set(LIBRARY_NAME "${monitor_name}")
+add_library(${LIBRARY_NAME} STATIC formula-monitor.cpp)
+target_include_directories(${LIBRARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR} ${top_monitor_dir})
+target_compile_definitions(${LIBRARY_NAME} PRIVATE {{additional_cflags}})
+target_link_libraries(${LIBRARY_NAME} PUBLIC ${LIBRVHYPER} -lspot -lbddx)
+
+if (RVHYPER_DIR)
+target_include_directories(${LIBRARY_NAME} PUBLIC ${RVHYPER_DIR}/include)
+endif()
+
+if (SPOT_DIR)
+    target_include_directories(${LIBRARY_NAME} PUBLIC ${SPOT_DIR}/include)
+    target_link_directories(${LIBRARY_NAME} PUBLIC ${SPOT_DIR}/lib)
+endif()
+
+
+#if (ENABLE_TESTS)
+#    add_subdirectory(tests EXCLUDE_FROM_ALL)
+#endif()

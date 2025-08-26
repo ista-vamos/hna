@@ -135,7 +135,7 @@ class CodeGenCpp(CodeGenCpp):
             if f not in self.args.overwrite_file:
                 self.copy_file(f, from_dir=from_dir)
 
-    def generate_cmake(self, overwrite_keys=None):
+    def generate_cmake(self, formula, overwrite_keys=None):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
@@ -147,6 +147,7 @@ class CodeGenCpp(CodeGenCpp):
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
+            "formula": formula,
             "additional_sources": " ".join(
                 (
                     basename(f)
@@ -173,6 +174,7 @@ class CodeGenCpp(CodeGenCpp):
             cmakelists = "top/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
         self.copy_file("CMakeLists-options.txt")
+        self.copy_file("CMakeLists-common.txt")
 
     def _generate_events(self):
         self.gen_file("events.h.in", "events.h",
@@ -446,7 +448,7 @@ class CodeGenCpp(CodeGenCpp):
             self.copy_files()
         # cmake generation should go at the end so that
         # it knows all the generated files
-        self.generate_cmake()
+        self.generate_cmake(formula)
 
         self.format_generated_code()
 

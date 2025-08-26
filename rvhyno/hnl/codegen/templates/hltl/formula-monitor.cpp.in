@@ -1,0 +1,111 @@
+#ifdef MEASURE_CPUTIME
+#include <ctime>
+#endif // !MEASURE_CPUTIME
+
+#include <cassert>
+#include <iostream>
+
+#include "formula-monitor.h"
+
+// RVHyper headers
+#include <rvhyper/Lexer.h>
+#include <rvhyper/Parser.h>
+#include <rvhyper/diagnostic.h>
+
+{{namespace_start}}
+
+/* GENERATED */
+
+{% set fixed, set2q, q2set = cg.input_tracesets(formula) %}
+FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
+{%- for q in fixed -%}
+, Trace *{{q}}
+{%- endfor -%}
+):
+{%- for traceset, _ in set2q.items() -%}
+{%- if not traceset -%}
+    {%- if not loop.first -%}, {%- endif -%}
+    traces(TS.traces)
+{%- else -%}
+    {% set funargs = traceset.traces | join(',') -%}
+    , traces_{{traceset.c_name()}}(TS.{{traceset.name}}.getTraceSet({{funargs}}))
+{%- endif -%}
+{%- endfor -%}
+{
+  // {{formula.formula}}
+  using namespace rvhyper;
+  Lexer *lexer = new Lexer("{{formula.formula}}");
+  Parser parser = Parser(lexer);
+
+  formula = parser.parseFormula();
+  if (hasNewErrors()) {
+    printDiagnosticSummary();
+    abort();
+  }
+  if (!formula.valid()) {
+    std::cerr << "HyperLTL formula is not valid." << std::endl;
+    abort();
+  }
+
+  // TODO: force reductions
+  std::cerr << "TODO: force reductions\n";
+
+    // TODO: create the monitor
+}
+
+void FormulaMonitor::addNewTraces() {
+
+  if (auto *t_new = traces.getNewTrace()) {
+
+  }
+}
+
+Verdict FormulaMonitor::step() {
+#ifdef MEASURE_CPUTIME
+    struct timespec start, end;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+#endif // !MEASURE_CPUTIME
+
+  Verdict verdict;
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
+#endif // !MEASURE_CPUTIME
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
+#endif // !MEASURE_CPUTIME
+
+  addNewTraces();
+
+#ifdef MEASURE_CPUTIME
+  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
+  stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
+  stats.cputime_adding_instances.tv_sec += (end.tv_sec - start.tv_sec);
+  stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
+#endif // !MEASURE_CPUTIME
+
+  bool finished = inputs_finished();
+
+  if (finished) {
+      return Verdict::TRUE;
+  }
+
+  return Verdict::UNKNOWN;
+}
+
+
+bool FormulaMonitor::inputs_finished() {
+    if (_inputs_finished)
+        return true;
+
+    {{inputs_finished}}
+
+    _inputs_finished = true;
+    return true;
+}
+
+{{namespace_end}}

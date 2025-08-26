@@ -33,6 +33,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
         self._atoms_files = []
 
     def copy_files(self):
+        # These monitors are always embedded...
+        raise NotImplementedError("This should be dead code, remove me!")
+
         # copy files from the CMD line
         for f in self.args.cpp_files:
             self.copy_file(f)
