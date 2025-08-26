@@ -953,13 +953,11 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_automata_code(formula)
 
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
-        input_traces = self._traces_attribute_str(formula)
         inputs_finished = self._inputs_finished(formula)
 
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "formula": formula,
         }

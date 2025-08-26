@@ -220,15 +220,11 @@ class CodeGenCpp(CodeGenCpp):
         self._generate_instance_h(formula)
         self._generate_create_instances(formula)
 
-        input_traces = self._traces_attribute_str(formula)
-        # NOTE: this method generates definitions of ctors and dtors into an .h file,
-        # and returns a list of declarations of those ctors and dtors
         inputs_finished = self._inputs_finished(formula)
 
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "negate_submonitor_verdict": negate_submonitor_result,
             'formula': formula

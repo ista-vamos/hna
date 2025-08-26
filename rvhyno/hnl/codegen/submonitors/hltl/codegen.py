@@ -69,9 +69,6 @@ class CodeGenCpp(CodeGenCpp):
         msg('info', "Generating monitor code", section=3)
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
         assert not formula.has_quantifier_alternation(), formula
-        input_traces = self._traces_attribute_str(formula)
-        # NOTE: this method generates definitions of ctors and dtors into an .h file,
-        # and returns a list of declarations of those ctors and dtors
         inputs_finished = self._inputs_finished(formula)
 
         values = {
@@ -80,7 +77,6 @@ class CodeGenCpp(CodeGenCpp):
             "namespace": self.namespace(),
             "namespace_start": self.namespace_start(),
             "namespace_end": self.namespace_end(),
-            "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "formula": formula,
         }

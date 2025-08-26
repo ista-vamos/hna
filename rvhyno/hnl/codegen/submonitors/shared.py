@@ -125,20 +125,7 @@ class CodeGenCpp(CodeGenCpp):
             q2setname,
         )
 
-    def _traces_attribute_str(self, formula):
-        lines = []
-        fixed, set2q, q2set = self.input_tracesets(formula)
-        # Add attributes for quantifiers fixed by parent monitors
-        lines = [f"Trace *{q};" for q in (fixed or ())] + [
-            f"TraceSetView "
-            + ("traces" if traceset is None else f"traces_{traceset.c_name()}")
-            + ";"
-            for traceset, q in set2q.items()
-        ]
-        return "\n".join(lines)
-
     def _inputs_finished(self, formula):
-        lines = []
         fixed, set2q, q2set = self.input_tracesets(formula)
         # Add attributes for quantifiers fixed by parent monitors
         lines = [

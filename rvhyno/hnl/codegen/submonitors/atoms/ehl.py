@@ -851,12 +851,10 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         self._generate_monitor(formula, alphabet)
 
-        input_traces = self._traces_attribute_str(formula)
         inputs_finished = self._inputs_finished(formula)
 
         values = {
             "monitor_name": self.name(),
-            "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "info": f"Monitor for '{formula}'",
             'formula': formula

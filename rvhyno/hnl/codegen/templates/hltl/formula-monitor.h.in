@@ -46,7 +46,17 @@
 class FormulaMonitor : public ::Monitor {
 protected:
 
-  {{input_traces}}
+  {% set fixed, set2q, _ = cg.input_tracesets(formula) %}
+  {% for q in fixed -%}
+  Trace *{{q}};  /* fixed */
+  {%- endfor %}
+  {% for traceset, q in set2q.items() -%}
+  TraceSetView
+  {% if not traceset -%} traces
+  {%- else -%} traces_{{traceset.c_name()}}
+  {%- endif -%};
+  {% endfor %}
+
 
   // check for new traces and create Instances for them if there are some
   void addNewTraces();
