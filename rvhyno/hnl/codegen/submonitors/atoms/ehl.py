@@ -191,20 +191,6 @@ class CodeGenCpp(CodeGenCppAtoms):
                 f.write(f'#include "atom-{nd.get_id()}.h"\n')
             f.write("#endif\n")
 
-        with self.new_file("do_step.h") as f:
-            dump_codegen_position(f)
-            f.write("switch (M->type()) {")
-            for nd in self._bdd_nodes:
-                num = nd.get_id()
-                f.write(
-                    f"  case {num}: return static_cast<AtomMonitor{num}*>(M)->step();\n"
-                )
-            f.write(
-                f"  case FINISHED: return static_cast<FinishedAtomMonitor*>(M)->step();\n"
-            )
-            f.write("  default: abort();\n")
-            f.write("}")
-
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
 
@@ -852,6 +838,18 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def generate_monitor(self, formula: PrenexFormula, alphabet):
         assert not formula.has_quantifier_alternation(), formula
+
+        # Needed when generating formula-monitor.cpp
+        self._generate_create_instances(formula)
+
+        # there is no sub-formula, this is the monitor for the body of the formula
+        self._gen_bdd_from_formula(formula)
+
+        for nd in self._bdd_nodes:
+            nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
+
+        self._generate_monitor(formula, alphabet)
+
         input_traces = self._traces_attribute_str(formula)
         inputs_finished = self._inputs_finished(formula)
 
@@ -866,9 +864,6 @@ class CodeGenCpp(CodeGenCppAtoms):
             'formula': formula
         }
 
-        # Needed when generating formula-monitor.cpp
-        self._generate_create_instances(formula)
-
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
@@ -877,16 +872,3 @@ class CodeGenCpp(CodeGenCppAtoms):
         values.update({"include_headers": '#include "ehl-evaluation-stateset.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
 
-        # there is no sub-formula, this is the monitor for the body of the formula
-        self._gen_bdd_from_formula(formula)
-
-        for nd in self._bdd_nodes:
-            nd.automaton = self.generate_atomic_comparison_automaton(nd, alphabet)
-
-        def gen_automaton(F):
-            if not isinstance(F, IsPrefix):
-                return
-
-        formula.visit(gen_automaton)
-
-        self._generate_monitor(formula, alphabet)

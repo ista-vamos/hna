@@ -13,10 +13,6 @@
 
 static constexpr FormulaEvaluationState INITIAL_ATOM = {{cg.get_initial_atom()}};
 
-static inline Verdict do_step(AtomMonitor *M) {
-  #include "do_step.h"
-}
-
 {% set fixed, set2q, _ = cg.input_tracesets(formula) %}
 FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {%- for q in fixed -%}
@@ -38,6 +34,18 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {%- endif -%}
 {%- endfor -%}
 {}
+
+
+static inline Verdict do_step(AtomMonitor *M) {
+    switch (M->type()) {
+    {%- for nd in cg._bdd_nodes %}
+        {% set num = nd.get_id() -%}
+        case {{num}}: return static_cast<AtomMonitor{{num}}*>(M)->step();
+    {%- endfor -%}
+        case FINISHED: return static_cast<FinishedAtomMonitor*>(M)->step();
+        default: abort();
+    }
+}
 
 void FormulaMonitor::addNewTraces() {
   {% for line in cg.read_generated_file('_create-instances.h') -%}
