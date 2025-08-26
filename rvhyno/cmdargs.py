@@ -69,7 +69,7 @@ def create_cmdargs_parser(out_dir):
         help="A comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type. "
         "This list basically defines the type of the events expected on traces. "
         "Int C types can be refined with annotations saying the range of numbers, e.g.: `int [8b]` "
-        "meaning int with at most 8-bit values, or `int [0-100]` for numbers between 0 and 100 (limits included)."
+        "meaning int with at most 8-bit values, or `int [0..100]` for numbers between 0 and 100 (limits included)."
         "Information from this option is used also to generate the reader for CSV files.",
     )
 

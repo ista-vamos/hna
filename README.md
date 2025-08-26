@@ -61,11 +61,20 @@ directory. For other options, see `./hnl.py --help`.
 If the traces are read from CSV files (the default and now the only option),
 we assume one trace per file. Also, you need to specify the type of events
 through `--data` and possibly the alphabet (values that can appear in the
-events):
+events -- this is necessary only for the eHL logic):
 
 ```
 ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --data='x: char, y: char'
 ```
+
+The switch data is more flexible. You can specify that the data are atomic propositions.
+`--data=aps: x, y` is a shortcut for `--data=x: bool, y: bool`.
+Also, you can specify the range of data for each variable instead of giving an alphabet:
+`--data: x : int [-5..5], y : unsigned [0..100]` (the limit values are included). Alternatively,
+you can give the size of the numbers in bits: `--data: x: int [2b], y : short [1b]`.
+
+If you need/want to give the explicit alphabet, you can use `--alphabet=Nb`  meaning that the alphabet
+are N-bit numbers, e.g., `--alphabet=8b`.
 
 #### References
 
