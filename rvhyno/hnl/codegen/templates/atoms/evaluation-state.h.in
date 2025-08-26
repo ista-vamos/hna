@@ -4,9 +4,11 @@
 #include <vector>
 
 #include "events.h"
-{{include_headers}}
+{% if reg_fields %}
+#include "registers.h"
+{% endif %}
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 using State = int;
 
@@ -54,6 +56,6 @@ public:
   }
 };
 
-{{namespace_end}}
+{{cg.namespace_end()}}
 
 #endif

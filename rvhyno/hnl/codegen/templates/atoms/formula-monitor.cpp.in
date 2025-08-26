@@ -9,7 +9,7 @@
 #include "atoms.h"
 #include "formula-state.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 static constexpr FormulaEvaluationState INITIAL_ATOM = {{cg.get_initial_atom()}};
 
@@ -260,4 +260,4 @@ void FormulaMonitor::condenseWbg() {
     _monitors_wbg.swap(tmp);
 }
 
-{{namespace_end}}
+{{cg.namespace_end()}}

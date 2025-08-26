@@ -4,9 +4,7 @@
 #include "verdict.h"
 #include "atom-monitor.h"
 
-// {{include_headers}}
-
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 /**
  * Class encapsulating the evaluation of an atom on a pair of traces.
@@ -21,6 +19,6 @@ public:
   Verdict step(const unsigned step_num);
 };
 
-{{namespace_end}}
+{{cg.namespace_end()}}
 
 #endif // REGULAR_ATOM_MONITOR__{{monitor_name}}

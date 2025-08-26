@@ -5,7 +5,7 @@
 #include "atom-identifier.h"
 #include "verdict.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 /**
 * A wrapper around verdict that we use to cache results of evaluating an atom (an instance of the class
@@ -24,6 +24,6 @@ public:
   Verdict step(unsigned n = 0) { return _verdict; }
 };
 
-{{namespace_end}}
+{{cg.namespace_end()}}
 
 #endif // FINISHED_ATOM_MONITOR__{{monitor_name}}

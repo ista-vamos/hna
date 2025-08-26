@@ -4,6 +4,8 @@
 #include "events.h"
 #include "evaluation-state.h"
 
+{{cg.namespace_start()}}
+
 /**
  * This is a vector where new elements are pushed into a separate
  * storage and are moved to the main storage only on an explicit call.
@@ -26,5 +28,7 @@ public:
     _new_cfgs.clear();
   }
 };
+
+{{cg.namespace_end()}}
 
 #endif

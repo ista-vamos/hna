@@ -5,7 +5,7 @@
 #include "instance.h"
 #include "atom-identifier.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 class AtomMonitor : public AtomBase<Instance> {
   const AtomIdentifier _id;
@@ -21,6 +21,6 @@ public:
   const AtomIdentifier& id() const { return _id; }
 };
 
-{{namespace_end}}
+{{cg.namespace_end()}}
 
 #endif // ATOM_MONITOR__{{monitor_name}}

@@ -4,7 +4,7 @@
 #include "atom-identifier.h"
 #include "regular-atom-monitor.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 /* Formula: {{formula}} */
 class AtomMonitor{{atom_num}} : public RegularAtomMonitor {
@@ -15,5 +15,5 @@ public:
     Verdict step(unsigned num = 0) { return {{verdict}}; }
 };
 
-{{namespace_end}}
+{{cg.namespace_end()}}
 #endif

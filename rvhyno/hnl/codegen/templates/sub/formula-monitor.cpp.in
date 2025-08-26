@@ -1,10 +1,8 @@
-// template: hnl-sub-monitor.cpp.in
-
 #include <cassert>
 
 #include "formula-monitor.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 /* GENERATED */
 #include "functions.h"
@@ -114,4 +112,4 @@ void FormulaMonitor::condenseWbg() {
     _instances.swap(tmp);
 }
 
-{{namespace_end}}
+{{cg.namespace_end()}}

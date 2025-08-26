@@ -228,10 +228,6 @@ class CodeGenCpp(CodeGenCpp):
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "namespace": self.namespace(),
-            "sub_namespace": self.sub_namespace(),
-            "namespace_start": self.namespace_start(),
-            "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "negate_submonitor_verdict": negate_submonitor_result,

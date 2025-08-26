@@ -33,7 +33,7 @@
 #include "atom-identifier.h"
 #include "alltracesets.h"
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 
 ///
@@ -107,4 +107,4 @@ public:
 
 #endif // !HNL_ATOMS_MONITOR_H__{{monitor_name}}
 
-{{namespace_end}}
+{{cg.namespace_end()}}

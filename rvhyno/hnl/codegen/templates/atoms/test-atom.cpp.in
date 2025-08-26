@@ -7,7 +7,7 @@
 #include "instance.h"
 #include "atom-{{ATOM_NUM}}.h"
 
-{{namespace_using}}
+using {{cg.namespace()}}
 
 static void err(const std::string& msg) {
   std::cerr << msg << "\n";

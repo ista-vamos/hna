@@ -273,10 +273,6 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         values = {
             "monitor_name": self.name(),
-            "namespace": self.namespace(),
-            "namespace_start": self.namespace_start(),
-            "namespace_end": self.namespace_end(),
-            # "info": f"Monitor for '{nd.formula}'",
             "formula": str(nd.formula),
             "verdict": result,
             "atom_num": str(num),
@@ -594,12 +590,9 @@ class CodeGenCpp(CodeGenCppAtoms):
             "atoms/evaluation-state.h.in",
             f"atom-{num}-evaluation-state.h",
             {
+                "cg": self,
                 "monitor_name": self.name(),
-                "namespace": self.namespace(),
-                "namespace_start": self.namespace_start(),
-                "namespace_end": self.namespace_end(),
                 "atom_num": str(num),
-                "include_headers": '#include "registers.h"' if reg_fields else "",
                 "position_args": position_args.comma_prefixed(),
                 "position_pass_args": position_pass_args.comma_prefixed(),
                 "position_fields": position_fields,
@@ -966,9 +959,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "namespace": self.namespace(),
-            "namespace_start": self.namespace_start(),
-            "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "formula": formula,

@@ -856,9 +856,6 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         values = {
             "monitor_name": self.name(),
-            "namespace": self.namespace(),
-            "namespace_start": self.namespace_start(),
-            "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
             "info": f"Monitor for '{formula}'",
