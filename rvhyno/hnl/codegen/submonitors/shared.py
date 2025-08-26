@@ -137,38 +137,6 @@ class CodeGenCpp(CodeGenCpp):
         ]
         return "\n".join(lines)
 
-    def _traces_ctors_dtors(self, formula, with_TS=True):
-        decls = []
-        fixed, set2q, q2setname = self.input_tracesets(formula)
-
-        with self.new_file("hnl-monitor-ctors-dtors.h") as f:
-            dump_codegen_position(f)
-            wr = f.write
-
-            args = [f"Trace *{q}" for q in fixed]
-            proto = f"FormulaMonitor(const AllTraceSets& TS {',' if args else ''}{', '.join(args)})"
-            decls.append(f"{proto};")
-
-            args = [f"{q}({q})" for q in fixed]
-
-            for traceset, qs in set2q.items():
-                if traceset is None:
-                    args.append(f"traces(TS.traces)")
-                else:
-                    funargs = ",".join((str(t) for t in traceset.traces))
-                    args.append(
-                        f"traces_{traceset.c_name()}(TS.{traceset.name}.getTraceSet({funargs}))"
-                    )
-            if with_TS:
-                wr(
-                    f"FormulaMonitor::{proto} : TS(TS){', ' if args else ''}{', '.join(args)}"
-                )
-            else:
-                wr(f"FormulaMonitor::{proto} : {', '.join(args)}")
-            wr("{}\n\n")
-
-        return decls
-
     def _inputs_finished(self, formula):
         lines = []
         fixed, set2q, q2set = self.input_tracesets(formula)

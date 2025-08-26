@@ -76,7 +76,9 @@ protected:
   CmdArgs *_cmd;
 
 public:
-  {{ctors_dtors}}
+  FormulaMonitor(const AllTraceSets& TS
+  {%- for q in cg.input_tracesets(formula)[0] -%} , Trace *{{q}} {%- endfor -%}
+  );
 
   Verdict step();
 

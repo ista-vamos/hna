@@ -72,7 +72,6 @@ class CodeGenCpp(CodeGenCpp):
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
-        ctors_dtors = self._traces_ctors_dtors(formula, with_TS=False)
         inputs_finished = self._inputs_finished(formula)
 
         values = {
@@ -83,7 +82,6 @@ class CodeGenCpp(CodeGenCpp):
             "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
-            "ctors_dtors": "\n".join(ctors_dtors),
             "formula": formula,
         }
 

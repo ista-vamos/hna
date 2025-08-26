@@ -11,16 +11,33 @@
 
 {{namespace_start}}
 
-
 static constexpr FormulaEvaluationState INITIAL_ATOM = {{cg.get_initial_atom()}};
 
 static inline Verdict do_step(AtomMonitor *M) {
   #include "do_step.h"
 }
 
-/* GENERATED */
-#include "hnl-monitor-ctors-dtors.h"
-
+{% set fixed, set2q, _ = cg.input_tracesets(formula) %}
+FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
+{%- for q in fixed -%}
+, Trace *{{q}}
+{%- endfor -%}
+):
+{%- for q in fixed -%}
+{%- if not loop.first -%}, {%- endif -%}
+{{q}}({{q}})
+{%- endfor -%}
+{%- if fixed -%}, {%- endif -%}
+{%- for traceset, _ in set2q.items() -%}
+{%- if not traceset -%}
+    {%- if not loop.first -%}, {%- endif -%}
+    traces(TS.traces)
+{%- else -%}
+    {% set funargs = traceset.traces | join(',') -%}
+    , traces_{{traceset.c_name()}}(TS.{{traceset.name}}.getTraceSet({{funargs}}))
+{%- endif -%}
+{%- endfor -%}
+{}
 
 void FormulaMonitor::addNewTraces() {
   {% for line in cg.read_generated_file('_create-instances.h') -%}
