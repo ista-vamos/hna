@@ -174,13 +174,17 @@ def process_args(args):
     args.cmake_defs = args.D
 
     if args.data:
-        types = args.data.split(",")
-        tmp_data = (
-            []
-        )  # we use list to preserve the order of elements because of the CSV files
-        for name_type in types:
-            name, ty = name_type.split(":")
-            tmp_data.append((name.strip(), parse_type(ty)))
+        tmp_data = []  # we use list to preserve the order of elements because of the CSV files
+        types = args.data.lstrip()
+        if types.startswith('aps:'):
+            # this is a list of atomic propositions (a list of boolean variables)
+            for name in types[5:].split(","):
+                tmp_data.append((name.strip(), ('bool', (0,1))))
+        else:
+            types = types.split(",")
+            for name_type in types:
+                name, ty = name_type.split(":")
+                tmp_data.append((name.strip(), parse_type(ty)))
 
         args.data = tmp_data
 

@@ -10,8 +10,8 @@ struct Event {
     {%- set ty, vals_range = annot_ty -%}
     {{ty}} {{name}};
     {%- if vals_range -%}
-    /* '{name}' in [{vals_range[0]}..{vals_range[1]}] */\n")
-    {% endif %}
+    /* '{{name}}' in [{{vals_range[0]}}..{{vals_range[1]}}] */
+    {%- endif %}
 {% endfor %}
 };
 
