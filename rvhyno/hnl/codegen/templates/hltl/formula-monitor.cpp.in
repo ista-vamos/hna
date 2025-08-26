@@ -11,6 +11,8 @@
 #include <rvhyper/Lexer.h>
 #include <rvhyper/Parser.h>
 #include <rvhyper/diagnostic.h>
+#include <rvhyper/NoLiveMonitoring.h>
+#include <rvhyper/VectorTrace.h>
 
 {{namespace_start}}
 
@@ -22,6 +24,11 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 , Trace *{{q}}
 {%- endfor -%}
 ):
+{%- for q in fixed -%}
+{%- if not loop.first -%}, {%- endif -%}
+{{q}}({{q}})
+{%- endfor -%}
+{%- if fixed -%}, {%- endif -%}
 {%- for traceset, _ in set2q.items() -%}
 {%- if not traceset -%}
     {%- if not loop.first -%}, {%- endif -%}
@@ -34,15 +41,20 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {
   // {{formula.formula}}
   using namespace rvhyper;
-  Lexer *lexer = new Lexer("{{formula.formula}}");
+
+  Lexer *lexer = new Lexer("
+  {%- for q in formula.quantifiers() -%}
+  {{q.type_keyword()}} {{q.var}}.
+  {%- endfor -%}
+  {{formula.formula.formula}}");
   Parser parser = Parser(lexer);
 
-  formula = parser.parseFormula();
+  _formula = parser.parseFormula();
   if (hasNewErrors()) {
     printDiagnosticSummary();
     abort();
   }
-  if (!formula.valid()) {
+  if (!_formula.valid()) {
     std::cerr << "HyperLTL formula is not valid." << std::endl;
     abort();
   }
@@ -50,45 +62,72 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
   // TODO: force reductions
   std::cerr << "TODO: force reductions\n";
 
-    // TODO: create the monitor
+  _monitor = std::make_unique<NoLiveMonitoring>(_formula);
 }
 
 void FormulaMonitor::addNewTraces() {
-
   if (auto *t_new = traces.getNewTrace()) {
-
+    _online_traces.push_back(t_new);
   }
 }
 
+bool FormulaMonitor::handleTrace(Trace *trace) {
+    /// Transform our trace to RVHyper trace
+    std::vector<rvhyper::Event> events;
+
+    for (const auto& ev : trace->events()) {
+        events.emplace_back();
+        auto &E = events.back();
+
+        // RVHyper distinguishes input and output APs,
+        // but it technically does not matter, so set them all
+        // as input APs
+        {% for name, _ in cg.args.data -%}
+        if (ev.{{name}}) {
+            E.input.push_back("{{name}}");
+        }
+        {% endfor %}
+    }
+
+    rvhyper::VectorTrace vtrace(trace->id(), events);
+
+    /// Run RVHyper on the trace
+    return _monitor->monitor(&vtrace);
+}
+
 Verdict FormulaMonitor::step() {
+  Verdict verdict;
+
 #ifdef MEASURE_CPUTIME
     struct timespec start, end;
     clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
 #endif // !MEASURE_CPUTIME
 
-  Verdict verdict;
-
-#ifdef MEASURE_CPUTIME
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
-  stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
-  stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
-#endif // !MEASURE_CPUTIME
-
-#ifdef MEASURE_CPUTIME
-  clock_gettime(CLOCK_THREAD_CPUTIME_ID, &start);
-#endif // !MEASURE_CPUTIME
-
   addNewTraces();
 
+  auto it = _online_traces.begin();
+  auto et = _online_traces.end();
+  for (; it != et;) {
+    Trace *trace = *it;
+    if (!trace->finished()) {
+        ++it;
+        continue;
+    }
+    auto tmp = it++;
+    _online_traces.erase(tmp);
+
+    if (!handleTrace(trace)) {
+        return Verdict::FALSE;
+    }
+  }
+
 #ifdef MEASURE_CPUTIME
   clock_gettime(CLOCK_THREAD_CPUTIME_ID, &end);
   stats.cputime.tv_sec += (end.tv_sec - start.tv_sec);
   stats.cputime.tv_nsec += (end.tv_nsec - start.tv_nsec);
-  stats.cputime_adding_instances.tv_sec += (end.tv_sec - start.tv_sec);
-  stats.cputime_adding_instances.tv_nsec += (end.tv_nsec - start.tv_nsec);
 #endif // !MEASURE_CPUTIME
 
-  bool finished = inputs_finished();
+  bool finished = inputs_finished() && _online_traces.empty();
 
   if (finished) {
       return Verdict::TRUE;

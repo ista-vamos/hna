@@ -90,9 +90,6 @@ class CodeGenCpp(CodeGenCpp):
         self.gen_file("hltl/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("hltl/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
-        # msg('info', "Generating code for instances", section=3)
-        # self._generate_hnlinstances(formula)
-
 
     def generate_cmake(self, overwrite_keys=None):
         """

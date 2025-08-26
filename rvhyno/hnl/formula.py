@@ -883,6 +883,9 @@ class Quantifier(Formula):
     def type_symbol(self) -> str:
         raise NotImplementedError("Must be overridden by child classes")
 
+    def type_keyword(self) -> str:
+        raise NotImplementedError("Must be overridden by child classes")
+
     def quantifier_type(self):
         # Here "T" stands for traces (observations). Since the string for any traces coming from functions
         # will contain '@', '(', and ')', there should be no conflict
@@ -901,6 +904,9 @@ class ForAll(Quantifier):
 
     def type_symbol(self) -> str:
         return "∀"
+
+    def type_keyword(self):
+        return "forall"
 
     def swap(self):
         """
@@ -931,6 +937,9 @@ class Exists(Quantifier):
 
     def type_symbol(self) -> str:
         return "∃"
+
+    def type_keyword(self):
+        return "exists"
 
     @cached_str
     def __str__(self):
