@@ -234,9 +234,7 @@ class CodeGenCpp(CodeGenCpp):
             "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
-            "process_submonitor_verdict": (
-                "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""
-            ),
+            "negate_submonitor_verdict": negate_submonitor_result,
             'formula': formula
         }
 

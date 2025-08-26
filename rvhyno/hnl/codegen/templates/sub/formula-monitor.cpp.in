@@ -34,10 +34,12 @@ void FormulaMonitor::addNewTraces() {
   {%- endfor %}
 }
 
+{% if negate_submonitor_verdict %}
 static inline Verdict negate_verdict(Verdict v) {
     assert(v != Verdict::UNKNOWN);
     return v == Verdict::FALSE ? Verdict::TRUE : Verdict::FALSE;
 }
+{% endif %}
 
 Verdict FormulaMonitor::step() {
   Verdict verdict;
@@ -56,7 +58,13 @@ Verdict FormulaMonitor::step() {
           _instances[n].reset();
           ++empty_slots;
 
-          {{process_submonitor_verdict}}
+          {% if negate_submonitor_verdict %}
+          // the monitor evaluates negated formula, so negate the verdict back
+          // (the formula was negated to obtain a universally quantified sub-formula
+          // instead of existentially quantified)
+          verdict = negate_verdict(verdict);
+          {% endif %}
+
           if (verdict == Verdict::FALSE) {
               // FIXME: we leak memory (which is bad, because this FALSE may not be the final result
               // and the monitors may run further)
