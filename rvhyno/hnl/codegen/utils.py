@@ -1,5 +1,5 @@
 from rvhyno.utils import log
-from rvhyno.hnl.formula import PrenexFormula, ForAll, Not, Constant
+from rvhyno.hnl.formula import PrenexFormula, Constant
 
 
 def _same_quantifiers_prefix(formula: PrenexFormula):
@@ -50,3 +50,5 @@ def _split_formula(formula: PrenexFormula):
     log('dbg', "Same: ", same)
 
     return F1, F2, same
+
+

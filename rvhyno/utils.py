@@ -95,3 +95,17 @@ def msg(cls, *args, **kwargs):
     if 0 < section < 3:
         print(' '*_ind, "------------------------------------------------------------", file=fl)
 
+
+class args_str(str):
+    """
+    A string representing arguments of a function/method.
+    It can be built from an iterable, and it has some convenient methods.
+    """
+
+    def __new__(cls, string_or_iterable):
+        if not isinstance(string_or_iterable, str):
+            string_or_iterable = ", ".join(string_or_iterable)
+        return super().__new__(cls, string_or_iterable)
+
+    def comma_prefixed(self):
+        return f", {self}" if self else ""

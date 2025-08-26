@@ -23,7 +23,7 @@ from .shared import CodeGenCppAtoms
 
 from rvhyno.hnl.formula2transducers import Formula2Transducer, automaton_for_comparison
 
-from rvhyno.utils import msg, log
+from rvhyno.utils import msg, log, args_str
 
 
 class TranslationData:
@@ -106,21 +106,6 @@ class TranslationData:
 
     def _trace_to_ev_arg(self, t) -> str:
         return f"const Event *{self.trace_to_ev[t]}"
-
-
-class args_str(str):
-    """
-    A string representing arguments of a function/method.
-    It can be built from an iterable, and it has some convenient methods.
-    """
-
-    def __new__(cls, string_or_iterable):
-        if not isinstance(string_or_iterable, str):
-            string_or_iterable = ", ".join(string_or_iterable)
-        return super().__new__(cls, string_or_iterable)
-
-    def comma_prefixed(self):
-        return f", {self}" if self else ""
 
 
 def subst_lst(c, lst):
