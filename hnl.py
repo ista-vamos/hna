@@ -37,22 +37,23 @@ def main(args):
     msg(None, "Formula: ", f"`{formula}`")
     log("dbg", "Formula simplified: ", f"`{formula.simplify()}`")
     log("dbg", "Quantifiers: ", f"`{[str(q) for q in formula.quantifiers()]}`")
-    log("dbg", "Trace variables: ", f"`{[str(t) for t in formula.trace_variables()]}`")
-    log(
-        "dbg",
-        "Program variables: ",
-        f"`{[str(p) for p in formula.program_variables()]}`",
-    )
-    log("dbg", "Constants: ", f"`{[str(c) for c in formula.constants()]}`")
-    log("dbg", "Functions: ", f"`{formula.functions()}`")
+    if not formula.is_hltl():
+        log("dbg", "Trace variables: ", f"`{[str(t) for t in formula.trace_variables()]}`")
+        log(
+            "dbg",
+            "Program variables: ",
+            f"`{[str(p) for p in formula.program_variables()]}`",
+        )
+        log("dbg", "Constants: ", f"`{[str(c) for c in formula.constants()]}`")
+        log("dbg", "Functions: ", f"`{formula.functions()}`")
 
-    problems = formula.problems()
-    if args.logic == "ehl" and not formula.is_simple():
-        problems.append("Formula is not simple, eHL monitors require that")
-    for problem in problems:
-        msg("err", problem)
-    if problems:
-        raise RuntimeError("Ran into problems, bailing out...")
+        problems = formula.problems()
+        if args.logic == "ehl" and not formula.is_simple():
+            problems.append("Formula is not simple, eHL monitors require that")
+        for problem in problems:
+            msg("err", problem)
+        if problems:
+            raise RuntimeError("Ran into problems, bailing out...")
 
     msg("info", "Generating monitor code", section=2)
     codegen = CodeGenCpp(args, ctx)

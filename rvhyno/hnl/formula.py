@@ -337,6 +337,9 @@ class PrenexFormula(Formula):
     def __str__(self) -> str:
         return f"{' '.join(map(str, self.quantifier_prefix))}: {self.formula}"
 
+    def is_hltl(self):
+        return isinstance(self.formula, HLTLFormula)
+
 
 class TraceFormula(Formula):
     """
@@ -1104,3 +1107,16 @@ class TrivialTrue(IsPrefix):
     @cached_str
     def __str__(self) -> str:
         return f"TRUE"
+
+
+class HLTLFormula(Formula):
+    """
+    We allow to embed HLTL formulas that we send to RVHyper.
+    This class wraps the whole formula (as `str`).
+    """
+    def __init__(self, formula):
+        super().__init__([])
+        self.formula = formula
+
+    def __str__(self):
+        return f'hltl[{self.formula}]'

@@ -105,6 +105,10 @@ class ProcessAST(Transformer):
         assert len(items) == 1, items
         return Not(items[0])
 
+    def hltl(self, items):
+        print(items[0])
+        return HLTLFormula(items[0])
+
 
 def rec_concat(elem, rest):
     if not rest:

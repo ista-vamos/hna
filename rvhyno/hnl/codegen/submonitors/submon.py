@@ -198,7 +198,7 @@ class CodeGenCpp(CodeGenCpp):
                 embedded=True,
             )
         else:
-            nested_cg = get_atoms_codegen(self.args.logic)(
+            nested_cg = get_atoms_codegen(sub_formula, self.args.logic)(
                 self.sub_name(),
                 self.args,
                 fixed_quantifiers=(self._fixed_quantifiers or []) + universal_prefix,

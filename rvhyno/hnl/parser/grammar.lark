@@ -19,7 +19,9 @@ exists_in_fun: "exists" tracevar ("," tracevar)* "in" funcall
 forall_in_fun: "forall" tracevar ("," tracevar)* "in" funcall
 
 qf_formula: _qf_formula
-_qf_formula: _prio1 (_prio1)*
+_qf_formula: _prio1 (_prio1)* | hltl
+hltl: "hltl" "[" HLTL "]"
+HLTL: /[^]]+/
 
 // logical AND and OR are called land and lor to avoid
 // conflicts with python keywords

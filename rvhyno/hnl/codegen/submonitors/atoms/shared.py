@@ -5,7 +5,7 @@ from pyeda.boolalg.bdd import bddvar
 
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue
+from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue, HLTLFormula
 from ..shared import CodeGenCpp as CodeGenCppShared
 
 
@@ -115,7 +115,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
             Recursively build BDD from the formula and create the mapping
             between atoms and BDD variables. Each atom represents a variable.
             """
-            if isinstance(F, Comparison):
+            if isinstance(F, (Comparison, HLTLFormula)):
                 v = bddvar(str(F))
                 if isinstance(F, TrivialTrue):
                     # turn the BDD node into TRUE

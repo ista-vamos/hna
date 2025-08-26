@@ -427,7 +427,7 @@ class CodeGenCpp(CodeGenCpp):
                 embedded=True,
             )
         else:
-            codegen = get_atoms_codegen(self.args.logic)(
+            codegen = get_atoms_codegen(formula, self.args.logic)(
                 submon_name,
                 self.args,
                 out_dir=nested_out_dir,
@@ -435,9 +435,8 @@ class CodeGenCpp(CodeGenCpp):
                 embedded=True,
             )
 
-        # FIXME: do this more elegantly, this is more or less a hack
         log_indent_incr()
-        self.args.out_dir_overwrite = False
+        self.args.out_dir_overwrite = False # FIXME: do this more elegantly, this is more or less a hack
         codegen.generate(formula)
         log_indent_decr()
 
