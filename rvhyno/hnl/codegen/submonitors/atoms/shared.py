@@ -238,6 +238,62 @@ class CodeGenCppAtoms(CodeGenCppShared):
         """
         )
 
+    def _gen_create_instance_reduced(self, formula, wr):
+        dump_codegen_position(wr)
+        if len(formula.quantifier_prefix) > 2:
+            raise NotImplementedError(
+                "Reductions work now only with at most 2 quantifiers"
+            )
+
+        # if "symmetric" in self.args.reduction:
+        dump_codegen_position(wr)
+        wr(
+            """
+            auto *t1 = t_new;
+            for (auto &[t2_id, t2_ptr] : traces) {
+                auto *t2 = t2_ptr;
+        """
+        )
+        if "reflexivity" in self.args.reduction:
+            dump_codegen_position(wr)
+            wr(
+                """
+            if (t1 == t2) {
+                continue;
+            }
+            """
+            )
+
+        dump_codegen_position(wr)
+        wr(
+            """
+            auto *instance = new Instance{t1, t2, INITIAL_ATOM};
+            ++stats.num_instances;
+
+            instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+
+        #ifdef DEBUG_PRINTS
+             std::cerr << "Instance[init, " << t1->id() << ", " << t2->id() << "]\\n";
+        #endif /* !DEBUG_PRINTS */
+        """
+        )
+
+        dump_codegen_position(wr)
+        if not "symmetry" in self.args.reduction:
+            wr(
+                """
+                instance = new Instance{t2, t1, INITIAL_ATOM};
+                ++stats.num_instances;
+
+                instance->monitor = createAtomMonitor(INITIAL_ATOM, *instance);
+
+            #ifdef DEBUG_PRINTS
+                std::cerr << "Instance[init, " << t2->id() << ", " << t1->id() << "]\\n";
+            #endif /* !DEBUG_PRINTS */
+            """
+            )
+        wr("}\n")
+
     def _generate_hnlinstances(self, formula):
 
         def trace_variables(nd):

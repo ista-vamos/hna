@@ -97,6 +97,7 @@ class CodeGenCpp(CodeGenCpp):
         wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
         wr("#endif /* !DEBUG_PRINTS */\n")
 
+
     def _generate_instance_h(self, formula):
         with self.new_file("instance.h") as f:
             wr = f.write
@@ -220,7 +221,6 @@ class CodeGenCpp(CodeGenCpp):
         input_traces = self._traces_attribute_str(formula)
         # NOTE: this method generates definitions of ctors and dtors into an .h file,
         # and returns a list of declarations of those ctors and dtors
-        ctors_dtors = self._traces_ctors_dtors(formula)
         inputs_finished = self._inputs_finished(formula)
 
         values = {
@@ -232,11 +232,10 @@ class CodeGenCpp(CodeGenCpp):
             "namespace_end": self.namespace_end(),
             "input_traces": input_traces,
             "inputs_finished": inputs_finished,
-            "ctors_dtors": "\n".join(ctors_dtors),
             "process_submonitor_verdict": (
                 "verdict = negate_verdict(verdict);" if negate_submonitor_result else ""
             ),
-            "info": f"Monitor for '{formula}'",
+            'formula': formula
         }
 
         self.gen_file("sub/formula-monitor.h.in", "formula-monitor.h", values)

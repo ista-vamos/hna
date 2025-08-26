@@ -18,7 +18,7 @@
 
 /* GENERATED */
 
-{% set fixed, set2q, q2set = cg.input_tracesets(formula) %}
+{% set fixed, set2q, _ = cg.input_tracesets(formula) %}
 FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {%- for q in fixed -%}
 , Trace *{{q}}

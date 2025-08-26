@@ -23,7 +23,7 @@
 // we create a nested monitor M for the negation of `exists ...: F` and
 // use it from HNLSubMonitor that monitors `forall ...: !M`.
 //
-// {{info}}
+// Monitor for `{{formula}}`
 class FormulaMonitor : public ::Monitor {
   const AllTraceSets& TS;
 
@@ -40,7 +40,9 @@ class FormulaMonitor : public ::Monitor {
   bool inputs_finished();
 
 public:
-  {{ctors_dtors}}
+  FormulaMonitor(const AllTraceSets& TS
+  {%- for q in cg.input_tracesets(formula)[0] -%} , Trace *{{q}} {%- endfor -%}
+  );
 
   Verdict step();
 

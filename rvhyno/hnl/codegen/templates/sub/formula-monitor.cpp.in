@@ -8,7 +8,25 @@
 
 /* GENERATED */
 #include "functions.h"
-#include "hnl-monitor-ctors-dtors.h"
+
+{% set fixed, set2q, _ = cg.input_tracesets(formula) %}
+FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
+{%- for q in fixed -%}
+, Trace *{{q}}
+{%- endfor -%}
+): TS(TS)
+{%- for q in fixed -%}
+, {{q}}({{q}})
+{%- endfor -%}
+{%- for traceset, _ in set2q.items() -%}
+{%- if not traceset -%}
+    , traces(TS.traces)
+{%- else -%}
+    {% set funargs = traceset.traces | join(',') -%}
+    , traces_{{traceset.c_name()}}(TS.{{traceset.name}}.getTraceSet({{funargs}}))
+{%- endif -%}
+{%- endfor -%}
+{}
 
 void FormulaMonitor::addNewTraces() {
   {% for line in cg.read_generated_file('_create-instances.h') -%}
