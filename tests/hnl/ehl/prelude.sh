@@ -2,7 +2,7 @@
 
 set -e
 
-SRCDIR="$(dirname $0)/../.."
+SRCDIR="$(dirname $0)/../../.."
 DIR="$(readlink -f $(dirname $0))"
 WORKDIR=$(mktemp -d -t hnl-test-XXX)
 
@@ -18,7 +18,7 @@ function gen {
 	echo "--------------------------------------"
 
 	cd $DIR
-	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --csv-header 'x: int, y: int' --alphabet='0,1,2,3' --debug --build-type=Debug -D SANITIZE=ON
+	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --data 'x: int, y: int' --alphabet=0,1,2,3 --logic=ehl --debug --build-type=Debug -D SANITIZE=ON
 
 	cd $WORKDIR
 	make check -j4

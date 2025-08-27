@@ -1,0 +1,16 @@
+
+#add_test(NAME test1
+#	 COMMAND ./test.sh "forall t1, t2: x(t1) <= x(t2)" TRUE test1.csv)
+
+add_test(NAME ehl-test1 COMMAND ./test1.sh)
+add_test(NAME ehl-test2 COMMAND ./test2.sh)
+add_test(NAME ehl-test3 COMMAND ./test3.sh)
+
+add_test(NAME ehl-test-trace-1 COMMAND ./test-trace-1.sh)
+
+add_test(NAME ehl-test-od-1 COMMAND ./test-od-1.sh)
+add_test(NAME ehl-test-od-2 COMMAND ./test-od-2.sh)
+add_test(NAME ehl-test-od-1-red COMMAND ./test-od-1-red.sh)
+add_test(NAME ehl-test-od-2-red COMMAND ./test-od-2-red.sh)
+
+add_test(NAME ehl-test-fun-1 COMMAND ./test-fun-1.sh)
