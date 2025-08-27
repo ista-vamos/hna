@@ -141,7 +141,7 @@ def rename_trace_variables(formula: Comparison):
 
 
 def condition_code(t, data: TranslationData):
-    # check that the traces read by this transitions have the events on them
+    # check that the traces read by these transitions have the events on them
     # (this is done by checking that the event variable for the transition is not nullptr)
     condition = [data.trace_to_ev[tr].c_code() for tr in t.label.symbols.keys()]
     subst = data.condition_substitutions(t) or []
