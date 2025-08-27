@@ -2,16 +2,32 @@ import inspect
 from os.path import basename
 
 
-def dump_codegen_position(f, end="\n"):
+def dump_codegen_position(f, lvl=1, full_filename=False, end="\n"):
     """
     This function dump the position from where it is called into the given file
 
     It is a no-op in optimized code
     """
     if __debug__:
-        parent_frame = inspect.getouterframes(inspect.currentframe())[1]
-        msg = f"/* [CODEGEN]: {basename(parent_frame.filename)}:{parent_frame.function}:{parent_frame.lineno} */{end}"
+        parent_frame = inspect.getouterframes(inspect.currentframe())[lvl]
+        if full_filename:
+            filename = parent_frame.filename
+        else:
+            filename = basename(parent_frame.filename)
+        msg = f"/* [CODEGEN]: {filename}:{parent_frame.function}:{parent_frame.lineno} */{end}"
         if callable(f):
             f(msg)
         else:
             f.write(msg)
+
+def write_codegen_stack(f, lvl=1, full_filename=True):
+    """
+    This function dump the position from where it is called into the given file
+    """
+    wr = f if callable(f) else f.write
+    wr(f"// [CODEGEN] stack:\n")
+    for n, frame in enumerate(reversed(inspect.getouterframes(inspect.currentframe())[lvl:])):
+        filename = frame.filename if full_filename else basename(frame.filename)
+        # crop the path to this module
+        filename = filename[filename.rindex('rvhyno'):]
+        wr(f"// [{n}] {filename}:{frame.function}:{frame.lineno}\n")

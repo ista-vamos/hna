@@ -8,6 +8,7 @@ from sys import stderr
 
 from jinja2 import Environment, FileSystemLoader
 
+from rvhyno.codegen.utils import dump_codegen_position, write_codegen_stack
 from rvhyno.utils import msg, log
 
 
@@ -140,7 +141,9 @@ class CodeGen:
         with open(outfile, 'w') as ofl:
             if creation_header == "c++" and\
                 (template.filename.endswith("cpp.in")  or template.filename.endswith("h.in")):
-                ofl.write(f"// Generated from `{template.filename}`\n\n")
+                ofl.write(f"// Generated from {template.filename}\n")
+                write_codegen_stack(ofl.write, lvl=2)
+                ofl.write("\n\n")
             ofl.write(template.render(**values))
 
 
