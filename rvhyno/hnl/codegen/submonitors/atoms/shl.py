@@ -259,7 +259,7 @@ class CodeGenCpp(CodeGenCppAtoms):
                       {'cg': self})
         self.gen_file("registers.cpp.in", "registers.cpp",
                       {'cg': self})
-        self._add_gen_files.append("registers.cpp")
+        self._generated_files.append("registers.cpp")
 
     def _generate_trivial_atom(self, nd):
         num, F = nd.get_id(), nd.formula

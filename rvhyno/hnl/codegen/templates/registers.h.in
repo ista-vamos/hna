@@ -3,15 +3,14 @@
 
 #include "events.h"
 
-// {{cg.namespace_start()}}
+{{cg.namespace_start()}}
 
 enum class RegisterType {
     INVALID=0,
     EVENT, // whole event
-{% for name, annot_ty in cg.args.data -%}
-    {%- set ty, _ = annot_ty %}
-    {{name}},
-{%- endfor %}
+    {%- for name, _ in cg.args.data %}
+    {{name}}{%- if not loop.last -%},{%- endif -%}
+    {%- endfor %}
 };
 
 
@@ -26,15 +25,14 @@ struct Register {
 
     union {
         Event EVENT; // whole event
-        {%- for name, annot_ty in cg.args.data %}
-        {%- set ty, _ = annot_ty %}
-        {{ty}} {{name}};
+        {% for name, annot_ty in cg.args.data -%}
+        {{annot_ty[0]}} {{name}};
         {%- endfor %}
     } data;
 };
 
 std::ostream& operator<<(std::ostream& os, const Register& r);
 
-// {{cg.namespace_end()}}
+{{cg.namespace_end()}}
 
 #endif

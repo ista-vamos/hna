@@ -4,9 +4,7 @@
 #include <vector>
 
 #include "events.h"
-{% if reg_fields %}
 #include "registers.h"
-{% endif %}
 
 {{cg.namespace_start()}}
 

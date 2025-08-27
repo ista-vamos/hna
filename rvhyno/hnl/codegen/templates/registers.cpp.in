@@ -1,6 +1,8 @@
 #include <iostream>
 #include "registers.h"
 
+{{cg.namespace_start()}}
+
 std::ostream& operator<<(std::ostream& os, const Register& r) {
     os << "<";
     switch (r.type) {
@@ -14,3 +16,5 @@ std::ostream& operator<<(std::ostream& os, const Register& r) {
     };
     return os;
 }
+
+{{cg.namespace_end()}}
