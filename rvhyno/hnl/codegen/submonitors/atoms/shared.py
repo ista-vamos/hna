@@ -301,8 +301,6 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
         self.gen_file("atoms/instance.h.in", "instance.h",
                       {'cg': self, 'formula': formula,
-                       'args': [f'Trace *{q.var.name}' for q in
-                                chain(formula.quantifier_prefix, self._fixed_quantifiers or ())],
                        'trace_variables': trace_variables
                        })
 

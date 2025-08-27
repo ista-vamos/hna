@@ -1,0 +1,39 @@
+#ifndef _HNL_INSTANCE_SUB_H__{{cg.name()}}
+#define _HNL_INSTANCE_SUB_H__{{cg.name()}}
+
+#include <cassert>
+#include "trace.h"
+#include "submonitor/formula-monitor.h"
+
+{{cg.namespace_start()}}
+
+//class Monitor;
+
+struct Instance {
+    /* variable traces */
+    {%- for q in formula.quantifier_prefix %}
+    Trace *{{q.var}};
+    {%- endfor %}
+
+    /* fixed traces */
+    {%- for q in cg._fixed_quantifiers or () %}
+    Trace *{{q.var}};
+    {%- endfor %}
+
+    /* The monitor this configuration waits for */
+    sub::FormulaMonitor *monitor{nullptr};
+
+    Instance(
+    {%- for q in formula.quantifier_prefix | list +  (cg._fixed_quantifiers or ()|list) -%}
+      Trace *{{q.var}}
+      {%- if not loop.last -%}, {%- endif -%}
+    {%- endfor -%}):
+    {%- for q in formula.quantifier_prefix | list +  (cg._fixed_quantifiers or ()|list) -%}
+      {{q.var}}({{q.var}})
+      {%- if not loop.last -%}, {%- endif -%}
+    {%- endfor -%}{}
+};
+
+{{cg.namespace_end()}}
+
+#endif

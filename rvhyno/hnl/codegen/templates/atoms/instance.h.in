@@ -27,8 +27,11 @@ struct Instance {
     /* The monitor this configuration waits for */
     AtomMonitor *monitor{nullptr};
 
-    Instance({{args | join(', ')}}, FormulaEvaluationState init_state)
-    :
+    Instance(
+    {%- for q in formula.quantifier_prefix | list +  (cg._fixed_quantifiers or ()|list) -%}
+      Trace *{{q.var}},
+    {%- endfor -%}
+    FormulaEvaluationState init_state):
     {%- for q in formula.quantifier_prefix | list +  (cg._fixed_quantifiers or ()|list) -%}
       {{q.var}}({{q.var}}),
     {%- endfor -%}{{' '}}

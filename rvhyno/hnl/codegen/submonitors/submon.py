@@ -98,60 +98,6 @@ class CodeGenCpp(CodeGenCpp):
         wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
         wr("#endif /* !DEBUG_PRINTS */\n")
 
-
-    def _generate_instance_h(self, formula):
-        with self.new_file("instance.h") as f:
-            wr = f.write
-            wr(
-                f"""
-            #ifndef HNL_INSTANCE_H__{self.name()}
-            #define HNL_INSTANCE_H__{self.name()}
-            """
-            )
-            wr("#include <cassert>\n\n")
-            wr('#include "trace.h"\n\n')
-            wr('#include "submonitor/formula-monitor.h"\n\n')
-
-            wr("class Monitor;\n\n")
-
-            wr(self.namespace_start())
-            wr("\n\n")
-
-            dump_codegen_position(wr)
-            wr("struct Instance {\n")
-            wr("  /* variable traces */\n")
-            for q in formula.quantifier_prefix:
-                wr(f"  Trace *{q.var};\n")
-            wr("  /* fixed traces */\n")
-            for q in self._fixed_quantifiers or ():
-                wr(f"  Trace *{q.var};\n")
-            wr("  /* The monitor this configuration waits for */\n")
-            wr("  sub::FormulaMonitor *monitor{nullptr};\n\n")
-            args = (
-                f"Trace *{q.var}"
-                for q in chain(formula.quantifier_prefix, self._fixed_quantifiers or ())
-            )
-            wr(f"  Instance({', '.join(args)})\n  : ")
-            wr(
-                ", ".join(
-                    (
-                        f"{q.var}({q.var})"
-                        for q in chain(
-                            formula.quantifier_prefix, self._fixed_quantifiers or ()
-                        )
-                    )
-                )
-            )
-            # wr(", monitor(new sub::FormulaMonitor()")
-            wr("{}\n\n")
-
-            wr("};\n\n")
-
-            wr(self.namespace_end())
-            wr("\n\n")
-
-            wr("#endif\n")
-
     def generate(self, formula, gen_tests=True):
         """
         The top-level function to generate code
@@ -217,7 +163,6 @@ class CodeGenCpp(CodeGenCpp):
 
     def generate_monitor(self, formula, negate_submonitor_result=False):
 
-        self._generate_instance_h(formula)
         self._generate_create_instances(formula)
 
         values = {
@@ -227,6 +172,7 @@ class CodeGenCpp(CodeGenCpp):
             'formula': formula
         }
 
+        self.gen_file("sub/instance.h.in", "instance.h", values)
         self.gen_file("sub/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("sub/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
