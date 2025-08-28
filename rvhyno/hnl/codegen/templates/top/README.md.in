@@ -5,32 +5,110 @@ This projects implements a monitor for the formula
 {{formula}}
 ```
 
-If you used the default options, the project is already configures and build, and it should contain the binary `monitor`.
+If you used the default options, the project is already configured and built, and it should contain the binary `monitor`.
 You can run this binary as:
-```
+```sh
 ./monitor trace1.csv trace2.csv trace3.csv ...
 ```
 
-Where `trace*.csv` are CSV files containing traces in the following format:
-{ for cg.args.data }
+Where `trace*.csv` are CSV files containing rows in the following format:
+```
+{% for name, _ in cg.args.data -%}
+    {{name}}
+    {%- if not loop.last -%}, {% endif -%}
+{%- endfor %}
+```
+
+where the fields has these types:
+
+
+|    field    |     type    |     range   |
+|-------------|-------------|-------------|
+{% for name, annot_ty in cg.args.data -%}
+    {%- set ty, vals_range = annot_ty -%}
+    | {{'%-12s'|format(name)}}| {{'%-12s'|format('`%s`'|format(ty))}}|
+    {%- if vals_range -%}
+    {{' %-12s'|format('∈ [%d..%d]'|format(vals_range[0], vals_range[1]))}}
+    {%- else -%}
+    {{'             '}}
+    {%- endif -%}
+    |
+{% endfor %}
+
+{% if cg.args.alphabet %}
+Additionally, each field should be an element of the following alphabet: `{{cg.args.alphabet}}`.
+{% endif %}
+
+The first row of each CSV file can be a header with names of the columns (the names are ignored though, they are just for humans).
+
+{% if cg.args.logic == 'ehl' %}
+NOTE: the range of values for each data field is used when generating monitors, but the fields are not checked for
+correct values when reading the CSV files (yet...).
+{% elif cg.args.logic == 'shl' %}
+NOTE: the range of values for each data field is not checked for correct values when reading the CSV files (yet...).
+This means that giving the range is useless right now (we hope to change this in the future).
+{% endif %}
 
 ## Re-building
 
+### Re-configuring
+
+Likely you are re-configuring the project because you want to change some options. This can be done by changing
+values in `CMakeCache.txt` or `CMakeLists.txt` (see below).
+After changing one of these files, just re-compile the project (see below), the re-configuration should be automatic.
+
+If you want to re-configure manually, you can run `cmake .` from this directory. You can also choose the create a build
+inside a separate directory. That can be done, for example, with these commands:
+
+```sh
+mkdir build   # create the build directory
+cd build
+cmake ..
 ```
+
+New/altered options can be passed to CMake using the `-D` option. For example `cmake . -DCMAKE_CXX_COMPILER=clang`.
+For more details, see the documentation of CMake.
+
+### Re-compiling
+
+The portable way of re-building this project after any changes is
+```sh
 cmake --build .
 ```
+{{ cg.args.build_system }}
+{% if cg.args.build_system == 'Ninja' %}
+The project was originally configured to use Ninja, so you can re-build it also by calling `ninja` from the top-level directory.
+{% elif cg.args.build_system %}
+The project was originally configured to use {{cg.args.build_system}}. If it was not you who picked this, try your luck
+on the internet if you need help with this build system.
+{% else %}
+The project was originally configured to use the system's default CMake generator, which is probably "Unix Makefiles".
+If that's true, you can re-build it also by calling `make` from the top-level directory.
+If not, try your luck on the internet if you need help with this build system.
+{% endif %}
+
+If you want to set manually the number of cores for building, use the `-j N` parameter, where `N` is the number of processes
+you want to use. For example:
+
+```sh
+cmake --build . -j 10
+```
+{% if cg.args.build_system == 'Ninja' %}
+Note that Ninja by runs the build in parallel and picks the number of parallel processes on its own. But you can still
+use `-j` to force the number of processes (e.g., if you need to run fewer processes than Ninja picks).
+{% endif %}
 
 ## Changing options
 
 You can change the options in `CMakeCache.txt` and then re-build the project. (Or you can call `cmake` with the
 relevant options you want). Interesting options in variables in `CMakeCache.txt` are:
 
-----
+----| ---
 TBD | TBD
-----
+----| ---
 TBD | TBD
 TBD | TBD
-----
+----|----
 
 ## Modifying code
 
