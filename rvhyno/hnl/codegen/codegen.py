@@ -450,6 +450,10 @@ class CodeGenCpp(CodeGenCpp):
         # it knows all the generated files
         self.generate_cmake(formula)
 
+        # Generate a README for the monitor
+        self.gen_file('top/README.md.in', "README.md",
+                      {'cg': self, 'formula': formula})
+
         self.format_generated_code()
 
     def _get_alphabet(self):

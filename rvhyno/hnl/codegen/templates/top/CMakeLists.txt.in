@@ -1,6 +1,13 @@
 # template: top/CMakeLists-txt.in
 
-cmake_minimum_required(VERSION 3.10)
+if(CMAKE_VERSION VERSION_LESS "3.12")
+    message("Detected CMake older than 3.12. We should be good also with older CMakes (tested down to 3.9). "
+            "However, there the `-j` options does not work (as mentioned in the README.md) "
+            "of the generated monitor. That might not be such a problem for you, so if you do not want to "
+            "switch to a newer CMake, change the line below this message in `CMakeLists.txt` and see what happens.")
+endif()
+cmake_minimum_required(VERSION 3.12)
+
 project(hnl-monitor LANGUAGES C CXX VERSION 0.1)
 
 set(monitor_name "{{monitor_name}}")
@@ -8,10 +15,11 @@ set(top_monitor_dir "{{top_monitor_dir}}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_BUILD_TYPE {{CMAKE_BUILD_TYPE}} CACHE STRING "" FORCE)
 if(NOT CMAKE_BUILD_TYPE)
 	message(STATUS "Build type not set. Using 'Release'.")
 	set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+else()
+    set(CMAKE_BUILD_TYPE {{CMAKE_BUILD_TYPE}} CACHE STRING "" FORCE)
 endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")

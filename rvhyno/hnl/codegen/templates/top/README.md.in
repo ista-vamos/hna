@@ -1,0 +1,40 @@
+# RVHyno monitor
+
+This projects implements a monitor for the formula
+```
+{{formula}}
+```
+
+If you used the default options, the project is already configures and build, and it should contain the binary `monitor`.
+You can run this binary as:
+```
+./monitor trace1.csv trace2.csv trace3.csv ...
+```
+
+Where `trace*.csv` are CSV files containing traces in the following format:
+{ for cg.args.data }
+
+## Re-building
+
+```
+cmake --build .
+```
+
+## Changing options
+
+You can change the options in `CMakeCache.txt` and then re-build the project. (Or you can call `cmake` with the
+relevant options you want). Interesting options in variables in `CMakeCache.txt` are:
+
+----
+TBD | TBD
+----
+TBD | TBD
+TBD | TBD
+----
+
+## Modifying code
+
+Feel free to modify the generated code as arbitrary. The code should be human-readable and contains a bunch (although
+possibly not enough) of comments. Here's a short getting started with the code.
+
+TBD

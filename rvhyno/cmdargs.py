@@ -28,6 +28,12 @@ def create_cmdargs_parser(out_dir):
         "--build-type", action="store", help="Force build _type for the CMake project"
     )
     parser.add_argument(
+        "--build-system", action="store", default=None,
+        help="Force build system for the CMake project (e.g., Ninja, Unix Makefiles, ...). "
+             "If not set, Ninja is used if available. If not set and Ninja is not available, CMake's default on the "
+             "system is used."
+    )
+    parser.add_argument(
         "--sanitize", action="store", help="Compile the monitor with sanitizers"
     )
     parser.add_argument(

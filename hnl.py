@@ -18,8 +18,20 @@ script_name = basename(sys.argv[0])
 
 
 def compile_monitor(args):
-    run(["cmake", "."] + [f"-D{x}" for x in args.cmake_defs], cwd=args.out_dir)
-    run(["make", f"-j{int(cpu_count()/2)+1}"], cwd=args.out_dir)
+    build_system = args.build_system
+    build_system_args = []
+    if build_system is not None:
+        build_system_args = ["-G", build_system]
+    else:
+        from shutil import which
+        has_ninja = which('ninja') is not None
+        if has_ninja:
+            args.build_system = 'Ninja'
+            build_system_args = ["-G", "Ninja", '-DCMAKE_CXX_FLAGS=-fdiagnostics-color=always']
+
+    run(["cmake", "."] + build_system_args +\
+        [f"-D{x}" for x in args.cmake_defs], cwd=args.out_dir)
+    run(["cmake", "--build", ".", f"-j{int(2*cpu_count()) + 2}"], cwd=args.out_dir)
 
 
 def main(args):
