@@ -11,3 +11,6 @@ add_test(NAME shl-test-od-1-red COMMAND ./test-od-1-red.sh)
 add_test(NAME shl-test-od-2-red COMMAND ./test-od-2-red.sh)
 
 add_test(NAME shl-test-fun-1 COMMAND ./test-fun-1.sh)
+
+add_test(NAME shl-test-slice-1 COMMAND ./test-slice-1.sh)
+add_test(NAME shl-test-slice-2 COMMAND ./test-slice-2.sh)
