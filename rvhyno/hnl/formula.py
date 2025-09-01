@@ -56,8 +56,11 @@ class DerivativesSet(set):
 
 
 class Formula:
-    """
-    Formula of Hypernode Logic (HNL)
+    """Formula of Hypernode Logic (HNL)
+
+    This is the base class for all formulas of HNL.
+    :param children: list of sub-formulas
+    :type children: list of :class:`Formula`
     """
 
     def __init__(self, children: Optional[List["Formula"]] = None) -> None:
@@ -74,14 +77,13 @@ class Formula:
         return str(self) == str(other)
 
     def quantifiers(self) -> List["Quantifier"]:
-        """
-        Return all quantifiers from the formula
-        """
+        """ Return all quantifiers in the formula """
         return [t for c in self.children for t in c.quantifiers()]
 
     def trace_variables(self) -> List["TraceVariable"]:
-        """
-        Get all trace variables from this formula
+        """Get all trace variables from this formula
+
+        :rtype: list of :class:`TraceVariable`
         """
         return list(set((t for c in self.children for t in c.trace_variables())))
 
@@ -137,16 +139,17 @@ class Formula:
     visit = visit_bottom_up
 
     def is_simple(self) -> bool:
-        """
-        Return True if the formula is simple, i.e., it does not contain
+        """ Return `True` if the formula is simple, i.e., it does not contain
         multiple program variables on either side of prefixing relation
-        TODO: and is not inside iteration
+
+        FIXME: and is not inside iteration
         """
         return all((c.is_simple() for c in self.children))
 
     def simplify(self) -> "Formula":
-        """
-        Simplify the formula. This is not in-situ operation, it returns possibly a new object
+        """ Simplify the formula.
+
+        This may not in-situ operation, it may return **possibly** a new object (but possibly not).
         """
         return self
 

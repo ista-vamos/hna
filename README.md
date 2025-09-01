@@ -28,14 +28,19 @@ cmake . && make
 
 And its done! If you want to run the tests, use `make test`.
 
-#### Build configuration
+#### Build documentation
 
+This will build the documentation in HTML:
 ```
 pip install sphinx
-cd docs && make html
+make doc
 
 # open _build/index.html
 ```
+
+The documentation is built in `docs/_build` directory. Whenever you want to
+re-build the documentation, just run `make doc` (provided you have already
+installed `sphinx`).
 
 ## Usage
 

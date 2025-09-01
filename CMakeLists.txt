@@ -76,6 +76,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py.in
 
 add_subdirectory(tests)
 
+add_custom_target(doc COMMAND make html WORKING_DIRECTORY docs)
+
 #add_custom_target(gen-readme
 #                  COMMAND pandoc -f markdown -t HTML -o README.html README.md
 #                  COMMAND pandoc -f markdown -t pdf -o README.pdf README.md)
