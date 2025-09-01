@@ -28,7 +28,20 @@ cmake . && make
 
 And its done! If you want to run the tests, use `make test`.
 
+#### Build configuration
+
+```
+pip install sphinx
+cd docs && make html
+
+# open _build/index.html
+```
+
 ## Usage
+
+See the documentation in `docs` (`docs/usage.rst` in particular).
+If you built the HTML version (see above), then open `docs/_build/index.html`
+in your browser.
 
 ### Hypernode logic
 
@@ -118,6 +131,8 @@ and `--debug`.
 
 - Bartocci, Ezio and Henzinger, Thomas A. and Nickovic, Dejan and Oliveira da Costa, Ana (2023).
  [Hypernode Automata](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CONCUR.2023.21). ArXiv.
+
+## Troubleshooting
 
 ### Generting code is slow
 

@@ -4,7 +4,11 @@ from rvhyno.automata.transition_system import (
 
 
 class Automaton(AccInitTransitionSystem):
-    """Class representing a finite-state automaton"""
+    """
+    Class representing a finite-state automaton
+
+    :param states: 
+    """
 
     def __init__(
         self,
