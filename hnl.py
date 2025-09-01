@@ -24,13 +24,20 @@ def compile_monitor(args):
         build_system_args = ["-G", build_system]
     else:
         from shutil import which
-        has_ninja = which('ninja') is not None
-        if has_ninja:
-            args.build_system = 'Ninja'
-            build_system_args = ["-G", "Ninja", '-DCMAKE_CXX_FLAGS=-fdiagnostics-color=always']
 
-    run(["cmake", "."] + build_system_args +\
-        [f"-D{x}" for x in args.cmake_defs], cwd=args.out_dir)
+        has_ninja = which("ninja") is not None
+        if has_ninja:
+            args.build_system = "Ninja"
+            build_system_args = [
+                "-G",
+                "Ninja",
+                "-DCMAKE_CXX_FLAGS=-fdiagnostics-color=always",
+            ]
+
+    run(
+        ["cmake", "."] + build_system_args + [f"-D{x}" for x in args.cmake_defs],
+        cwd=args.out_dir,
+    )
     run(["cmake", "--build", ".", f"-j{int(2*cpu_count()) + 2}"], cwd=args.out_dir)
 
 

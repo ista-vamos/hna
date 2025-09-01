@@ -1,18 +1,18 @@
+"""
+This file defines classes representing formulas of hypernode logic.
+"""
+
 from copy import copy
 from typing import Any, Callable, List, Optional, Set, Union
 
 from lark.lexer import Token
 
-"""
-formula.py defines a formula of HNL logic and
-basic methods for their manipulation.
-
-NOTE: The methods are not very optimized and we could definitely improve on that,
-but so far they haven't been a bottle-neck.
-"""
-
 
 def cached_str(m):
+    """Decorator to cache a string inside an object
+
+    WARNING: this way we can cache only a single string
+    """
     def new_str(self):
         if self._cached_str is None:
             self._cached_str = m(self)
@@ -22,6 +22,14 @@ def cached_str(m):
 
 
 class DerivativesSet(set):
+    """ A set of derivatives of a formula.
+
+    This is normal Python :class:`set` extended with methods that allow
+    to use this set comfortably for derivatives.
+    The main method is :meth:`derivative`
+
+    :param *args: list of :class:`Formula` instances
+    """
     def __init__(self, *args) -> None:
         super().__init__((x.simplify() for x in args))
         self._cached_str = None
@@ -29,10 +37,17 @@ class DerivativesSet(set):
     def __add__(self, other: "DerivativesSet") -> "DerivativesSet":
         return DerivativesSet(*self, *other)
 
-    def derivative(self, wrt):
+    def derivative(self, wrt: "Constant") -> "DerivativesSet":
+        """Compute the set of derivatives of all the elements in this
+        :class:`DerivativesSet`.
+
+        :param wrt: the symbol wrt which to compute the derivatives
+        :type wrt: :class:`Constant`
+        """
         return DerivativesSet((x.derivative(wrt) for x in self))
 
     def is_empty(self) -> bool:
+        """:return: `True` iff this set is empty"""
         return len(self) == 0
 
     @cached_str
