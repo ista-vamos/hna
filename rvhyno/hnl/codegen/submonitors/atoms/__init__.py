@@ -1,3 +1,9 @@
+"""
+Generating atom monitors (basic monitors) for hypernode logic.
+
+These monitors evaluate a universally quantified hypernode logic formula.
+"""
+
 from rvhyno.hnl.codegen.submonitors.atoms.ehl import CodeGenCpp as CodeGen_eHL
 from rvhyno.hnl.codegen.submonitors.atoms.shl import CodeGenCpp as CodeGen_sHL
 from rvhyno.hnl.codegen.submonitors.hltl.codegen import CodeGenCpp as CodeGen_HLTL
