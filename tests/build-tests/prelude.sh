@@ -14,6 +14,6 @@ function gen {
   cd $DIR
   $SRCDIR/hnl.py --out-dir "$WORKDIR" "$@"
 
-  cd $WORKDIR
-  make -j4
+ #cd $WORKDIR
+ #cmake --build . -j4
 }

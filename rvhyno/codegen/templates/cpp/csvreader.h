@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "cmd.h"
-#include "csvreader-aux.h"
 #include "events.h"
 #include "stream.h"
 

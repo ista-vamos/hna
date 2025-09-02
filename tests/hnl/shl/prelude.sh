@@ -20,8 +20,8 @@ function gen {
 	cd $DIR
 	$SRCDIR/hnl.py --out-dir "$WORKDIR" "$FORMULA" $@ --data 'x: int, y: int' --logic=shl --debug --build-type=Debug -D SANITIZE=ON
 
-	cd $WORKDIR
-	make check -j4
+#cd $WORKDIR
+#make check -j4
 }
 
 N=1

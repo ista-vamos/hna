@@ -209,9 +209,6 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.copy_file("csvreader.cpp", from_dir=self.common_templates_path)
         self._add_gen_files.append("csvreader.cpp")
 
-        with self.new_file("csvreader-aux.h") as f:
-            dump_codegen_position(f)
-
         self.gen_file("read_csv_event.h.in", "read_csv_event.h",
                       {'data': self.args.data})
 
