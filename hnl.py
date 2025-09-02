@@ -12,7 +12,7 @@ from rvhyno.utils import msg, open_log, log
 
 # sys.path.append(vamos_common_PYTHONPATH)
 
-from rvhyno.hnl.codegen import CodeGenCpp
+from rvhyno.hnl.codegen import CodeGenCppTopLevel as CodeGenCpp
 
 script_name = basename(sys.argv[0])
 

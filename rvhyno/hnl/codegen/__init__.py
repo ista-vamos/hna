@@ -1,1 +1,5 @@
-from .codegen import CodeGenCpp
+"""
+Code generation for hypernode logic.
+"""
+
+from .codegen import CodeGenCppTopLevel

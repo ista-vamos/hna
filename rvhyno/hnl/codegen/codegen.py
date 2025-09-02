@@ -1,3 +1,9 @@
+"""
+Code generation for hypernode logic -- the top-level codegen class.
+"""
+
+
+from typing import Tuple
 from itertools import chain
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin, basename
@@ -15,7 +21,13 @@ from rvhyno.hnl.formula import (
 from rvhyno.utils import log_indent_incr, log_indent_decr
 
 
-def _check_functions(functions):
+def _check_functions(functions) -> None:
+    """Check if the generator functions are used consistently in the formula
+    
+    :param functions:     A container with functions taken from the formula.
+    :raises RuntimeError: If an inconsistency is detected.
+    """
+
     funs = {}
     for fun in functions:
         f = funs.get(fun.name)
@@ -28,8 +40,13 @@ def _check_functions(functions):
                 )
 
 
-def get_num_range(data: list):
-    """Get the minimum and maximum number of data"""
+def _get_num_range(data: list) -> Tuple[int, int]:
+    """Get the minimum and maximum number that can be stored in the data fields of events.
+
+    In other words, find if there are some bounds on the alphabet or if the alphabet
+    are arbitrary numbers of the given data types.
+    (The description of data fields is passed using the `--data` option to the main script).
+    """
     min_n, max_n = None, None
     for name, ty in data:
         rng = ty[1]
@@ -43,7 +60,7 @@ def get_num_range(data: list):
     return min_n, max_n
 
 
-def check_formula(formula, args):
+def _check_formula(formula, args):
     field_names = set((x[0] for x in args.data))
     for t in formula.program_variables():
         if t.name not in field_names and t.name not in args.data_fun:
@@ -52,14 +69,15 @@ def check_formula(formula, args):
             )
 
 
-def has_alphabet(alphabet, args) -> bool:
-    return bool(alphabet) or bool(args.alphabet) or get_num_range(args.data) is not None
+def _has_finite_alphabet(alphabet, args) -> bool:
+    """Check if we have a finite alphabet"""
+    return bool(alphabet) or bool(args.alphabet) or _get_num_range(args.data) is not None
 
 
-class CodeGenCpp(CodeGenCpp):
+class CodeGenCppTopLevel(CodeGenCpp):
     """
     Class for generating eHL/sHL monitors in C++.
-    The main function to be called is `generate`.
+    The main function to be called is :meth:`generate`.
 
     The generated monitor consists of a top-level monitor which is just a wrapper
     for the actual monitor. More precisely, this wrapper encapsulates the actual monitor
@@ -68,18 +86,19 @@ class CodeGenCpp(CodeGenCpp):
     The actual monitor itself can have sub-monitors (depending on the structure of the formula).
     There is one sub-monitor class generated for each quantifier alternation in the formula
     (or a different set of traces quantified).
-    The final monitors that process the traces are _atom_ monitors -- these literally implement a run of an automaton
-    on the given traces.
-    For example, consider formula 'forall t1. exists t2. forall t3. \varphi(t1, t2, t3)'.
+    The final monitors that process the traces are _atom_ monitors -- these literally implement
+    a run of an automaton on the given traces.
+    For example, consider formula `forall t1. exists t2. forall t3. φ(t1, t2, t3)`.
     The generated project will have the following structure:
     ```
-    - top-level-monitor (wrapping submonitor-1 and the container for the input traces)
+    - top-level-monitor (wrapping submonitor-1 and the input traces)
       - submonitor-1      # instantiates t1
         - submonitor-2    # instantiates t2
-          - atom monitor  # instantiates t3 and evaluates \varphi on t1, t2, t3
+          - atom monitor  # instantiates t3 and evaluates φ on t1, t2, t3
     ```
 
-    If there are generator functions used, they traces are stored and extended by the top-level monitor.
+    If there are generator functions used, their traces are stored and managed (added, extended)
+    by the top-level monitor.
 
     In summary, this is the top-level `CodeGenCpp` that takes care of creating `main.cpp` and files
     shared by all the (sub-)monitors, like `events.h`, `csvreader.h`, and
@@ -379,10 +398,10 @@ class CodeGenCpp(CodeGenCpp):
         if not self._embedded:
             self.gen_data_funs()
 
-        check_formula(formula, self.args)
+        _check_formula(formula, self.args)
 
         if self.args.logic == "ehl":
-            if not has_alphabet(alphabet, self.args):
+            if not _has_finite_alphabet(alphabet, self.args):
                 raise RuntimeError("No finite alphabet given, cannot use eHL logic.")
 
             self.args.alphabet = alphabet or self._get_alphabet()
@@ -462,7 +481,7 @@ class CodeGenCpp(CodeGenCpp):
             alphabet = [Constant(a) for a in alphabet.split(",")]
         else:
             data = self.args.data
-            num_range = get_num_range(data)
+            num_range = _get_num_range(data)
             if num_range is None:
                 raise RuntimeError(
                     "No explicit alphabet given and failed to get a bound on numbers from data"
