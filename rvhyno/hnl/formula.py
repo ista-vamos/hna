@@ -9,10 +9,7 @@ from lark.lexer import Token
 
 
 def cached_str(m):
-    """Decorator to cache a string inside an object
-
-    WARNING: this way we can cache only a single string
-    """
+    """Decorator to cache the string returned from __str__ inside an object"""
     def new_str(self):
         if self._cached_str is None:
             self._cached_str = m(self)
