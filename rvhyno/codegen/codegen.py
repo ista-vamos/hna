@@ -22,7 +22,7 @@ class CodeGen:
     
     :param name:      name of the generated monitor -- it should be unique if multiple codegens
                       are instantiated
-    :param args:      arguments as parsed by :mod:argparser.
+    :param args:      arguments as parsed by :mod:`argparse`.
     :param out_dir:   path to the directory where to generate the code
     :param embedded:  `True` iff the code is not self-standing. That is, it is a part
                       (a subproject/sub-directory) of in another code.
