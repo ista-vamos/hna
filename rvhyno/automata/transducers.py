@@ -394,14 +394,14 @@ class TransitionMultiLabel:
         out = f" ↦ {self.output}" if self.output else ""
         assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
-        return f"TransitionLabel({self.symbols or "ε"}{cond}{assign}{out})"
+        return f"TransitionLabel({self.symbols or 'ε'}{cond}{assign}{out})"
 
     def __str__(self):
         out = f" ↦  {self.output}" if self.output else ""
         assign = f";{', '.join(map(str, self.assignment))}" if self.assignment else ""
         cond = f"[{', '.join(map(str, self.condition))}]" if self.condition else ""
         sym = ", ".join(f"{t}: {x}" for t, x in self.symbols.items())
-        return f"({sym or "ε"}){cond}{assign}{out}"
+        return f"({sym or 'ε'}){cond}{assign}{out}"
 
 
 class Transducer(AccInitTransitionSystem):
