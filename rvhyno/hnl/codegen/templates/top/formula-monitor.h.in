@@ -19,8 +19,11 @@
 ///
 // The top-level class for HNL monitor for an arbitrary HNL formula
 //
-// {{info}}
+//  Top-level monitor wrapping the actual monitor for the formula `{{formula}}`,
+//  the container for input traces and generator functions if they are used.
 class FormulaMonitor : public ::MonitorWithTraces {
+
+  // command-line arguments
   CmdArgs *_cmd;
 
   {{functions}}

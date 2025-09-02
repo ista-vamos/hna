@@ -212,85 +212,8 @@ class CodeGenCppTopLevel(CodeGenCpp):
         with self.new_file("csvreader-aux.h") as f:
             dump_codegen_position(f)
 
-        with self.new_file("read_csv_event.h") as f:
-            wr = f.write
-            wr(f"int ch;\n\n")
-            data = self.args.data  # data in the events
-            for n, tmp in enumerate(data):
-                name, annot_ty = tmp
-                ty, val_range = annot_ty
-
-                wr(f"_stream >> ev.{name};\n")
-                wr("if (_stream.fail()) {")
-                if n == 0:  # assume this is the header
-                    wr(" if (_events_num_read == 0) {\n")
-                    wr("   _stream.clear(); // assume this is the header\n")
-                    wr("   // FIXME: check that the header matches the events \n")
-                    wr("   // ignore the rest of the line and try with the next one\n")
-                    wr(
-                        "   _stream.ignore(std::numeric_limits<std::streamsize>::max(), '\\n');\n"
-                    )
-                    wr(f"   _stream >> ev.{name};\n")
-                    wr("    if (_stream.fail()) {\n")
-                    wr(
-                        f"    std::cerr << _file << \":\" << _events_num_read + 1 << \": failed reading column '{name}' of expected type '{ty}'\\n\";\n"
-                    )
-                    wr("    abort();\n")
-                    wr("  }\n")
-                    if val_range:
-                        wr(
-                            f"  if (ev.{name} < {val_range[0]} || ev.{name} > {val_range[1]}) {{\n"
-                        )
-                        wr(
-                            f'    std::cerr << "The value for column \'{name}\' on line " << _events_num_read + 1 << " is out of range: "\n'
-                            f'              << ev.{name} << " not in  [{val_range[0]}..{val_range[1]}]\\n";\n'
-                        )
-                        wr("    abort();\n")
-                        wr("  }\n")
-                    wr("} else {\n")
-                    wr(
-                        f'    std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";\n'
-                    )
-                    wr("    abort();\n")
-                    wr("}")
-                else:
-                    wr(
-                        f'  std::cerr << "Failed reading column \'{name}\' on line " << _events_num_read + 1 << "\\n";'
-                    )
-                    wr("  abort();")
-                wr("}")
-                if n == len(data) - 1:
-                    wr(
-                        f"""
-                    while ((ch = _stream.get()) != EOF) {{
-                      if (ch == '\\n') {{
-                        break;
-                      }}
-                      
-                      if (!std::isspace(ch)) {{
-                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
-                        std::cerr << "Expected the end of line, got '" << static_cast<char>(ch) << "'\\n";
-                        abort();
-                      }}
-                    }}
-                    """
-                    )
-                else:
-                    wr(
-                        f"""
-                    while ((ch = _stream.get()) != EOF) {{
-                      if (ch == ',') {{
-                        break;
-                      }}
-                      
-                      if (!std::isspace(ch) || ch == '\\n') {{
-                        std::cerr << "Wrong input on line " << _events_num_read + 1 << " after reading column '{name}'\\n";
-                        std::cerr << "Expected next column (',' character), got '" << static_cast<char>(ch) << "'\\n";
-                        abort();
-                      }}
-                    }}
-                    """
-                    )
+        self.gen_file("read_csv_event.h.in", "read_csv_event.h",
+                      {'data': self.args.data})
 
     def _gen_function_files(self, fun: Function):
         with self.new_file(f"function-{fun.name}.h") as f:
@@ -540,7 +463,6 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "functions_step": funs_step,
             "functions_finished": funs_finished,
             "alltracesets_init": alltracesets_init,
-            "info": f"Monitor for '{formula}'",
         }
 
         self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
