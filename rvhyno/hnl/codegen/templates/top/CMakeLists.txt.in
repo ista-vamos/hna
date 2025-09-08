@@ -58,4 +58,8 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 enable_testing()
 endif()
 
+{% if cg.args.gen_experiments %}
+add_subdirectory(experiments)
+{% endif %}
+
 {{submonitors}}

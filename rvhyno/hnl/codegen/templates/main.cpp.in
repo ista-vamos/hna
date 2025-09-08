@@ -22,6 +22,12 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  if (cmd.inputs.empty()) {
+    std::cerr << "\033[0;31mNo inputs given.\033[0m\n\n";
+    cmd.help();
+    return 1;
+  }
+
   std::thread inputs_thrd;
   // set this to false to stop the inputs thread
   std::atomic<bool> running = true;
@@ -31,7 +37,7 @@ int main(int argc, char *argv[]) {
   if (cmd.csv_reader) {
     if (cmd.trace_are_events) {
       inputs_thrd = std::thread([&cmd, &monitor, &running] {
-                      read_csv<CSVEventsStream>(cmd, monitor, running);
+                      read_csv_files<CSVEventsStream>(cmd, monitor, running);
                     });
     } else {
       assert(false && "Not implemented yet");

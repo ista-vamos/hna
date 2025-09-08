@@ -1,0 +1,34 @@
+# Sample experiments setup
+
+This folder contains scripts that allow to run the monitor on sets of traces.
+By default, some random traces are generated. Use them for testing the setup or for real experiments if that's what
+you want. Later in this README, we describe how to customize the scripts here.
+The structure of this directory is the following:
+
+```
+CMakeLists.txt        CMake configuration.
+generate-traces.py    A script to generate random traces.
+random-traces         The directory with random traces.
+README.md             This README.
+run.py                A script that runs the experiments.
+```
+
+## Customizing
+
+### `generate-traces.py`
+
+If you have your traces, ignore this script and simply feed them to the monitor
+(or the `run.py` script, see below).
+
+If you want to analyze random traces generated in a specific way, you can modify
+the `generate-traces.py` script.
+By default, this script generates traces with random numbers for the data fields in the events,
+where the numbers are constrained as specified in the specification of the monitor.
+You can modify the functions `generate_event` and/or `generate_trace` in the script
+to generate events as you like.
+
+### `run.py`
+
+See `--help`.
+
+TBD

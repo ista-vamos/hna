@@ -167,6 +167,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
+            "cg": self,
             "formula": formula,
             "additional_sources": " ".join(
                 (
@@ -521,6 +522,8 @@ class CodeGenCppTopLevel(CodeGenCpp):
                       { "cg": self, 'data_bounds': self._event_data_bounds }, creation_header='py')
         self.gen_file("top/experiments/run.py.in", "experiments/run.py",
                       { "cg": self}, creation_header='py')
+        self.gen_file("top/experiments/README.md.in", "experiments/README.md",
+                      {'cg': self})
 
 
     def generate_main(self):

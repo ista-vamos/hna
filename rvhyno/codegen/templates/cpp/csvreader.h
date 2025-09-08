@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "cmd.h"
 #include "events.h"
@@ -53,25 +54,59 @@ public:
 };
 
 template <typename StreamTy, typename MonitorTy, typename EventTy = Event>
-void read_csv(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
-  std::cerr << "Reading CSV events\n";
+void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
+  // std::cerr << "Reading CSV events\n";
 
   std::vector<std::unique_ptr<StreamTy>> streams;
   std::vector<std::unique_ptr<StreamTy>> tmp_streams;
 
   size_t num_open_files = 0;
-  size_t next_input = 0;
-  const size_t inputs_num = args.inputs.size();
-  // const size_t read_limit = args.read_max_num_events_at_once;
+  // next input argument to read
+  size_t next_arg = 0;
+  size_t traces_num = 0;
+  bool reading_directory = false;
+  std::filesystem::directory_iterator di, di_end{};
+
+  const size_t args_num = args.inputs.size();
+  // const size_t read_limit = args.read_events_limit;
 
   while (running.load(std::memory_order_acquire)) {
-    // check if we have new files to open
-    if (next_input < inputs_num && num_open_files < args.open_traces_limit) {
-      M.newTrace(next_input + 1);
-      streams.emplace_back(
-          std::make_unique<StreamTy>(args.inputs[next_input], next_input + 1));
-      ++next_input;
-      ++num_open_files;
+    // if we have space for new files to open
+    if (num_open_files < args.open_traces_limit) {
+        if (reading_directory) {
+            const auto& entry = *di;
+
+            M.newTrace(++traces_num);
+            streams.emplace_back(
+                std::make_unique<StreamTy>(entry.path(), traces_num));
+            ++num_open_files;
+
+            ++di;
+            if (di == di_end) {
+                reading_directory = false;
+            }
+            continue;
+        }
+
+        assert(!reading_directory);
+        // do we still have arguments?
+        if (next_arg < args_num) {
+          const auto &input = args.inputs[next_arg++];
+
+          if (std::filesystem::is_directory(input)) {
+            di = std::filesystem::directory_iterator(input);
+            reading_directory = true;
+            // start a new iteration where we will read from the directory
+            continue;
+          }
+
+          // this is a normal file
+          assert(!reading_directory);
+          M.newTrace(++traces_num);
+          streams.emplace_back(
+              std::make_unique<StreamTy>(input, traces_num));
+          ++num_open_files;
+        }
     }
 
     // check if we can read from some of those files

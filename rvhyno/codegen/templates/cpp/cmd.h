@@ -15,6 +15,8 @@ public:
   CmdArgs(int argc, char *argv[]) : argc(argc), argv(argv) {}
 
   bool csv_reader{true};
+
+  // TODO: these are not used atm
   bool trace_are_events{false};
   bool trace_are_aps{false};
   bool trace_is_signal{false};
@@ -27,7 +29,7 @@ public:
   size_t open_traces_limit = 1000;
   // read at most this number of events before switching to extending some other
   // trace
-  size_t read_max_num_events_at_once = 128;
+  size_t read_events_limit = 128;
 
   bool parse();
   void help() const;

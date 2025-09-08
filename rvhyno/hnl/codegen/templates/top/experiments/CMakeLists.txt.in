@@ -1,4 +1,4 @@
 # template: top/experiments/CMakeLists.txt.in
 
-add_custom_command(TARGET generate-traces POST_BUILD
-                   COMMAND python3 ./generate-traces.py)
+message(STATUS "Generating some random traces for testing into `${CMAKE_CURRENT_BINARY_DIR}/random-traces`")
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/generate-traces.py --out-dir ${CMAKE_CURRENT_BINARY_DIR}/random-traces)
