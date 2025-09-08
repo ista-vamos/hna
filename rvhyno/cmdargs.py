@@ -1,6 +1,7 @@
 from re import match
 import argparse
 from os.path import basename, abspath
+from sys import argv
 
 from rvhyno.utils import msg
 
@@ -224,5 +225,7 @@ def process_args(args):
 
     args.overwrite_file = [basename(f) for f in args.overwrite_file]
     assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
+
+    args.cmd = argv[:]
 
     return args

@@ -164,6 +164,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         build_type = self.args.build_type
         if not build_type:
             build_type = '"Debug"' if self.args.debug else "Release"
+            self.args.build_type = build_type
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
@@ -184,7 +185,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),
             "submonitors": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
-            ),
+            )
         }
         if overwrite_keys:
             values.update(overwrite_keys)
@@ -397,7 +398,13 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         # Generate a README for the monitor
         self.gen_file('top/README.md.in', "README.md",
-                      {'cg': self, 'formula': formula})
+                      {'cg': self, 'formula': formula,
+                               'cmd': [f"'{s}'" if ' ' in s else s for s in self.args.cmd]
+                       })
+
+        if self.args.debug:
+            with self.new_dbg_file(f"args.txt") as f:
+                f.write(''.join(f'{k} : {v}\n' for k,v in vars(self.args).items()))
 
         self.format_generated_code()
 

@@ -19,7 +19,7 @@ Where `trace*.csv` are CSV files containing rows in the following format:
 {%- endfor %}
 ```
 
-where the fields has these types:
+and the fields has these types:
 
 
 |    field    |     type    |     range   |
@@ -41,15 +41,41 @@ Additionally, each field should be an element of the following alphabet: `{{cg.a
 
 The first row of each CSV file can be a header with names of the columns (the names are ignored though, they are just for humans).
 
-{% if cg.args.logic == 'ehl' %}
-NOTE: the range of values for each data field is used when generating monitors, but the fields are not checked for
-correct values when reading the CSV files (yet...).
-{% elif cg.args.logic == 'shl' %}
-NOTE: the range of values for each data field is not checked for correct values when reading the CSV files (yet...).
-This means that giving the range is useless right now (we hope to change this in the future).
-{% endif %}
+## Other options
+
+Instead of traces, you can give the monitor a directory with traces:
+```sh
+./monitor directory-with-traces
+```
+
+or, actually, you can do combinations:
+```sh
+./monitor directory-with-traces-1 trace1.csv trace2.csv directory-with-traces-2
+```
+
+There are some runtime options that you can pass to the monitor:
+
+|    Option              |     Description    |
+|------------------------|--------------------|
+| `-open-traces-limit N` | Keep at most `N` files opened at the same time |
+| `-read-events-limit N` | Read at most `N` events from a file at once (then switch to another file) |
+
 
 ## Re-building
+
+The monitor was originally generated with this command
+
+```sh
+{{cmd | join(' ') }}
+```
+
+These were resolved into these options and flags:
+```
+{{cg.args}}
+```
+
+If you did not change them, they are used when re-building the project. Below is the guide on re-configuring and
+re-building.
 
 ### Re-configuring
 
