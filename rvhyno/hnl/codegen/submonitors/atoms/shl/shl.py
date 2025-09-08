@@ -822,29 +822,6 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         return A, renaming
 
-    def generate_experiments(self) -> None:
-        """ Generate a sample experiments setup.
-
-        Generate a folder containing a set of random input traces
-        (more precisely, we generate a script that generates the traces
-        so that users can alter it to their needs),
-        and scripts that run experiments over these (or any other) traces
-        with the monitor.
-        """
-        msg('info', "Generating sample experiments", section=3)
-
-        # generating tests for atoms is not implemented right now,
-        # but we still create the sub-dir so that we can keep the current
-        # cmake without changes
-        makedirs(f"{self._out_dir}/experiments", exist_ok=True)
-        makedirs(f"{self._out_dir}/experiments/random-traces", exist_ok=True)
-
-        self.gen_file("atoms/experiments/CMakeLists.txt.in", "experiments/CMakeLists.txt", { "cg": self })
-        self.gen_file("atoms/experiments/generate-traces.py.in", "experiments/generate-traces.py", { "cg": self })
-        self.gen_file("atoms/experiments/run.py.in", "experiments/run.py", { "cg": self })
-
-
-
     def generate_tests(self):
         # msg('info', "Generating tests", section=3)
 
@@ -921,9 +898,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.generate_monitor(formula)
         if self.args.gen_atom_tests:
             self.generate_tests()
-
-        if self.args.gen_experiments:
-            self.generate_experiments()
 
         if self._embedded:
             from_dir = self.common_templates_path

@@ -1,0 +1,62 @@
+"""
+Generate random CSV traces that can be read by the generated monitor.
+
+Run as:
+```sh
+python3 ./generate-traces.py [OPTIONS]
+```
+"""
+
+#/usr/bin/env python3
+
+from random import randint, seed
+from os.path import abspath
+import argparse
+
+def generate_event(i, args, fl) -> None:
+    # {% for name, _ in cg.args.data -%}
+    {{name}}{%- if not loop.last -%}, {% endif -%}
+    {%- endfor %}
+    fl.write(f'
+{%- for name, annot_ty in cg.args.data -%}
+    {%- set ty, vals_range = annot_ty -%}
+    {%- if vals_range -%}
+    {%- set l, u = data_bounds(ty, vals_range[0], vals_range[1]) -%}
+    {%- else -%}
+    {%- set l, u = data_bounds(ty) -%}
+    {%- endif -%}
+    {randint({{l}}, {{u}})}
+    {%- if not loop.last -%},{%- endif -%}
+{%- endfor -%}
+    \n')
+
+def generate_trace(args, fl) -> None:
+    for i in range(args.len):
+        generate_event(i, args, fl)
+
+
+if __name__ == "__main__":
+    ######################################################################
+    # Get arguments and do the setup
+    ######################################################################
+    parser = argparse.ArgumentParser(description='Generate random traces')
+    parser.add_argument('-o', '--out-dir', default="random-traces",
+                        help="Directory where to generate traces")
+    parser.add_argument('-l', '--len', default=10,
+                        help="Length of traces (default is 10 to make them simple")
+    parser.add_argument('-n', '--num', default=10,
+                        help="The number of traces (default is 10 to make them simple")
+
+    args = parser.parse_args()
+
+    seed() # initialize random numbers
+
+    ######################################################################
+    # Generate the traces
+    ######################################################################
+    out_dir = abspath(args.out_dir)
+    for n in range(1, args.num + 1):
+        with open(f"{out_dir}/trace-{n}.tr", "w") as tf:
+            generate_trace(args, tf)
+
+    exit(0)

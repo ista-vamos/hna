@@ -1,3 +1,6 @@
+import ctypes
+from typing import Tuple
+
 from rvhyno.utils import log
 from rvhyno.hnl.formula import PrenexFormula, Constant
 
@@ -51,4 +54,76 @@ def _split_formula(formula: PrenexFormula):
 
     return F1, F2, same
 
+def c_type_info(ty: str) -> Tuple[int, int]:
+    """
+    Get information about system's C type: signess and byte-width.
 
+    :return: a pair `(b, s)` where `s` is `True` iff the type is signed
+             and `b` is the number of bytes the type takes.
+
+    NOTE: the enumeration is not complete, fill in per need in the future.
+    """
+    bw = None
+    signed = False
+
+    if ty == 'int':
+        bw = ctypes.sizeof(ctypes.c_int)
+        signed = True
+    elif ty == 'int8_t':
+        bw = ctypes.sizeof(ctypes.c_int8)
+        signed = True
+    elif ty == 'int32_t':
+        bw = ctypes.sizeof(ctypes.c_int32)
+        signed = True
+    elif ty == 'int64_t':
+        bw = ctypes.sizeof(ctypes.c_int64)
+        signed = True
+    elif ty in ('uint', 'unsigned int'):
+        bw = ctypes.sizeof(ctypes.c_uint)
+    elif ty == 'uint32_t':
+        bw = ctypes.sizeof(ctypes.c_uint32)
+    elif ty == 'uint64_t':
+        bw = ctypes.sizeof(ctypes.c_uint64)
+    elif ty in ('_Bool', 'bool'):
+        bw = ctypes.sizeof(ctypes.c_uint64)
+    elif ty == 'size_t':
+        bw = ctypes.sizeof(ctypes.c_size_t)
+    elif ty == 'ssize_t':
+        bw = ctypes.sizeof(ctypes.c_ssize_t)
+        signed = True
+    elif ty == 'float':
+        bw = ctypes.sizeof(ctypes.c_float)
+        signed = True
+    elif ty == 'double':
+        bw = ctypes.sizeof(ctypes.c_double)
+        signed = True
+    elif ty == 'char':
+        bw = ctypes.sizeof(ctypes.c_char)
+        signed = True
+    elif ty == 'unsigned char':
+        bw = ctypes.sizeof(ctypes.c_char)
+    elif ty == 'long':
+        bw = ctypes.sizeof(ctypes.c_long)
+        signed = True
+    elif ty == 'unsigned long':
+        bw = ctypes.sizeof(ctypes.c_long)
+    elif ty == 'long long':
+        bw = ctypes.sizeof(ctypes.c_longlong)
+        signed = True
+    elif ty == 'unsigned long long':
+        bw = ctypes.sizeof(ctypes.c_longlong)
+        signed = True
+
+    return bw, signed
+
+def c_type_bounds(ty: str) -> Tuple[int, int]:
+    """
+    Get C type's minimum and maximum value.
+
+    The function assumes that the system is using two's complement.
+    """
+    bw, s = c_type_info(ty)
+    if s:
+        return 2 << (8*bw - 1), 2 << (8*bw - 1) - 1
+    else:
+        return 0, (2**(8*bw)) - 1

@@ -5,20 +5,21 @@ Code generation for hypernode logic -- the top-level codegen class.
 
 from typing import Tuple
 from itertools import chain
-from os import readlink
+from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from rvhyno.codegen.codegencpp import CodeGenCpp
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.submonitors.atoms import get_atoms_codegen
 from rvhyno.hnl.codegen.submonitors.submon import CodeGenCpp as CodeGenCppSubMon
+from rvhyno.hnl.codegen.utils import c_type_bounds
 from rvhyno.hnl.formula import (
     Constant,
     Function,
     PrenexFormula,
 )
 
-from rvhyno.utils import log_indent_incr, log_indent_decr
+from rvhyno.utils import log_indent_incr, log_indent_decr, msg
 
 
 def _check_functions(functions) -> None:
@@ -385,6 +386,10 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         if not self._embedded:
             self.copy_files()
+
+        if self.args.gen_experiments:
+            self.generate_experiments()
+
         # cmake generation should go at the end so that
         # it knows all the generated files
         self.generate_cmake(formula)
@@ -464,6 +469,59 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("top/formula-monitor.cpp.in", "formula-monitor.cpp", values)
+
+    def _event_data_bounds(self, ty: str, min_b=None, max_b=None) -> Tuple[int, int]:
+        """
+        Compute the minumum and maximum value that can be stored in a given data filed of an event.
+        This is based on its type, the required alphabet and bounds taken from `--data`.
+        """
+        vmin, vmax = c_type_bounds(ty)
+        assert vmin is not None
+        assert vmax is not None
+
+        alphabet = self.args.alphabet
+        if alphabet:
+            if isinstance(alphabet, str) and alphabet.endswith('b'):
+                bits = int(alphabet[:-1])
+                vmin = max(0, vmin)
+                vmax = min(2**bits - 1, vmax)
+            else:
+                raise NotImplementedError("This alphabet is unhandled")
+
+        assert vmin is not None
+        assert vmax is not None
+        if min_b is not None:
+            if vmin < min_b:
+                vmin = min_b
+        if max_b is not None:
+            if vmax > max_b:
+                vmax = max_b
+
+        return vmin, vmax
+
+    def generate_experiments(self) -> None:
+        """ Generate a sample experiments setup.
+
+        Generate a folder containing a set of random input traces
+        (more precisely, we generate a script that generates the traces
+        so that users can alter it to their needs),
+        and scripts that run experiments over these (or any other) traces
+        with the monitor.
+        """
+        msg('info', "Generating sample experiments", section=3)
+
+        # generating tests for atoms is not implemented right now,
+        # but we still create the sub-dir so that we can keep the current
+        # cmake without changes
+        makedirs(f"{self._out_dir}/experiments", exist_ok=True)
+        makedirs(f"{self._out_dir}/experiments/random-traces", exist_ok=True)
+
+        self.gen_file("top/experiments/CMakeLists.txt.in", "experiments/CMakeLists.txt", { "cg": self })
+        self.gen_file("top/experiments/generate-traces.py.in", "experiments/generate-traces.py",
+                      { "cg": self, 'data_bounds': self._event_data_bounds }, creation_header='py')
+        self.gen_file("top/experiments/run.py.in", "experiments/run.py",
+                      { "cg": self}, creation_header='py')
+
 
     def generate_main(self):
         self.gen_file(

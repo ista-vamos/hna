@@ -183,6 +183,10 @@ class CodeGen:
                 ofl.write(f"// Generated from {template.filename}\n")
                 write_codegen_stack(ofl.write, lvl=2)
                 ofl.write("\n\n")
+            if creation_header == "py" and template.filename.endswith("py.in"):
+                ofl.write(f"# Generated from {template.filename}\n")
+                write_codegen_stack(ofl.write, lvl=2, comment_str='#')
+                ofl.write("\n\n")
             ofl.write(template.render(**values))
 
 
