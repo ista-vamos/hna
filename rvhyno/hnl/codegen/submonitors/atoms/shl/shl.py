@@ -823,9 +823,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         return A, renaming
 
     def generate_tests(self):
-        msg('info', "Generating tests", section=3)
-        makedirs(f"{self._out_dir}/tests", exist_ok=True)
+        # msg('info', "Generating tests", section=3)
 
+        # generating tests for atoms is not implemented right now,
+        # but we still create the sub-dir so that we can keep the current
+        # cmake without changes
+        makedirs(f"{self._out_dir}/tests", exist_ok=True)
         self.gen_file(
             "atoms/CMakeLists-tests.txt.in",
             "tests/CMakeLists.txt",
@@ -833,6 +836,9 @@ class CodeGenCpp(CodeGenCppAtoms):
                 "submonitors_libs": " ".join(self._submonitors),
             },
         )
+
+        msg('warn', "Asked to generate tests for atoms, but this is not working yet, skipping..")
+        return
 
         for nd in self._bdd_nodes:
            num = nd.get_id()
