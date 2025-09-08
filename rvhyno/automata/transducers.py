@@ -1,5 +1,4 @@
 from copy import copy
-from itertools import chain
 
 from rvhyno.automata.transition_system import AccInitTransitionSystem, Transition, State
 from rvhyno.hnl.formula import TraceVariable

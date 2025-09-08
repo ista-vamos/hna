@@ -1,4 +1,5 @@
 from os import makedirs
+from random import randrange
 
 from rvhyno.automata.transducers import (
     Var,
@@ -24,6 +25,44 @@ from .shared import CodeGenCppAtoms
 from rvhyno.hnl.formula2transducers import Formula2Transducer, automaton_for_comparison
 
 from rvhyno.utils import msg, log, args_str
+from .ehl import random_path
+
+
+def path_is_accepting(A: "Automaton", path: list) -> bool:
+    """
+    Return if the path is accepting -- the last state
+    must be accepting or from that state an accepting state
+    must be reachable via epsilon steps.
+    """
+    state = path[-1].target
+    states, wbg = set(), set()
+    states.add(state)
+    wbg.add(state)
+
+    while wbg:
+        state = wbg.pop()
+        if A.is_accepting(state):
+            return True
+        # get all transitions from this state
+        epsilonT = [
+            t
+            for _, tt in A.transitions(state, default=dict()).items()
+            for t in tt
+            if t.label.is_eps()
+        ]
+        priorities = list(set(t.priority for t in epsilonT))
+        priorities.sort(reverse=True)
+
+        # process epsilon transitions in the order of their priority
+        for prio in priorities:
+            T = [t for t in epsilonT if prio == t.priority]
+            if T:
+                for t in T:
+                    if t.target not in states:
+                        states.add(t.target)
+                        wbg.add(t.target)
+                break
+    return False
 
 
 class TranslationData:
@@ -823,69 +862,52 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-        msg("FIXME", "not generating tests")
+        for nd in self._bdd_nodes:
+           num = nd.get_id()
+           for test_num in range(0, 20):
+               if test_num < 10:
+                   # make sure to generate some short tests
+                   path_len = randrange(0, 5)
+               else:
+                   path_len = randrange(5, 100)
 
-    # for nd in self._bdd_nodes:
-    #    num = nd.get_id()
-    #    for test_num in range(0, 20):
-    #        if test_num < 10:
-    #            # make sure to generate some short tests
-    #            path_len = random.randrange(0, 5)
-    #        else:
-    #            path_len = random.randrange(5, 100)
+               path = random_path(nd.automaton, path_len)
+               self.gen_test(nd.automaton, nd.formula, num, path, test_num)
 
-    #        path = random_path(nd.automaton, path_len)
-    #        self.gen_test(nd.automaton, nd.formula, num, path, test_num)
-
-    def gen_test(self, A, F, num, path, test_num):
-        assert A.is_initial(path[0].source), "Path starts with non-initial state"
-        is_accepting = path_is_accepting(A, path)
-        lvar = F.children[0].program_variables()
-        rvar = F.children[1].program_variables()
-        assert len(lvar) <= 1, lvar
-        assert len(rvar) <= 1, rvar
-        if not (lvar or rvar):
-            raise NotImplementedError("This case is unsupported yet")
-        if not lvar:
-            raise NotImplementedError("This case is unsupported yet")
-        vars = (lvar[0].name if lvar else None, rvar[0].name if rvar else None)
-        with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
-            wr = f.write
-            dump_codegen_position(f)
-            wr(f"// The path used to generate this test:\n\n")
-            for t in path:
-                wr(f"// {t}\n")
-            wr(f"// Accepting: {is_accepting}\n\n")
-            dump_codegen_position(f)
-            wr("Trace *trace1 = new Trace{1};\n")
-            wr("Trace *trace2 = new Trace{2};\n\n")
-            for i in range(0, 2):
-                n = 0
-                for t in path:
-                    if t.label[i].is_epsilon():
-                        continue
-                    wr(f"trace{i+1}->append(Event{{ .{vars[i]} = {t.label[i]}}});\n")
-                    n += 1
-                wr(f"trace{i+1}->setFinished();")
-                wr(f"/* Trace {i + 1} length: {n} */\n\n")
+    def gen_test(self, automaton, F, num, path, test_num):
+        assert automaton.is_initial(path[0].source), "Path starts with non-initial state"
+        is_accepting = path_is_accepting(automaton, path)
+       # with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
+       #     wr = f.write
+       #     dump_codegen_position(f)
+       #     wr(f"// The path used to generate this test:\n\n")
+       #     for t in path:
+       #         wr(f"// {t}\n")
+       #     wr(f"// Accepting: {is_accepting}\n\n")
+       #     dump_codegen_position(f)
+       #     wr("Trace *trace1 = new Trace{1};\n")
+       #     wr("Trace *trace2 = new Trace{2};\n\n")
+       #     for i in range(0, 2):
+       #         n = 0
+       #         for t in path:
+       #             if t.label.is_eps():
+       #                 continue
+       #             wr(f"trace{i+1}->append(Event{{ .{vars[i]} = {t.label}}});\n")
+       #             n += 1
+       #         dump_codegen_position(f)
+       #         wr(f"trace{i+1}->setFinished();")
+       #         wr(f"/* Trace {i + 1} length: {n} */\n\n")
 
         self.gen_file(
             "atoms/test-atom.cpp.in",
             f"tests/test-atom-{num}-{test_num}.cpp",
             {
-                "TRACE": f'#include "test-trace-{num}-{test_num}.cpp"',
-                "TRACE_VARIABLES": ", ".join(
-                    (f"trace{i+1}" for i, v in enumerate(vars) if v is not None)
-                ),
+                "cg": self,
+                'automaton': automaton,
+                'path': path,
+                'is_accepting': is_accepting,
                 "ATOM_NUM": str(num),
-                "FORMULA": str(F),
-                "MAX_TRACE_LEN": str(len(path)),
-                "EXPECTED_VERDICT": (
-                    "Verdict::TRUE" if is_accepting else "Verdict::FALSE"
-                ),
-                "namespace_using": (
-                    f"using namespace {self._namespace};" if self._namespace else ""
-                ),
+                "FORMULA": str(F)
             },
         )
 

@@ -15,14 +15,36 @@ static void err(const std::string& msg) {
 }
 
 int main() {
-  // Generated variable `Trace *trace1, *trace2, ...`
-  {{TRACE}}
+  Trace *trace1 = new Trace{1}
+  Trace *trace2 = new Trace{2}
 
-  Instance instance{{{TRACE_VARIABLES}}, /* NOT USED */ ATOM_{{ATOM_NUM}}};
+  {% if is_accepting -%}
+  // The path is ACCEPTING
+  {%- else -%}
+  // The path is NOT ACCEPTING
+  {%- endif %}
+  {% for tr in path %}
+  // {{loop.idx0}} {{tr}}
+  //         wr(f"trace{i+1}->append(Event{ .{vars[i]} = {t.label} });\n")
+  {%- endfor %}
+  // for i in range(0, 2):
+  //     n = 0
+  //     for t in path:
+  //         if t.label.is_eps():
+  //             continue
+  //         n += 1
+  //     dump_codegen_position(f)
+  //     wr(f"trace{i+1}->setFinished();")
+  //     wr(f"/* Trace {i + 1} length: {n} */\n\n")
+
+
+
+  Instance instance{ {{TRACE_VARIABLES}}, /* NOT USED */ ATOM_{{ATOM_NUM}} };
   AtomMonitor{{ATOM_NUM}} M(instance);
 
   size_t steps = 0;
   Verdict verdict;
+  {%set MAX_TRACE_LEN = path | length -%}
   while ((verdict = M.step()) == Verdict::UNKNOWN) {
     if (steps++ > {{MAX_TRACE_LEN}}*{{MAX_TRACE_LEN}} + 10) {
       err("Should have terminated by now, max trace length is {{MAX_TRACE_LEN}}.");
@@ -34,6 +56,11 @@ int main() {
   std::cout << "Formula: {{FORMULA}}\n";
   std::cout << "Verdict: " << verdict_str << "\n";
 
+  {% if is_accepting -%}
+  {% set EXPECTED_VERDICT = "Verdict::TRUE" -%}
+  {%- else -%}
+  {% set EXPECTED_VERDICT = "Verdict::FALSE" -%}
+  {%- endif -%}
   if (verdict != {{EXPECTED_VERDICT}}) {
       err("Verdict mismatch, expected '{{EXPECTED_VERDICT}}'");
   }

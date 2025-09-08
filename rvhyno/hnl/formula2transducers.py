@@ -325,10 +325,6 @@ def automaton_for_comparison(
     such that the output of `left` is a prefix of (equal to) the output of `right`.
     We do not have a class for automata with registers, so we return a symbolic transducer
     that has no output.
-    NOTE: the automata for prefixing _rely" on the code generator that it stops reading the traces
-    once the left transducer accepts -- it does not generate a state that consumes the rest of the
-    output from the right transducer, so it cannot be used as a "normal" transducer that accepts
-    by the state after finishing reading all traces.
     """
 
     # Pairs of states that we will later translate to State. But for now, it is more comfortable
