@@ -22,8 +22,10 @@ target_link_libraries(${LIBRARY_NAME} PUBLIC  atoms${monitor_name} {{submonitors
 # target_compile_definitions(${monitor_name} PRIVATE {{additional_cflags}})
 # endif()
 
+{% if cg.args.gen_atom_tests %}
 if (ENABLE_TESTS)
     add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()
+{% endif %}
 
 {{add_submonitors}}

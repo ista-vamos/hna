@@ -801,14 +801,14 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-    def generate(self, formula, alphabet=None, gen_tests=True):
+    def generate(self, formula, alphabet=None):
         """
         The top-level method to generate code
         """
         alphabet = alphabet or self.args.alphabet
 
         self.generate_monitor(formula, alphabet)
-        if gen_tests:
+        if self.args.gen_atom_tests:
             self.generate_tests()
 
         if self._embedded:

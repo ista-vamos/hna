@@ -51,6 +51,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
+            "cg": self,
             "additional_sources": " ".join(
                 (
                     basename(f)

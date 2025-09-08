@@ -121,7 +121,18 @@ def create_cmdargs_parser(out_dir):
         "inputs (for testing). See --help of the monitor binary "
         "for instructions on how to use the CSV reader if the monitor has also other inputs.",
     )
-
+    parser.add_argument(
+        "--gen-atom-tests",
+        action="store_true",
+        default=False,
+        help="Generate tests for atoms.",
+    )
+    parser.add_argument(
+        "--gen-experiments",
+        action="store_true",
+        default=True,
+        help="Generate sample experiments setup.",
+    )
     parser.add_argument(
         "--reduction",
         action="store",

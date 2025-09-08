@@ -34,7 +34,7 @@ class CodeGenCpp(CodeGenCpp):
         self_dir = abspath(
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
-        self.templates_path = pathjoin(self_dir, "../templates/")
+        self.templates_path = abspath(pathjoin(self_dir, "../templates/"))
         self._fixed_quantifiers = fixed_quantifiers
 
     def _generate_create_instances(self, formula):

@@ -24,14 +24,14 @@ class CodeGenCpp(CodeGenCpp):
         super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
 
-    def generate(self, formula, gen_tests=True):
+    def generate(self, formula):
         """
         The top-level method to generate code
         """
 
         self.generate_monitor(formula)
 
-        if gen_tests:
+        if self.args.gen_atom_tests:
             msg('warn', "Cannot generate tests for HLTL monitors")
 
         # cmake generation should go at the end so that

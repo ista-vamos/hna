@@ -98,10 +98,12 @@ class CodeGenCpp(CodeGenCpp):
         wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
         wr("#endif /* !DEBUG_PRINTS */\n")
 
-    def generate(self, formula, gen_tests=True):
+
+    def generate(self, formula):
         """
         The top-level function to generate code
         """
+
         top_formula, sub_formula, fixed_quantifiers = _split_formula(formula)
         negate_submonitor_result = isinstance(sub_formula.quantifier_prefix[0], Exists)
 
