@@ -74,11 +74,13 @@ def create_cmdargs_parser(out_dir):
     parser.add_argument(
         "--data",
         action="store",
-        help="A comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C type. "
+        help="A comma separated list of 'name:type' pairs where name is a valid C name and type is a valid C *integer* type. "
         "This list basically defines the type of the events expected on traces. "
-        "Int C types can be refined with annotations saying the range of numbers, e.g.: `int [8b]` "
+        "The types can be refined with annotations saying the range of numbers, e.g.: `int [8b]` "
         "meaning int with at most 8-bit values, or `int [0..100]` for numbers between 0 and 100 (limits included)."
-        "Information from this option is used also to generate the reader for CSV files.",
+        "Information from this option is used also to generate the reader for CSV files.\n"
+        "One more option is to use `aps: name1, name2, ...` which means 'atomic propositions' and translates to "
+        "`name1: bool, name2: bool, ...`.",
     )
 
     parser.add_argument(
