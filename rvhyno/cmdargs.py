@@ -3,6 +3,7 @@ import argparse
 from os.path import basename, abspath
 from sys import argv
 
+from rvhyno.hnl.codegen.utils import c_type_info
 from rvhyno.utils import msg
 
 
@@ -157,20 +158,29 @@ def parse_type(ty: str):
                 bits = int(nums[:-1])
                 if bits > 64:
                     raise RuntimeError(
-                        f"Was not able to parse data type: {ty}. The bitwidth {bits} is invalid."
+                        f"Was not able to parse data type: {ty}. The bitwidth {bits} is too big."
                     )
-                num_range = (
-                    (0, (1 << bits) - 1)
-                    if "unsigned" in c_type
-                    else (-(1 << (bits - 1)), ((1 << (bits - 1)) - 1))
-                )
+                if bits < 0:
+                    raise RuntimeError(
+                        f"Was not able to parse data type: {ty}. The bitwidth {bits} is negative."
+                    )
+                bw, signed = c_type_info(c_type)
+                if bits > 8*bw:
+                    raise RuntimeError(
+                        f"Was not able to parse data type: {ty}. "
+                        f"The bitwidth {bits} is bigger than the bitwidth of the data type `{c_type}`."
+                    )
+                num_range =  (-(1 << (bits - 1)), ((1 << (bits - 1)) - 1)) if signed else (0, (1 << bits) - 1)
             elif ".." in nums:
                 # TODO: we need better input sanitization here
                 a, b = nums.split("..")
                 num_range = (int(a), int(b))
+            else:
+                raise NotImplementedError(f"Invalid size info for a field: `{ty}`")
         return c_type, num_range
 
     # this is just an incomplete check
+    # TODO:: once c_type_info is (close to) complete, use that for checking
     types = ("int", "char", "short", "long", "float", "double", "bool",
              "uint64_t", "int64_t", "uint32_t", "int32_t")
     if ty not in types and ty not in ("unsigned",):
