@@ -113,6 +113,8 @@ def c_type_info(ty: str) -> Tuple[int, int]:
     elif ty == 'unsigned long long':
         bw = ctypes.sizeof(ctypes.c_longlong)
         signed = True
+    else:
+        raise NotImplementedError(f"Unhandled C type: `{ty}`")
 
     return bw, signed
 

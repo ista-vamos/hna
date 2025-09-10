@@ -494,7 +494,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
                 vmin = max(0, vmin)
                 vmax = min(2**bits - 1, vmax)
             else:
-                raise NotImplementedError("This alphabet is unhandled")
+                raise NotImplementedError(f"This alphabet is unhandled: {alphabet}")
 
         assert vmin is not None
         assert vmax is not None
