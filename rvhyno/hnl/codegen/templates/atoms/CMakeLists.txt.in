@@ -34,7 +34,7 @@ endif()
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
 {% if cg.args.gen_atom_tests %}
-if (ENABLE_TESTS)
+if (ENABLE_ATOMS_TESTS)
 enable_testing()
 add_subdirectory(tests EXCLUDE_FROM_ALL)
 endif()

@@ -266,10 +266,8 @@ class CodeGenCpp(CodeGenCppAtoms):
         if "EVENT" in self.args.data:
             raise RuntimeError("A clash of names, an event cannot be called `EVENT`")
 
-        self.gen_file("registers.h.in", "registers.h",
-                      {'cg': self})
-        self.gen_file("registers.cpp.in", "registers.cpp",
-                      {'cg': self})
+        self.gen_file("registers.h.in", "registers.h", {"cg": self})
+        self.gen_file("registers.cpp.in", "registers.cpp", {"cg": self})
         self._generated_files.append("registers.cpp")
 
     def _generate_trivial_atom(self, nd):
@@ -296,7 +294,14 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         for nd in self._bdd_nodes:
             num, atom_formula = nd.get_id(), nd.formula
-            log('dbg', "Generating code for automaton", nd.get_id(), ":", f'`{atom_formula}`', section=4)
+            log(
+                "dbg",
+                "Generating code for automaton",
+                nd.get_id(),
+                ":",
+                f"`{atom_formula}`",
+                section=4,
+            )
 
             # check duplicate atoms
             # duplicate_num = generated_automata.get(
@@ -366,7 +371,6 @@ class CodeGenCpp(CodeGenCppAtoms):
             for nd in self._bdd_nodes:
                 f.write(f'#include "atom-{nd.get_id()}.h"\n')
             f.write("#endif\n")
-
 
     def _generate_atom(self, data, formula: PrenexFormula, wrcpp):
         atom_formula, num, automaton = data.atom_formula, data.num, data.automaton
@@ -629,12 +633,14 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_atom_header(self, data, wrh):
         automaton, num = data.automaton, data.num
 
-        self.gen_file("atoms/atom-shl.h.in", f"atom-{num}.h",
-                      {'cg': self, 'num': num, 'automaton': automaton, 'data': data})
+        self.gen_file(
+            "atoms/atom-shl.h.in",
+            f"atom-{num}.h",
+            {"cg": self, "num": num, "automaton": automaton, "data": data},
+        )
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         raise NotImplementedError("Not re-implemented for transducers")
-
 
     def gen_handle_state(self, aut_num, data, wrcpp):
 
@@ -788,7 +794,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
             self._automata[nformula.children[0]] = A1
         else:
-            log('dbg', f"Hit cache for {nformula.children[0]}")
+            log("dbg", f"Hit cache for {nformula.children[0]}")
         A2 = self._automata.get(nformula.children[1])
         if A2 is None:
             A2 = Formula2Transducer(self.args.data_fun).formula_to_transducer(
@@ -796,7 +802,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             )
             self._automata[nformula.children[1]] = A2
         else:
-            log('dbg', f"Hit cache for {nformula.children[1]}")
+            log("dbg", f"Hit cache for {nformula.children[1]}")
 
         A1 = A1.remove_redundant_states_once()
         A2 = A2.remove_redundant_states_once()
@@ -837,60 +843,65 @@ class CodeGenCpp(CodeGenCppAtoms):
             },
         )
 
-        msg('warn', "Asked to generate tests for atoms, but this is not working yet, skipping..")
+        msg(
+            "warn",
+            "Asked to generate tests for atoms, but this is not working yet, skipping..",
+        )
         return
 
         for nd in self._bdd_nodes:
-           num = nd.get_id()
-           for test_num in range(0, 20):
-               if test_num < 10:
-                   # make sure to generate some short tests
-                   path_len = randrange(0, 5)
-               else:
-                   path_len = randrange(5, 100)
+            num = nd.get_id()
+            for test_num in range(0, 20):
+                if test_num < 10:
+                    # make sure to generate some short tests
+                    path_len = randrange(0, 5)
+                else:
+                    path_len = randrange(5, 100)
 
-               path = random_path(nd.automaton, path_len)
-               self.gen_test(nd.automaton, nd.formula, num, path, test_num)
+                path = random_path(nd.automaton, path_len)
+                self.gen_test(nd.automaton, nd.formula, num, path, test_num)
 
     def gen_test(self, automaton, F, num, path, test_num):
-        assert automaton.is_initial(path[0].source), "Path starts with non-initial state"
+        assert automaton.is_initial(
+            path[0].source
+        ), "Path starts with non-initial state"
         is_accepting = path_is_accepting(automaton, path)
-       # with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
-       #     wr = f.write
-       #     dump_codegen_position(f)
-       #     wr(f"// The path used to generate this test:\n\n")
-       #     for t in path:
-       #         wr(f"// {t}\n")
-       #     wr(f"// Accepting: {is_accepting}\n\n")
-       #     dump_codegen_position(f)
-       #     wr("Trace *trace1 = new Trace{1};\n")
-       #     wr("Trace *trace2 = new Trace{2};\n\n")
-       #     for i in range(0, 2):
-       #         n = 0
-       #         for t in path:
-       #             if t.label.is_eps():
-       #                 continue
-       #             wr(f"trace{i+1}->append(Event{{ .{vars[i]} = {t.label}}});\n")
-       #             n += 1
-       #         dump_codegen_position(f)
-       #         wr(f"trace{i+1}->setFinished();")
-       #         wr(f"/* Trace {i + 1} length: {n} */\n\n")
+        # with self.new_file(f"tests/test-trace-{num}-{test_num}.cpp") as f:
+        #     wr = f.write
+        #     dump_codegen_position(f)
+        #     wr(f"// The path used to generate this test:\n\n")
+        #     for t in path:
+        #         wr(f"// {t}\n")
+        #     wr(f"// Accepting: {is_accepting}\n\n")
+        #     dump_codegen_position(f)
+        #     wr("Trace *trace1 = new Trace{1};\n")
+        #     wr("Trace *trace2 = new Trace{2};\n\n")
+        #     for i in range(0, 2):
+        #         n = 0
+        #         for t in path:
+        #             if t.label.is_eps():
+        #                 continue
+        #             wr(f"trace{i+1}->append(Event{{ .{vars[i]} = {t.label}}});\n")
+        #             n += 1
+        #         dump_codegen_position(f)
+        #         wr(f"trace{i+1}->setFinished();")
+        #         wr(f"/* Trace {i + 1} length: {n} */\n\n")
 
         self.gen_file(
             "atoms/test-atom.cpp.in",
             f"tests/test-atom-{num}-{test_num}.cpp",
             {
                 "cg": self,
-                'automaton': automaton,
-                'path': path,
-                'is_accepting': is_accepting,
+                "automaton": automaton,
+                "path": path,
+                "is_accepting": is_accepting,
                 "ATOM_NUM": str(num),
-                "FORMULA": str(F)
+                "FORMULA": str(F),
             },
         )
 
     def generate(self, formula) -> None:
-        """ The top-level method to generate code
+        """The top-level method to generate code
 
         :param formula:  The formula of sHL logic to be monitored.
         """
@@ -905,7 +916,9 @@ class CodeGenCpp(CodeGenCppAtoms):
                 if f not in self.args.overwrite_file:
                     self.copy_file(f, from_dir=from_dir)
         else:
-            raise NotImplementedError("This should never be non-embedded in the current code")
+            raise NotImplementedError(
+                "This should never be non-embedded in the current code"
+            )
             self.copy_files()
 
             self.gen_file(
@@ -928,29 +941,33 @@ class CodeGenCpp(CodeGenCppAtoms):
         assert not formula.has_quantifier_alternation(), formula
 
         # there is no sub-formula, this is the monitor for the body of the formula
-        msg('info', "Generating BDD for the formula", section=3)
+        msg("info", "Generating BDD for the formula", section=3)
         self._gen_bdd_from_formula(formula)
 
-        msg('info', "Generating atomic comparison automata", section=3)
+        msg("info", "Generating atomic comparison automata", section=3)
         for nd in self._bdd_nodes:
             # no automaton for this one, we'll handle that explicitly
             if isinstance(nd, ConstBDDNode):
                 continue
-            log('dbg', f"Generating atomic comparison automaton {nd.get_id()}", section=4)
+            log(
+                "dbg",
+                f"Generating atomic comparison automaton {nd.get_id()}",
+                section=4,
+            )
             nd.automaton, nd.renaming = self.generate_atomic_comparison_automaton(nd)
 
-        msg('info', "Generating monitor code", section=3)
+        msg("info", "Generating monitor code", section=3)
 
-        msg('info', "Generating BDD code", section=3)
+        msg("info", "Generating BDD code", section=3)
         self._generate_bdd_code(formula)
         # Needed when generating formula-monitor.cpp
         self._generate_create_instances(formula)
 
-        msg('info', "Generating stuctures for registers", section=3)
+        msg("info", "Generating stuctures for registers", section=3)
         self._generate_registers()
-        msg('info', "Generating code for instances", section=3)
+        msg("info", "Generating code for instances", section=3)
         self._generate_hnlinstances(formula)
-        msg('info', "Generating automata for instances", section=3)
+        msg("info", "Generating automata for instances", section=3)
         self._generate_automata_code(formula)
 
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
@@ -963,9 +980,12 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
-        self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
-        self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
-
+        self.gen_file(
+            "atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values
+        )
+        self.gen_file(
+            "atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values
+        )
 
 
 def debug_code_state(ns, data, wrcpp):

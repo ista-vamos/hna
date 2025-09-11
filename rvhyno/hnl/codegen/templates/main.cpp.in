@@ -4,12 +4,10 @@
 #include <thread>
 #include <cassert>
 
-//#include "inputs.h"
 #include "cmd.h"
 #include "csvreader.h"
 #include "formula-monitor.h"
 
-{{namespace_using}}
 
 int main(int argc, char *argv[]) {
   std::ios::sync_with_stdio(false);

@@ -1,0 +1,32 @@
+
+## Traces and Sets of Traces
+
+### Traces
+
+### Sets of Traces
+
+{% if cg.has_generator_functions() -%}
+The traces are stored by the class `TraceSetBase`.
+This class has two child classes that are actually instantiated in the code: `TraceSet` and `SharedTraceSet`.
+{%- else -%}
+The traces are stored by the class `TraceSet`, which is a sub-class of `TraceSetBase` that
+actually keeps the traces in a container.
+{% endif %}
+The class `TraceSet` represents a set of traces that are being created and used concurrently.
+That is, it supports concurrent creation of new traces (the traces are never removed,
+so this functionality is not implemented now) with their getters.
+It is assumed that there is only one producer (new traces cannot be created concurrently).
+In the current code base, this producer is the `CSVReader` that reads files and stores them
+into the traces in the `TraceSet`.
+
+{% if cg.has_generator_functions() -%}
+The class `SharedTraceSet` is used by the generator functions. Instances of this class are created
+by `Function` classes and hold the traces. The traces cannot be accessed through this class, though,
+but must be accessed through the class `TraceSetView`. Monitors create `TraceSetView`s referencing
+a `SharedTraceSet` instance and the `TraceSetView` then allows to iterate over the traces stored
+in the `SharedTraceSet` instance. `TraceSetView` remembers what traces were already used by a monitor
+and so in this way, multiple monitors can access traces in the same `SharedTraceSet`. Also, reading
+traces through `TraceSetView`s never runs concurrently with creating the traces in `Function`,
+so `SharedTraceSet` is not concurrent and cannot be used concurrently unless the user takes care
+of sequentializing the accesses using, e.g., locks.
+{%- endif %}

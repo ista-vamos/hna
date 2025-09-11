@@ -6,6 +6,7 @@ from rvhyno.hnl.formula import PrenexFormula
 from ..shared import CodeGenCpp
 from rvhyno.utils import msg
 
+
 class CodeGenCpp(CodeGenCpp):
     """
     Class for generating monitors in C++.
@@ -23,7 +24,6 @@ class CodeGenCpp(CodeGenCpp):
     ):
         super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
 
-
     def generate(self, formula):
         """
         The top-level method to generate code
@@ -32,7 +32,7 @@ class CodeGenCpp(CodeGenCpp):
         self.generate_monitor(formula)
 
         if self.args.gen_atom_tests:
-            msg('warn', "Cannot generate tests for HLTL monitors")
+            msg("warn", "Cannot generate tests for HLTL monitors")
 
         # cmake generation should go at the end so that
         # it knows all the generated files
@@ -63,10 +63,9 @@ class CodeGenCpp(CodeGenCpp):
     #
     #     self.gen_file("atoms/trivial-atom-monitor.h.in", f"atom-{num}.h", values)
 
-
     def generate_monitor(self, formula: PrenexFormula):
 
-        msg('info', "Generating monitor code", section=3)
+        msg("info", "Generating monitor code", section=3)
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
         assert not formula.has_quantifier_alternation(), formula
         inputs_finished = self._inputs_finished(formula)
@@ -83,7 +82,6 @@ class CodeGenCpp(CodeGenCpp):
 
         self.gen_file("hltl/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("hltl/formula-monitor.cpp.in", "formula-monitor.cpp", values)
-
 
     def generate_cmake(self, overwrite_keys=None):
         """
@@ -107,7 +105,7 @@ class CodeGenCpp(CodeGenCpp):
             ),
             "additional_cflags": " ".join((d for d in self.args.cflags)),
             "CMAKE_BUILD_TYPE": build_type,
-            "monitor_name": self.name()
+            "monitor_name": self.name(),
         }
         if overwrite_keys:
             values.update(overwrite_keys)
@@ -116,6 +114,5 @@ class CodeGenCpp(CodeGenCpp):
             cmakelists = "hltl/CMakeLists-embedded.txt.in"
         else:
             raise NotImplementedError("This monitor should be always embedded")
-            #cmakelists = "hltl/CMakeLists.txt.in"
+            # cmakelists = "hltl/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
-

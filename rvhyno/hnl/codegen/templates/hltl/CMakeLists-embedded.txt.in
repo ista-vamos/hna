@@ -30,7 +30,3 @@ if (SPOT_DIR)
     target_link_directories(${LIBRARY_NAME} PUBLIC ${SPOT_DIR}/lib)
 endif()
 
-
-#if (ENABLE_TESTS)
-#    add_subdirectory(tests EXCLUDE_FROM_ALL)
-#endif()

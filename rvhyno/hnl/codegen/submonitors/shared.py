@@ -28,7 +28,11 @@ class CodeGenCpp(CodeGenCpp):
         embedded: bool = False,
     ):
         super().__init__(
-            name=name, args=args, out_dir=out_dir, namespace=namespace, embedded=embedded
+            name=name,
+            args=args,
+            out_dir=out_dir,
+            namespace=namespace,
+            embedded=embedded,
         )
 
         self_dir = abspath(
@@ -108,7 +112,7 @@ class CodeGenCpp(CodeGenCpp):
         raise NotImplementedError("Must be overriden")
 
     def input_tracesets(self, formula):
-        """ Sort quantifiers from the formula for code generation
+        """Sort quantifiers from the formula for code generation
 
         In the generated code, we need to make sure that the right values are passed
         to the right arguments. In all classes that use quantifiers, we want to have
@@ -139,9 +143,8 @@ class CodeGenCpp(CodeGenCpp):
             q2setname,
         )
 
-
     def read_generated_file(self, name):
-        """ Read the contents of a generated file and return it as a string.
+        """Read the contents of a generated file and return it as a string.
 
         In some cases, it is easier to generate the whole code in Python instead of creating a template for it
         (e.g., for creating the instances of formula). In such cases, we can use this method to feed the
@@ -154,5 +157,5 @@ class CodeGenCpp(CodeGenCpp):
         path = self.get_output_path(name)
         # More efficient would be to return the opened file and then somehow take care of closing it
         # (or rely on GC), but for now, this is good enough
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return f.readlines()

@@ -10,6 +10,7 @@ from lark.lexer import Token
 
 def cached_str(m):
     """Decorator to cache the string returned from __str__ inside an object"""
+
     def new_str(self):
         if self._cached_str is None:
             self._cached_str = m(self)
@@ -19,7 +20,7 @@ def cached_str(m):
 
 
 class DerivativesSet(set):
-    """ A set of derivatives of a formula.
+    """A set of derivatives of a formula.
 
     This is normal Python :class:`set` extended with methods that allow
     to use this set comfortably for derivatives.
@@ -27,6 +28,7 @@ class DerivativesSet(set):
 
     :param *args: list of :class:`Formula` instances
     """
+
     def __init__(self, *args) -> None:
         super().__init__((x.simplify() for x in args))
         self._cached_str = None
@@ -74,7 +76,7 @@ class Formula:
         return str(self) == str(other)
 
     def quantifiers(self) -> List["Quantifier"]:
-        """ Return all quantifiers in the formula """
+        """Return all quantifiers in the formula"""
         return [t for c in self.children for t in c.quantifiers()]
 
     def trace_variables(self) -> List["TraceVariable"]:
@@ -136,7 +138,7 @@ class Formula:
     visit = visit_bottom_up
 
     def is_simple(self) -> bool:
-        """ Return `True` if the formula is simple, i.e., it does not contain
+        """Return `True` if the formula is simple, i.e., it does not contain
         multiple program variables on either side of prefixing relation
 
         FIXME: and is not inside iteration
@@ -144,7 +146,7 @@ class Formula:
         return all((c.is_simple() for c in self.children))
 
     def simplify(self) -> "Formula":
-        """ Simplify the formula.
+        """Simplify the formula.
 
         This may not in-situ operation, it may return **possibly** a new object (but possibly not).
         """
@@ -1138,9 +1140,10 @@ class HLTLFormula(Formula):
     We allow to embed HLTL formulas that we send to RVHyper.
     This class wraps the whole formula (as `str`).
     """
+
     def __init__(self, formula):
         super().__init__([])
         self.formula = formula
 
     def __str__(self):
-        return f'hltl[{self.formula}]'
+        return f"hltl[{self.formula}]"

@@ -7,7 +7,7 @@ class Automaton(AccInitTransitionSystem):
     """
     Class representing a finite-state automaton
 
-    :param states: 
+    :param states:
     """
 
     def __init__(

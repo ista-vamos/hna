@@ -30,10 +30,12 @@ def create_cmdargs_parser(out_dir):
         "--build-type", action="store", help="Force build _type for the CMake project"
     )
     parser.add_argument(
-        "--build-system", action="store", default=None,
+        "--build-system",
+        action="store",
+        default=None,
         help="Force build system for the CMake project (e.g., Ninja, Unix Makefiles, ...). "
-             "If not set, Ninja is used if available. If not set and Ninja is not available, CMake's default on the "
-             "system is used."
+        "If not set, Ninja is used if available. If not set and Ninja is not available, CMake's default on the "
+        "system is used.",
     )
     parser.add_argument(
         "--sanitize", action="store", help="Compile the monitor with sanitizers"
@@ -51,7 +53,7 @@ def create_cmdargs_parser(out_dir):
     parser.add_argument(
         "--log",
         action="append",
-        default=['info', 'warn', 'err'],
+        default=["info", "warn", "err"],
         help="Set messages to log, can be used multiple times, default=[info,warn,err], possible=[info,warn,err,dbg]",
     )
     parser.add_argument(
@@ -167,12 +169,16 @@ def parse_type(ty: str):
                         f"Was not able to parse data type: {ty}. The bitwidth {bits} is negative."
                     )
                 bw, signed = c_type_info(c_type)
-                if bits > 8*bw:
+                if bits > 8 * bw:
                     raise RuntimeError(
                         f"Was not able to parse data type: {ty}. "
                         f"The bitwidth {bits} is bigger than the bitwidth of the data type `{c_type}`."
                     )
-                num_range =  (-(1 << (bits - 1)), ((1 << (bits - 1)) - 1)) if signed else (0, (1 << bits) - 1)
+                num_range = (
+                    (-(1 << (bits - 1)), ((1 << (bits - 1)) - 1))
+                    if signed
+                    else (0, (1 << bits) - 1)
+                )
             elif ".." in nums:
                 # TODO: we need better input sanitization here
                 a, b = nums.split("..")
@@ -183,11 +189,22 @@ def parse_type(ty: str):
 
     # this is just an incomplete check
     # TODO:: once c_type_info is (close to) complete, use that for checking
-    types = ("int", "char", "short", "long", "float", "double", "bool",
-             "uint64_t", "int64_t", "uint32_t", "int32_t")
+    types = (
+        "int",
+        "char",
+        "short",
+        "long",
+        "float",
+        "double",
+        "bool",
+        "uint64_t",
+        "int64_t",
+        "uint32_t",
+        "int32_t",
+    )
     if ty not in types and ty not in ("unsigned",):
         if ty not in (f"{sign} {t}" for t in types for sign in ("signed", "unsigned")):
-            msg('warn', f"I do not know this C type: '{ty}', but I proceed.")
+            msg("warn", f"I do not know this C type: '{ty}', but I proceed.")
     # this is a C type without range annotations
     return ty, None
 
@@ -204,12 +221,14 @@ def process_args(args):
     args.cmake_defs = args.D
 
     if args.data:
-        tmp_data = []  # we use list to preserve the order of elements because of the CSV files
+        tmp_data = (
+            []
+        )  # we use list to preserve the order of elements because of the CSV files
         types = args.data.lstrip()
-        if types.startswith('aps:'):
+        if types.startswith("aps:"):
             # this is a list of atomic propositions (a list of boolean variables)
             for name in types[5:].split(","):
-                tmp_data.append((name.strip(), ('bool', (0,1))))
+                tmp_data.append((name.strip(), ("bool", (0, 1))))
         else:
             types = types.split(",")
             for name_type in types:

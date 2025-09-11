@@ -20,18 +20,21 @@ def dump_codegen_position(f, lvl=1, full_filename=False, end="\n"):
         else:
             f.write(msg)
 
+
 def write_codegen_stack(f, lvl=1, full_filename=True, comment_str=r"//"):
     """
     This function dump the position from where it is called into the given file
     """
     wr = f if callable(f) else f.write
     wr(f"{comment_str} [CODEGEN] stack:\n")
-    for n, frame in enumerate(reversed(inspect.getouterframes(inspect.currentframe())[lvl:])):
+    for n, frame in enumerate(
+        reversed(inspect.getouterframes(inspect.currentframe())[lvl:])
+    ):
         filename = frame.filename if full_filename else basename(frame.filename)
         # crop the path to this module
         try:
-            filename = filename[filename.rindex('rvhyno'):]
+            filename = filename[filename.rindex("rvhyno") :]
         except ValueError:
-            pass # keep the whole name
+            pass  # keep the whole name
 
         wr(f"{comment_str} [{n}] {filename}:{frame.function}:{frame.lineno}\n")

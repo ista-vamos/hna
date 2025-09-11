@@ -48,11 +48,12 @@ def _split_formula(formula: PrenexFormula):
 
     F1 = PrenexFormula(same, Constant("subF"))
     F2 = PrenexFormula(rest, formula.formula)
-    log('dbg', "Split formula: topF = ", F1)
-    log('dbg', "Split formula: subF = ", F2)
-    log('dbg', "Same: ", same)
+    log("dbg", "Split formula: topF = ", F1)
+    log("dbg", "Split formula: subF = ", F2)
+    log("dbg", "Same: ", same)
 
     return F1, F2, same
+
 
 def c_type_info(ty: str) -> Tuple[int, int]:
     """
@@ -66,57 +67,58 @@ def c_type_info(ty: str) -> Tuple[int, int]:
     bw = None
     signed = False
 
-    if ty == 'int':
+    if ty == "int":
         bw = ctypes.sizeof(ctypes.c_int)
         signed = True
-    elif ty == 'int8_t':
+    elif ty == "int8_t":
         bw = ctypes.sizeof(ctypes.c_int8)
         signed = True
-    elif ty == 'int32_t':
+    elif ty == "int32_t":
         bw = ctypes.sizeof(ctypes.c_int32)
         signed = True
-    elif ty == 'int64_t':
+    elif ty == "int64_t":
         bw = ctypes.sizeof(ctypes.c_int64)
         signed = True
-    elif ty in ('uint', 'unsigned int'):
+    elif ty in ("uint", "unsigned int"):
         bw = ctypes.sizeof(ctypes.c_uint)
-    elif ty == 'uint32_t':
+    elif ty == "uint32_t":
         bw = ctypes.sizeof(ctypes.c_uint32)
-    elif ty == 'uint64_t':
+    elif ty == "uint64_t":
         bw = ctypes.sizeof(ctypes.c_uint64)
-    elif ty in ('_Bool', 'bool'):
+    elif ty in ("_Bool", "bool"):
         bw = ctypes.sizeof(ctypes.c_uint64)
-    elif ty == 'size_t':
+    elif ty == "size_t":
         bw = ctypes.sizeof(ctypes.c_size_t)
-    elif ty == 'ssize_t':
+    elif ty == "ssize_t":
         bw = ctypes.sizeof(ctypes.c_ssize_t)
         signed = True
-    elif ty == 'float':
+    elif ty == "float":
         bw = ctypes.sizeof(ctypes.c_float)
         signed = True
-    elif ty == 'double':
+    elif ty == "double":
         bw = ctypes.sizeof(ctypes.c_double)
         signed = True
-    elif ty == 'char':
+    elif ty == "char":
         bw = ctypes.sizeof(ctypes.c_char)
         signed = True
-    elif ty == 'unsigned char':
+    elif ty == "unsigned char":
         bw = ctypes.sizeof(ctypes.c_char)
-    elif ty == 'long':
+    elif ty == "long":
         bw = ctypes.sizeof(ctypes.c_long)
         signed = True
-    elif ty == 'unsigned long':
+    elif ty == "unsigned long":
         bw = ctypes.sizeof(ctypes.c_long)
-    elif ty == 'long long':
+    elif ty == "long long":
         bw = ctypes.sizeof(ctypes.c_longlong)
         signed = True
-    elif ty == 'unsigned long long':
+    elif ty == "unsigned long long":
         bw = ctypes.sizeof(ctypes.c_longlong)
         signed = True
     else:
         raise NotImplementedError(f"Unhandled C type: `{ty}`")
 
     return bw, signed
+
 
 def c_type_bounds(ty: str) -> Tuple[int, int]:
     """
@@ -126,6 +128,6 @@ def c_type_bounds(ty: str) -> Tuple[int, int]:
     """
     bw, s = c_type_info(ty)
     if s:
-        return 2 << (8*bw - 1), 2 << (8*bw - 1) - 1
+        return 2 << (8 * bw - 1), 2 << (8 * bw - 1) - 1
     else:
-        return 0, (2**(8*bw)) - 1
+        return 0, (2 ** (8 * bw)) - 1

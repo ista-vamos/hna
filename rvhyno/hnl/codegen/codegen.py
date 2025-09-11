@@ -2,7 +2,6 @@
 Code generation for hypernode logic -- the top-level codegen class.
 """
 
-
 from typing import Tuple
 from itertools import chain
 from os import readlink, makedirs
@@ -24,7 +23,7 @@ from rvhyno.utils import log_indent_incr, log_indent_decr, msg
 
 def _check_functions(functions) -> None:
     """Check if the generator functions are used consistently in the formula
-    
+
     :param functions:     A container with functions taken from the formula.
     :raises RuntimeError: If an inconsistency is detected.
     """
@@ -72,7 +71,9 @@ def _check_formula(formula, args):
 
 def _has_finite_alphabet(alphabet, args) -> bool:
     """Check if we have a finite alphabet"""
-    return bool(alphabet) or bool(args.alphabet) or _get_num_range(args.data) is not None
+    return (
+        bool(alphabet) or bool(args.alphabet) or _get_num_range(args.data) is not None
+    )
 
 
 class CodeGenCppTopLevel(CodeGenCpp):
@@ -122,6 +123,18 @@ class CodeGenCppTopLevel(CodeGenCpp):
             dirname(readlink(__file__) if islink(__file__) else __file__)
         )
         self.templates_path = pathjoin(self_dir, "templates/")
+        self._has_generator_functions = None
+
+    def has_generator_functions(self) -> bool:
+        """
+        :return: `True` if the formula to be monitored (by the top-level monitor)
+                  uses generator functions.
+        :raises RuntimeError:  if this function is called before the answer is known
+        """
+        if self._has_generator_functions is None:
+            raise RuntimeError("Not set yet!")
+
+        return self._has_generator_functions
 
     def copy_files(self):
         # copy files from the CMD line
@@ -143,12 +156,11 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "traceset.cpp",
             "tracesetview.h",
             "tracesetview.cpp",
-            "sharedtraceset.h",
-            "sharedtraceset.cpp",
             "verdict.h",
-            # XXX: do this only when functions are used
-            "function.h",
         ]
+
+        if self.has_generator_functions():
+            files.extend(["sharedtraceset.h", "sharedtraceset.cpp", "function.h"])
 
         from_dir = self.common_templates_path
         for f in files:
@@ -185,7 +197,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),
             "submonitors": "\n".join(
                 (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
-            )
+            ),
         }
         if overwrite_keys:
             values.update(overwrite_keys)
@@ -195,14 +207,12 @@ class CodeGenCppTopLevel(CodeGenCpp):
         else:
             cmakelists = "top/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
-        self.copy_file("CMakeLists-options.txt")
-        self.copy_file("CMakeLists-common.txt")
+        self.gen_file("CMakeLists-options.txt.in", "CMakeLists-options.txt", values)
+        self.gen_file("CMakeLists-common.txt.in", "CMakeLists-common.txt", values)
 
     def _generate_events(self):
-        self.gen_file("events.h.in", "events.h",
-                      {'data': self.args.data})
-        self.gen_file("events.cpp.in", "events.cpp",
-                      {'data': self.args.data})
+        self.gen_file("events.h.in", "events.h", {"data": self.args.data})
+        self.gen_file("events.cpp.in", "events.cpp", {"data": self.args.data})
 
         # FIXME: do this more programmer-friendly
         self._add_gen_files.append("events.cpp")
@@ -212,8 +222,9 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.copy_file("csvreader.cpp", from_dir=self.common_templates_path)
         self._add_gen_files.append("csvreader.cpp")
 
-        self.gen_file("read_csv_event.h.in", "read_csv_event.h",
-                      {'data': self.args.data})
+        self.gen_file(
+            "read_csv_event.h.in", "read_csv_event.h", {"data": self.args.data}
+        )
 
     def _gen_function_files(self, fun: Function):
         with self.new_file(f"function-{fun.name}.h") as f:
@@ -317,6 +328,10 @@ class CodeGenCppTopLevel(CodeGenCpp):
     def generate(self, formula: PrenexFormula, alphabet=None) -> None:
         """
         The top-level function to generate code
+
+        :param formula:  the input formula in the *prenex form*
+        :type formula:   :class:`PrenexFormula
+        :param alphabet:  alphabet to use; optional for sHL, necessary for eHL monitors.
         """
         if not self._embedded:
             self.gen_data_funs()
@@ -341,7 +356,11 @@ class CodeGenCppTopLevel(CodeGenCpp):
         # check types of functions
         _check_functions(functions_instances)
 
-        self.generate_functions(functions)
+        self._has_generator_functions = bool(functions)
+
+        if self.has_generator_functions():
+            self.generate_functions(functions)
+
         self.generate_alltracesets_class(functions)
 
         has_submonitors = formula.has_different_quantifiers()
@@ -380,7 +399,9 @@ class CodeGenCppTopLevel(CodeGenCpp):
             )
 
         log_indent_incr()
-        self.args.out_dir_overwrite = False # FIXME: do this more elegantly, this is more or less a hack
+        self.args.out_dir_overwrite = (
+            False  # FIXME: do this more elegantly, this is more or less a hack
+        )
         codegen.generate(formula)
         log_indent_decr()
 
@@ -397,14 +418,20 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.generate_cmake(formula)
 
         # Generate a README for the monitor
-        self.gen_file('top/README.md.in', "README.md",
-                      {'cg': self, 'formula': formula,
-                               'cmd': [f"'{s}'" if ' ' in s else s for s in self.args.cmd]
-                       })
+        self.gen_file(
+            "top/README.md.in",
+            "README.md",
+            {
+                "cg": self,
+                "formula": formula,
+                "cmd": [f"'{s}'" if " " in s else s for s in self.args.cmd],
+            },
+        )
+        self.gen_file("top/HACKING.md.in", "HACKING.md", {"cg": self})
 
         if self.args.debug:
             with self.new_dbg_file(f"args.txt") as f:
-                f.write(''.join(f'{k} : {v}\n' for k,v in vars(self.args).items()))
+                f.write("".join(f"{k} : {v}\n" for k, v in vars(self.args).items()))
 
         self.format_generated_code()
 
@@ -489,7 +516,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         alphabet = self.args.alphabet
         if alphabet:
-            if isinstance(alphabet, str) and alphabet.endswith('b'):
+            if isinstance(alphabet, str) and alphabet.endswith("b"):
                 bits = int(alphabet[:-1])
                 vmin = max(0, vmin)
                 vmax = min(2**bits - 1, vmax)
@@ -508,7 +535,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         return vmin, vmax
 
     def generate_experiments(self) -> None:
-        """ Generate a sample experiments setup.
+        """Generate a sample experiments setup.
 
         Generate a folder containing a set of random input traces
         (more precisely, we generate a script that generates the traces
@@ -516,7 +543,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         and scripts that run experiments over these (or any other) traces
         with the monitor.
         """
-        msg('info', "Generating sample experiments", section=3)
+        msg("info", "Generating sample experiments", section=3)
 
         # generating tests for atoms is not implemented right now,
         # but we still create the sub-dir so that we can keep the current
@@ -524,22 +551,32 @@ class CodeGenCppTopLevel(CodeGenCpp):
         makedirs(f"{self._out_dir}/experiments", exist_ok=True)
         makedirs(f"{self._out_dir}/experiments/random-traces", exist_ok=True)
 
-        self.gen_file("top/experiments/CMakeLists.txt.in", "experiments/CMakeLists.txt", { "cg": self })
-        self.gen_file("top/experiments/generate_traces.py.in", "experiments/generate_traces.py",
-                      { "cg": self, 'data_bounds': self._event_data_bounds }, creation_header='py')
-        self.gen_file("top/experiments/run.py", "experiments/run.py",
-                      { "cg": self}, creation_header='py')
-        self.gen_file("top/experiments/README.md.in", "experiments/README.md",
-                      {'cg': self})
-
+        self.gen_file(
+            "top/experiments/CMakeLists.txt.in",
+            "experiments/CMakeLists.txt",
+            {"cg": self},
+        )
+        self.gen_file(
+            "top/experiments/generate_traces.py.in",
+            "experiments/generate_traces.py",
+            {"cg": self, "data_bounds": self._event_data_bounds},
+            creation_header="py",
+        )
+        self.gen_file(
+            "top/experiments/run.py",
+            "experiments/run.py",
+            {"cg": self},
+            creation_header="py",
+        )
+        self.gen_file(
+            "top/experiments/README.md.in", "experiments/README.md", {"cg": self}
+        )
 
     def generate_main(self):
         self.gen_file(
             "main.cpp.in",
             "main.cpp",
             {
-                "namespace_using": (
-                    f"using namespace {self._namespace};" if self._namespace else ""
-                ),
+                "cg": self,
             },
         )

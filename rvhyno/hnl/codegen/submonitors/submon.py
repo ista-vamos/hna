@@ -65,7 +65,9 @@ class CodeGenCpp(CodeGenCpp):
         if self._embedded:
             cmakelists = "sub/CMakeLists-embedded.txt.in"
         else:
-            raise NotImplementedError("This should never be non-embedded in the current code")
+            raise NotImplementedError(
+                "This should never be non-embedded in the current code"
+            )
             cmakelists = "sub/CMakeLists.txt.in"
         self.gen_file(cmakelists, "CMakeLists.txt", values)
 
@@ -98,7 +100,6 @@ class CodeGenCpp(CodeGenCpp):
         wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
         wr("#endif /* !DEBUG_PRINTS */\n")
 
-
     def generate(self, formula):
         """
         The top-level function to generate code
@@ -113,7 +114,9 @@ class CodeGenCpp(CodeGenCpp):
         self.generate_submonitors(sub_formula, fixed_quantifiers)
 
         if not self._embedded:
-            raise NotImplementedError("This should never be non-embedded in the current code")
+            raise NotImplementedError(
+                "This should never be non-embedded in the current code"
+            )
             self.gen_file(
                 "main.cpp.in",
                 "main.cpp",
@@ -171,10 +174,9 @@ class CodeGenCpp(CodeGenCpp):
             "cg": self,
             "monitor_name": self.name(),
             "negate_submonitor_verdict": negate_submonitor_result,
-            'formula': formula
+            "formula": formula,
         }
 
         self.gen_file("sub/instance.h.in", "instance.h", values)
         self.gen_file("sub/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("sub/formula-monitor.cpp.in", "formula-monitor.cpp", values)
-

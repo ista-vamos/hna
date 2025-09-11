@@ -145,8 +145,11 @@ class CodeGenCpp(CodeGenCppAtoms):
                     self._atoms_files.append(f"atom-{num}.cpp")
                 continue
 
-            self.gen_file("atoms/atom-ehl.h.in", f"atom-{num}.h",
-                          {'cg': self, 'num': num, 'automaton': nd.automaton})
+            self.gen_file(
+                "atoms/atom-ehl.h.in",
+                f"atom-{num}.h",
+                {"cg": self, "num": num, "automaton": nd.automaton},
+            )
 
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 self._generate_atom(fcpp.write, formula, nd)
@@ -417,7 +420,6 @@ class CodeGenCpp(CodeGenCppAtoms):
         wrcpp(f"_cfgs.rotate();")
         wrcpp(" return Verdict::UNKNOWN;\n")
         wrcpp("}\n\n")
-
 
     def _generate_duplicate_atom(self, nd, duplicate_of, wrh, wrcpp):
         num, atom_formula = nd.get_id(), nd.formula
@@ -818,7 +820,9 @@ class CodeGenCpp(CodeGenCppAtoms):
                     self.copy_file(f, from_dir=from_dir)
             self.copy_file("atoms/ehl-evaluation-stateset.h")
         else:
-            raise NotImplementedError("This should never be non-embedded in the current code")
+            raise NotImplementedError(
+                "This should never be non-embedded in the current code"
+            )
             self.copy_files()
 
             self.gen_file(
@@ -854,7 +858,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         values = {
             "monitor_name": self.name(),
             "info": f"Monitor for '{formula}'",
-            'formula': formula
+            "formula": formula,
         }
 
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
@@ -864,4 +868,3 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         values.update({"include_headers": '#include "ehl-evaluation-stateset.h"'})
         self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
-

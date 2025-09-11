@@ -6,29 +6,37 @@ endif()
 if(NO_EXCEPTIONS)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 endif()
+
 if(NO_RTTI)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif()
+
 if(SANITIZE)
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
 endif()
-if(SANITIZE_THREAD)
+
+if(SANITIZE_THREADS)
   if (SANITIZE)
     message(FATAL_ERROR "-fsanitize=address is incompatible with -fsanitize=thread")
   endif()
   set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
 endif()
+
 if (DEBUG_PRINTS)
     add_compile_definitions(DEBUG_PRINTS)
 endif()
+
 if (MEASURE_CPUTIME)
     add_compile_definitions(MEASURE_CPUTIME)
 endif()
+
+{% if cg.args.logic == "ehl" %}
 if (CACHE_ATOMS_RESULTS)
     add_compile_definitions(CACHE_ATOMS_RESULTS)
 endif()
+{% endif %}
 
 if (ENABLE_IPO)
     include(CheckIPOSupported)

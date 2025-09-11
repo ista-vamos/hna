@@ -21,8 +21,6 @@
 #include "atom-monitor.h"
 #include "finished-atom-monitor.h"
 #include "trace.h"
-#include "traceset.h"
-#include "sharedtraceset.h"
 #include "tracesetview.h"
 #include "cmd.h"
 

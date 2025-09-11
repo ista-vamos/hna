@@ -7,11 +7,11 @@
 
 #include "monitor-with-traces.h"
 #include "traceset.h"
-#include "function.h"
 #include "cmd.h"
 #include "submonitor/formula-monitor.h"
-
+{% if functions %}
 #include "functions.h"
+{%- endif -%}
 #include "alltracesets.h"
 
 {{namespace_start}}

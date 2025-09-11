@@ -125,8 +125,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
         self.BDD = BDD
 
     def _generate_bdd_code(self, formula):
-        self.gen_file("formula-state.h.in", "formula-state.h",
-                      {'cg': self })
+        self.gen_file("formula-state.h.in", "formula-state.h", {"cg": self})
 
     def get_formula_bdd_actions(self):
 
@@ -146,8 +145,8 @@ class CodeGenCppAtoms(CodeGenCppShared):
         rows = {}
         if self.BDD.is_zero() or self.BDD.is_one():
             rows[1] = {}
-            rows[1][True] = 'RESULT_TRUE'
-            rows[1][False] = 'RESULT_FALSE'
+            rows[1][True] = "RESULT_TRUE"
+            rows[1][False] = "RESULT_FALSE"
             return rows
 
         seen, wbg = set(), set()
@@ -172,7 +171,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 rows[atom_id][True] = bdd_to_action(hi)
                 rows[atom_id][False] = bdd_to_action(lo)
             elif bdd.is_zero():
-                    pass
+                pass
         return rows
 
     def get_initial_atom(self) -> str:
@@ -186,7 +185,6 @@ class CodeGenCppAtoms(CodeGenCppShared):
             assert BDD.is_one() or BDD.is_zero(), BDD
             nd_id = 1
         return f"ATOM_{nd_id}"
-
 
     def _create_instance(self, formula, wr):
         dump_codegen_position(wr)
@@ -273,7 +271,8 @@ class CodeGenCppAtoms(CodeGenCppShared):
         def trace_variables(nd):
             return [t.name for t in nd.formula.trace_variables()]
 
-        self.gen_file("atoms/instance.h.in", "instance.h",
-                      {'cg': self, 'formula': formula,
-                       'trace_variables': trace_variables
-                       })
+        self.gen_file(
+            "atoms/instance.h.in",
+            "instance.h",
+            {"cg": self, "formula": formula, "trace_variables": trace_variables},
+        )

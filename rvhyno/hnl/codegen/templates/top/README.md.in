@@ -132,16 +132,22 @@ use `-j` to force the number of processes (e.g., if you need to run fewer proces
 You can change the options in `CMakeCache.txt` and then re-build the project. (Or you can call `cmake` with the
 relevant options you want). Interesting options in variables in `CMakeCache.txt` are:
 
-----| ---
-TBD | TBD
-----| ---
-TBD | TBD
-TBD | TBD
-----|----
+| Option            | Default |                                  Description                                         |
+|-------------------|---------|--------------------------------------------------------------------------------------|
+| `DEBUG_PRINTS`    | `OFF`   | Print debugging messages (of evaluating traces) on stderr.                           |
+| `SANITIZE`        | `OFF`   | Compile with `-fsanitize=address,undefined`.                                         |
+| `SANITIZE_THREADS`| `OFF`   | Compile with `-fsanitize=thread` (incompatible with `SANITIZE`).                     |
+| `ENABLE_IPO`      | `ON`    | Enable interprocedural optimizations (forced OFF for Debug builds, otherwise ON).    |
+| `MEASURE_CPUTIME` | `ON`    | Measure and print CPU time of running monitors.                                      |
+| `RETURN_VERDICT`  | `OFF`   | Return 1 if verdict is FALSE, otherwise 0. If OFF, non-0 is returned only on errors. |
+{%- if cg.args.logic == "ehl" %}
+| `CACHE_ATOMS_RESULTS` | `ON`| Do not create atoms for the same traces multiple times.                              |
+{% endif %}
+
+All the options are defined in `CMakeLists-options.txt`.
 
 ## Modifying code
 
 Feel free to modify the generated code as arbitrary. The code should be human-readable and contains a bunch (although
-possibly not enough) of comments. Here's a short getting started with the code.
-
-TBD
+possibly not enough) of comments. For more information about the structure and modifications of the code,
+see `HACKING.md`.

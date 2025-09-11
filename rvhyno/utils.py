@@ -14,28 +14,32 @@ def code_position(f, end="\n"):
     if __debug__:
         parent_frame = inspect.getouterframes(inspect.currentframe())[1]
         return f"{basename(parent_frame.filename)}:{parent_frame.function}:{parent_frame.lineno}{end}"
-    return ''
+    return ""
 
 
 _logfile = None
 _max_width = 0
 _ind = 0
 
+
 def log_indent_incr():
     global _ind
     _ind += 2
+
 
 def log_indent_decr():
     global _ind
     _ind -= 2
 
+
 def open_log(path):
     global _logfile
-    _logfile = open(path, 'w')
+    _logfile = open(path, "w")
 
     log(None, "RVHyno log", section=1)
-    log('info', str(datetime.now()))
+    log("info", str(datetime.now()))
     return _logfile
+
 
 def log(cls, *args, **kwargs):
     global _max_width
@@ -45,13 +49,13 @@ def log(cls, *args, **kwargs):
     if _logfile:
         sec = kwargs.get("section")
         if sec:
-            print("\n"+"#"*sec, *args, file=_logfile)
+            print("\n" + "#" * sec, *args, file=_logfile)
             print("", file=_logfile)
         else:
             if cls:
-                print('..'*_ind, f"[{cls.ljust(_max_width)}]", *args, file=_logfile)
+                print(".." * _ind, f"[{cls.ljust(_max_width)}]", *args, file=_logfile)
             else:
-                print('..'*_ind, *args, file=_logfile)
+                print(".." * _ind, *args, file=_logfile)
 
 
 def msg(cls, *args, **kwargs):
@@ -62,7 +66,7 @@ def msg(cls, *args, **kwargs):
     # write the message also to the logfile if it has been opened
     log(cls, *args, **kwargs)
 
-    if kwargs.get('log_only'):
+    if kwargs.get("log_only"):
         return
 
     fl = kwargs.get("file", stderr if cls in ("dbg", "warn", "err") else stdout)
@@ -79,7 +83,11 @@ def msg(cls, *args, **kwargs):
 
     section = kwargs.get("section") or 0
     if 0 < section < 3:
-        print(' '*_ind, "------------------------------------------------------------", file=fl)
+        print(
+            " " * _ind,
+            "------------------------------------------------------------",
+            file=fl,
+        )
 
     if cl:
         print(cl, file=fl, end="")
@@ -88,12 +96,16 @@ def msg(cls, *args, **kwargs):
         print("#" * section, file=fl, end=" ")
 
     if cls is not None:
-        print(' '*_ind, f"[{cls.ljust(_max_width)}]", *args, "\033[0m", file=fl)
+        print(" " * _ind, f"[{cls.ljust(_max_width)}]", *args, "\033[0m", file=fl)
     else:
-        print(' '*_ind, *args, "\033[0m", file=fl)
+        print(" " * _ind, *args, "\033[0m", file=fl)
 
     if 0 < section < 3:
-        print(' '*_ind, "------------------------------------------------------------", file=fl)
+        print(
+            " " * _ind,
+            "------------------------------------------------------------",
+            file=fl,
+        )
 
 
 class args_str(str):
