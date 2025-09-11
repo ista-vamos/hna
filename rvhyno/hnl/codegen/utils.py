@@ -128,6 +128,6 @@ def c_type_bounds(ty: str) -> Tuple[int, int]:
     """
     bw, s = c_type_info(ty)
     if s:
-        return 2 << (8 * bw - 1), 2 << (8 * bw - 1) - 1
+        return -(2 << (8 * bw - 1)), 2 << (8 * bw - 1) - 1
     else:
         return 0, (2 ** (8 * bw)) - 1

@@ -175,8 +175,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         build_type = self.args.build_type
         if not build_type:
-            build_type = '"Debug"' if self.args.debug else "Release"
-            self.args.build_type = build_type
+            self.args.build_type = 'Release'
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
@@ -191,7 +190,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
                 )
             ),
             "additional_cflags": " ".join((d for d in self.args.cflags)),
-            "CMAKE_BUILD_TYPE": build_type,
+            "build_type": build_type,
             "monitor_name": self.name(),
             "top_monitor_dir": self._out_dir,
             "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),

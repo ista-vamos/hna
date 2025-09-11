@@ -21,7 +21,7 @@ public:
   }
 
   Verdict verdict() const { return _verdict; }
-  Verdict step(unsigned n = 0) { return _verdict; }
+  Verdict step(unsigned/* n  */ = 0) { return _verdict; }
 };
 
 {{cg.namespace_end()}}

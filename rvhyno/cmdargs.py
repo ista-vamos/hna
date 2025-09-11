@@ -27,7 +27,8 @@ def create_cmdargs_parser(out_dir):
         help="Overwrite the contents of the output dir if it exists (default: True)",
     )
     parser.add_argument(
-        "--build-type", action="store", help="Force build _type for the CMake project"
+        "--build-type", action="store",
+        help="Force the build type for the generated CMake project (e.g., Debug or Release)"
     )
     parser.add_argument(
         "--build-system",
@@ -48,7 +49,7 @@ def create_cmdargs_parser(out_dir):
     parser.add_argument(
         "--debug-prints",
         action="store_true",
-        help="--debug + print debugging messages to stderr",
+        help="--debug + -DDEBUG_PRINTS=1",
     )
     parser.add_argument(
         "--log",
@@ -64,7 +65,8 @@ def create_cmdargs_parser(out_dir):
     )
     parser.add_argument("--stats", action="store_true", help="Gather statistics")
     parser.add_argument(
-        "-D", action="append", default=[], help="Additional CMake definitions"
+        "-D", action="append", default=[],
+        help="Additional definitions to pass to CMake when building the generated code"
     )
     parser.add_argument(
         "--cflags",
@@ -213,6 +215,10 @@ def process_args(args):
 
     if args.debug_prints:
         args.debug = True
+
+    if args.debug and args.build_type is None:
+        msg("info", "Setting the build type to Debug because --debug was used (override with --build-type if necessary)")
+        args.build_type = 'Debug'
 
     args.input_file = None
     args.cpp_files = []
