@@ -113,6 +113,11 @@ class CodeGenCpp(CodeGenCpp):
         # generate the submonitors
         self.generate_submonitors(sub_formula, fixed_quantifiers)
 
+        self.gen_file("sub/README.md.in", "README.md",
+                      {'cg': self,
+                       'top_formula': top_formula,
+                       'sub_formula': sub_formula})
+
         if not self._embedded:
             raise NotImplementedError(
                 "This should never be non-embedded in the current code"
