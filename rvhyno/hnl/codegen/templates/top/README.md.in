@@ -7,6 +7,7 @@ This projects implements a monitor for the formula
 
 If you used the default options, the project is already configured and built, and it should contain the binary `monitor`.
 You can run this binary as:
+
 ```sh
 ./monitor trace1.csv trace2.csv trace3.csv ...
 ```
@@ -44,11 +45,13 @@ The first row of each CSV file can be a header with names of the columns (the na
 ## Other options
 
 Instead of traces, you can give the monitor a directory with traces:
+
 ```sh
 ./monitor directory-with-traces
 ```
 
 or, actually, you can do combinations:
+
 ```sh
 ./monitor directory-with-traces-1 trace1.csv trace2.csv directory-with-traces-2
 ```

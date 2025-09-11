@@ -525,9 +525,9 @@ class CodeGenCppTopLevel(CodeGenCpp):
         makedirs(f"{self._out_dir}/experiments/random-traces", exist_ok=True)
 
         self.gen_file("top/experiments/CMakeLists.txt.in", "experiments/CMakeLists.txt", { "cg": self })
-        self.gen_file("top/experiments/generate-traces.py.in", "experiments/generate-traces.py",
+        self.gen_file("top/experiments/generate_traces.py.in", "experiments/generate_traces.py",
                       { "cg": self, 'data_bounds': self._event_data_bounds }, creation_header='py')
-        self.gen_file("top/experiments/run.py.in", "experiments/run.py",
+        self.gen_file("top/experiments/run.py", "experiments/run.py",
                       { "cg": self}, creation_header='py')
         self.gen_file("top/experiments/README.md.in", "experiments/README.md",
                       {'cg': self})

@@ -29,6 +29,38 @@ to generate events as you like.
 
 ### `run.py`
 
+This command will run the experiments with pre-defined parameters (the parameters are pre-defined to run short
+demo experiments):
+
+```sh
+python3 ./run.py
+```
+
 See `--help`.
 
 TBD
+
+#### Runs isolation and interference
+
+*The runs are not isolated from other processes in any way.*
+As such, they may interfere with each other (if running in parallel), or with other processes on the system.
+When measuring time or memory consumption, this might be a problem. You can go around this to some extent by running
+the experiments multiple times (e.g., the option `--trials`) and using statistics.
+However, in cases where this really matters, you might want to run the experiments in an isolated environment instead of
+using the `run.py` script. For that, check, e.g., [BenchExec](https://github.com/sosy-lab/benchexec).
+
+### Running the monitor manually
+
+Running the monitor on the random traces:
+
+```sh
+../monitor random-traces
+```
+
+Running the monitor on another traces:
+
+```sh
+../monitor <traces-dir>
+../monitor <trace-1> <trace-2> ...
+../monitor <traces-dir-1> <traces-dir-2> <trace-1> <trace-2> ...
+```

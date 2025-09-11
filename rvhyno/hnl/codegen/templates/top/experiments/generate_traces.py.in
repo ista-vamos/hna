@@ -1,3 +1,5 @@
+#/usr/bin/env python3
+
 """
 Generate random CSV traces that can be read by the generated monitor.
 
@@ -5,15 +7,25 @@ Run as:
 ```sh
 python3 ./generate-traces.py [OPTIONS]
 ```
+
+This script is also used by the script `run.py` in the case that it is instructed
+to generate traces. In such a case, it imports the `generate_traces` function.
+(That is to say, if you modify this script and want to use `run.py`, make sure
+this function persists or modify also `run.py`)
 """
 
-#/usr/bin/env python3
-
 from random import randint, seed
-from os.path import abspath, dirname, realpath
+from os.path import abspath
 import argparse
 
-def generate_event(i, args, fl) -> None:
+def generate_event(i, fl) -> None:
+    """
+    Generate a single event.
+
+    Generate a single event (a row in the CSV trace) and write it
+    into the opened file `fl`.
+    """
+
     # {% for name, _ in cg.args.data -%}
     {{name}}{%- if not loop.last -%}, {% endif -%}
     {%- endfor %}
@@ -30,12 +42,33 @@ def generate_event(i, args, fl) -> None:
 {%- endfor -%}
     \n')
 
-def generate_trace(args, fl) -> None:
-    for i in range(args.len):
-        generate_event(i, args, fl)
+
+def generate_trace(length, fl) -> None:
+    """
+    Generate a trace.
+
+    Generate a trace with length `length` and write it into
+    the opened file `fl`.
+    """
+    for i in range(length):
+        generate_event(i, fl)
+
+
+def generate_traces(out_dir, num, length):
+    """
+    Generate `num` traces with length `length` into the directory `out_dir`.
+
+    The script `run.py` imports this function when instructed to generate traces.
+    If you modify this script and want to use `run.py`, make sure this function persists
+    or modify also `run.py`.
+    """
+    for n in range(1, num + 1):
+        with open(f"{out_dir}/trace-{n}.tr", "w") as tf:
+            generate_trace(length, tf)
 
 
 if __name__ == "__main__":
+
     ######################################################################
     # Get arguments and do the setup
     ######################################################################
@@ -54,9 +87,7 @@ if __name__ == "__main__":
     ######################################################################
     # Generate the traces
     ######################################################################
-    out_dir = abspath(args.out_dir)
-    for n in range(1, args.num + 1):
-        with open(f"{out_dir}/trace-{n}.tr", "w") as tf:
-            generate_trace(args, tf)
+
+    generate_traces(abspath(args.out_dir), args.num,  args.len)
 
     exit(0)
