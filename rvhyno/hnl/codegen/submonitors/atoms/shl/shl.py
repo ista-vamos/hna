@@ -986,7 +986,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file(
             "atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values
         )
-        self.gen_file('atoms/README.md.in', "README.md", values)
+        self.gen_file("atoms/README.md.in", "README.md", values)
 
 
 def debug_code_state(ns, data, wrcpp):

@@ -175,7 +175,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
 
         build_type = self.args.build_type
         if not build_type:
-            self.args.build_type = 'Release'
+            self.args.build_type = "Release"
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
