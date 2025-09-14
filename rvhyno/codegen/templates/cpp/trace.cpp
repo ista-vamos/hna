@@ -47,10 +47,14 @@ TraceQuery Trace::get(size_t idx, Event &e) {
   // we'll go to the slow code with locking once, but in the future
   // we'll save time by the relaxed reading.
   if (_finished.load(std::memory_order_relaxed)) {
-    if (idx < _events.size()) {
+    lock();
+    auto size = _events.size();
+    if (idx < size) {
         e = _events[idx];
+        unlock();
         return TraceQuery::AVAILABLE;
     }
+    unlock();
     return TraceQuery::END;
   }
 
