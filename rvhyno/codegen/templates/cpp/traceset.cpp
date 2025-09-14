@@ -4,6 +4,8 @@
 #include "traceset.h"
 
 TraceSet::~TraceSet() {
+  // when a trace set is being destroyed, no new
+  // views should be added or removed, so hold no lock
   for (auto *view : _views) {
     view->traceSetDestroyed();
   }
@@ -17,9 +19,11 @@ Trace *TraceSet::newTrace(unsigned trace_id) {
   unlock();
 
   // update views with the new trace
+  lock_views();
   for (auto *view : _views) {
     view->newTrace(trace_id, t);
   }
+  unlock_views();
 
   return t;
 }

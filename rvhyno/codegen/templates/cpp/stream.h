@@ -9,7 +9,7 @@
 // The connection between a stream and a trace is that the stream is the iterator over data (events)
 // coming from the monitored system and it gets turned into a trace which is used by the monitor.
 // For example, the `CSVReader` has one stream per opened file, reads events from this stream
-// and stores them into a _trace_ that is then consumed by the monitor.
+// and stores them into a *trace* that is then consumed by the monitor.
 class Stream {
   using IDTy = unsigned;
   const IDTy _id;

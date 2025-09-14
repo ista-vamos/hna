@@ -5,7 +5,7 @@ Generate random CSV traces that can be read by the generated monitor.
 
 Run as:
 ```sh
-python3 ./generate-traces.py [OPTIONS]
+python3 ./generate_traces.py [OPTIONS]
 ```
 
 This script is also used by the script `run.py` in the case that it is instructed

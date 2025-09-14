@@ -5,7 +5,6 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -15,6 +14,8 @@
 #include "events.h"
 #include "stream.h"
 
+///
+// Stream of events created from a CSV file.
 class CSVEventsStream : public Stream {
 #ifdef USE_CSV_PARSER
   csv::CSVReader _reader;

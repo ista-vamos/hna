@@ -21,22 +21,10 @@ class TraceSet : public TraceSetBase {
 
   std::atomic<bool> _traces_finished{false};
 
-  // lock for both, _traces and _new_traces.
-  // We could have two locks, one for each container,
-  // but my guess is there will be no much difference.
-  // Let's have just one and switch to two if profiler
-  // tells us it is a bottleneck.
-  // Also, in the future we could use some lock-free data structure to keep
-  // new traces, e.g., a SPSC lock-free ring-buffer should do.
-  std::mutex _traces_mtx;
-
   // get the trace with the given ID
   // NOTE: lock is not held as this method should not be called
   // concurrently with iterating or modifying the containers
   Trace *get(unsigned trace_id);
-
-  void lock() { _traces_mtx.lock(); }
-  void unlock() { _traces_mtx.unlock(); }
 
 public:
   TraceSet() = default;

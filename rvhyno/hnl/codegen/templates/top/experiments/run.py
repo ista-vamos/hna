@@ -28,7 +28,7 @@ def benchmark(arg):
 
     This function does the following things:
       - generate traces if required (no `--traces` is given and `--traces-num` and `--traces-len` are given).
-        For generating the traces, the functions from `generate-traces.py` are used.
+        For generating the traces, the functions from `generate_traces.py` are used.
       - run the monitor `args.trials` times on the given traces and with the given parameters
     """
     traces_num, traces_len, args = arg
