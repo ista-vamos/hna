@@ -8,9 +8,11 @@ TraceSetView::TraceSetView(TraceSetBase &S) : traceset(&S) {
 
   // add all traces that are currently in S between new traces,
   // so that they are returned from `getNewTrace`
+  S.lock();
   for (auto &[trid, tr_ptr] : S) {
     newTrace(trid, tr_ptr.get());
   }
+  S.unlock();
 }
 
 TraceSetView::~TraceSetView() {
