@@ -1,6 +1,7 @@
 import random
 from os import makedirs
 
+from rvhyno.utils import msg
 from rvhyno.automata.automaton import Automaton
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode
@@ -128,12 +129,20 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_automata_code(self, formula, alphabet):
         generated_automata = {}
         for nd in self._bdd_nodes:
-            print("Generating code for", nd.get_id(), ":", nd.formula)
+            msg('info', "Generating code for", nd.get_id(), ":", nd.formula)
             assert nd.automaton
-
+            
             num, F = nd.get_id(), nd.formula
+            nd.lformula.trace_variables()
+            l, r = F.children
+            l, r = l.program_variables(), r.program_variables()
+            assert len(l) <= 1, l
+            assert len(r) <= 1, r
+            lvar = l[0].name if l else None
+            rvar = r[0].name if r else None
+
             duplicate_num = generated_automata.get(
-                (nd.lvar, nd.rvar, nd.automaton.get_id())
+                (lvar, rvar, nd.automaton.get_id())
             )
             if duplicate_num is not None:
                 with self.new_file(f"atom-{num}.h") as fh, self.new_file(
@@ -154,7 +163,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             with self.new_file(f"atom-{num}.cpp") as fcpp:
                 self._generate_atom(fcpp.write, formula, nd)
             self._atoms_files.append(f"atom-{num}.cpp")
-            generated_automata[(nd.lvar, nd.rvar, nd.automaton.get_id())] = num
+            generated_automata[(lvar, rvar, nd.automaton.get_id())] = num
 
         with self.new_file("atom-identifier.h") as f:
             ns = self.namespace()
@@ -196,9 +205,15 @@ class CodeGenCpp(CodeGenCppAtoms):
 
     def _generate_atom(self, wrcpp, formula, nd):
         atom_formula, num, automaton = nd.formula, nd.get_id(), nd.automaton
+        l, r = atom_formula.children
+        l, r = l.program_variables(), r.program_variables()
+        assert len(l) <= 1, l
+        assert len(r) <= 1, r
+        ltrace = l[0].trace if l else None
+        rtrace = r[0].trace if r else None
 
-        t1 = nd.ltrace.name if nd.ltrace else None
-        t2 = nd.rtrace.name if nd.rtrace else None
+        t1 = ltrace.name if ltrace else None
+        t2 = rtrace.name if rtrace else None
         if not (t1 or t2):
             raise NotImplementedError("This case is unsupported yet")
         if not t1:
@@ -815,10 +830,9 @@ class CodeGenCpp(CodeGenCppAtoms):
 
         if self._embedded:
             from_dir = self.common_templates_path
-            for f in ("atom-base.h", "evaluation-state.h"):
+            for f in ("atom-base.h",):
                 if f not in self.args.overwrite_file:
                     self.copy_file(f, from_dir=from_dir)
-            self.copy_file("atoms/ehl-evaluation-stateset.h")
         else:
             raise NotImplementedError(
                 "This should never be non-embedded in the current code"
@@ -856,15 +870,14 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_monitor(formula, alphabet)
 
         values = {
+            'cg': self,
             "monitor_name": self.name(),
-            "info": f"Monitor for '{formula}'",
             "formula": formula,
         }
 
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
-        self.gen_file("finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
-
-        values.update({"include_headers": '#include "ehl-evaluation-stateset.h"'})
-        self.gen_file("regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
+        self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
+        self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
+        self.gen_file("atoms/evaluation-state.h.in", "evaluation-state.h", values)

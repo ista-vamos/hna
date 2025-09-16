@@ -16,7 +16,7 @@ class RegularAtomMonitor : public AtomMonitor {
 public:
   RegularAtomMonitor(const AtomIdentifier& id) : AtomMonitor(id) {}
 
-  Verdict step(const unsigned step_num);
+  Verdict step(const unsigned /* step_num */);
 };
 
 {{cg.namespace_end()}}

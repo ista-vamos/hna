@@ -558,7 +558,8 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.gen_file(
             "top/experiments/generate_traces.py.in",
             "experiments/generate_traces.py",
-            {"cg": self, "data_bounds": self._event_data_bounds},
+            {"cg": self, "data_bounds": self._event_data_bounds,
+             'explicit_alphabet': isinstance(self.args.alphabet, list)},
             creation_header="py",
         )
         self.gen_file(
