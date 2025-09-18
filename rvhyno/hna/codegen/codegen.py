@@ -3,9 +3,9 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from rvhyno.codegen.codegen import CodeGen
 from rvhyno.codegen.utils import dump_codegen_position
-from rvhyno.utils import FIXME
+#from rvhyno.utils import FIXME
 from rvhyno.hna.automaton import HyperNodeAutomaton
-from rvhyno.hnl.codegen import CodeGenCpp as HNLCodeGenCpp
+from rvhyno.hnl.codegen import CodeGenCppTopLevel as HNLCodeGenCpp
 from rvhyno.hnl.formula import Constant
 from rvhyno.hnl.parser import Parser as HNLParser
 
@@ -24,9 +24,9 @@ class CodeGenCpp(CodeGen):
         )
         self.templates_path = pathjoin(self_dir, "templates/")
 
-        if not self.args.csv_header:
+        if not self.args.data:
             raise NotImplementedError(
-                "Give --csv-header, other methods not supported yet"
+                "Give --data, other methods not supported yet"
             )
         self._event = [
             [s.strip() for s in event.split(":")]
@@ -36,6 +36,7 @@ class CodeGenCpp(CodeGen):
         makedirs(f"{self.out_dir}/tests", exist_ok=True)
 
     def FIXME(self, f, msg):
+        return
         if self.args.debug:
             FIXME(f, msg)
         else:

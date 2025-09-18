@@ -20,5 +20,5 @@ class HyperNodeAutomaton(Automaton):
         return self._actions
 
     def add_transition(self, t):
-        self._actions.add(t.name)
+        self._actions.add(t.label)
         super().add_transition(t)
