@@ -59,6 +59,12 @@ def create_cmdargs_parser(out_dir):
         help="Set messages to log, can be used multiple times, default=[info,warn,err], possible=[info,warn,err,dbg]",
     )
     parser.add_argument(
+        "--formula-check",
+        action="store",
+        default="err",
+        help=f"Check the input formula and take an action if a problem is found. Possible values are 'err,warn,none'.",
+    )
+    parser.add_argument(
         "--exit-on-error", action="store_true", help="Stop when a violation is found"
     )
     parser.add_argument(
@@ -270,5 +276,8 @@ def process_args(args):
     assert args.gen_csv_reader, "Not generating the reader is not implemented yet"
 
     args.cmd = argv[:]
+
+    if args.formula_check not in ("err", "warn", "none"):
+        raise RuntimeError("--formula-check expects one of 'err', 'warn', 'none', but got '{args.formula_check}'")
 
     return args
