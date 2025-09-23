@@ -32,13 +32,15 @@ from ..ehl import random_path
 class TranslationData:
     def __init__(self, bddnode):
         self.automaton = bddnode.automaton
-        # renamed trace variables
+        # For sHL, we have to rename the traces to be unique.
+        # This attribute gives are the renaming
         renaming = bddnode.renaming
-        # a list of traces to have a fixed order on them in the generated code
+        # A list of traces.
+        # We create it here to have a fixed order on them in the generated code
         # These are the original traces without renaming
         self.traces = sorted(
             list(t for t in self.automaton.traces if t not in renaming)
-        )
+        ) if self.automaton else None
         self.atom_formula = bddnode.formula
         self.num = bddnode.get_id()
 

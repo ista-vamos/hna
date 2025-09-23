@@ -7,11 +7,8 @@ class ConstBDDNode:
     def __init__(self, formula, bdd):
         self.formula = formula
         self.bddvar = bdd
-        self.ltrace = None
-        self.lvar = None
-        self.rtrace = None
-        self.rvar = None
         self.automaton = None
+        self.renaming = None
 
     def get_id(self):
         return 1

@@ -70,13 +70,16 @@ def main(args):
         log("dbg", "Constants: ", f"`{[str(c) for c in formula.constants()]}`")
         log("dbg", "Functions: ", f"`{formula.functions()}`")
 
-        problems = formula.problems()
-        if args.logic == "ehl" and not formula.is_simple():
-            problems.append("Formula is not simple, eHL monitors require that")
-        for problem in problems:
-            msg("err", problem)
-        if problems:
-            raise RuntimeError("Ran into problems, bailing out...")
+        if args.formula_check != "none":
+            problems = formula.problems()
+            if args.logic == "ehl" and not formula.is_simple():
+                problems.append("Formula is not simple, eHL monitors require that")
+            msgty = "warn" if args.formula_check == "warn" else "err"
+            for problem in problems:
+                msg(msgty, problem)
+            if problems:
+                if args.formula_check == "err":
+                    raise RuntimeError("Ran into problems, bailing out (use --formula-check=warn or --formula-check=none to suppress)...")
 
     msg("info", "Generating monitor code", section=2)
     codegen = CodeGenCpp(args, ctx)
