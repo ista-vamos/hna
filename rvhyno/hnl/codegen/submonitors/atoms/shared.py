@@ -43,7 +43,7 @@ class CodeGenCppAtoms(CodeGenCppShared):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
-        from config import vamos_buffers_DIR
+        # from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
         if not build_type:
