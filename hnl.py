@@ -97,7 +97,7 @@ def parse_arguments():
         if not isfile(fl):
             if args.input_formula:
                 raise RuntimeError(
-                    f"Multiple formulas given (previous: {args.input_formula}, now: {fl})"
+                    f"Multiple formulas given (\nprevious: `{args.input_formula}`,\nnow: `{fl}` (assuming it is a formula because it is not a file.)"
                 )
             args.input_formula = fl
             continue
