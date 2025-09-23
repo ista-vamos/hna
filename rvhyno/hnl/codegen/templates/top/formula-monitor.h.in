@@ -11,7 +11,7 @@
 #include "submonitor/formula-monitor.h"
 {% if functions %}
 #include "functions.h"
-{%- endif -%}
+{%- endif %}
 #include "alltracesets.h"
 
 {{namespace_start}}

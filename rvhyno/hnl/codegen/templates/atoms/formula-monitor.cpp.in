@@ -20,10 +20,9 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {%- endfor -%}
 ):
 {%- for q in fixed -%}
-{%- if not loop.first -%}, {%- endif -%}
 {{q}}({{q}})
+{%- if not loop.last -%}, {%- endif -%}
 {%- endfor -%}
-{%- if fixed -%}, {%- endif -%}
 {%- for traceset, _ in set2q.items() -%}
 {%- if not traceset -%}
     {%- if not loop.first -%}, {%- endif -%}
