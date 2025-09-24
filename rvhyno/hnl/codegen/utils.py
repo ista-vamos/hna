@@ -32,7 +32,7 @@ def _split_formula(formula: PrenexFormula):
     """
     Split the given formula into a formula that has a prefix of the quantifiers up to the first
     alternation and the remaining subformula. The alternation includes not only existential alternation, but also
-    from-function alternation. That is, the sequence of quantifiers 'forall t, forall t' in F' has an alternation.
+    from-function alternation. That is, the sequence of quantifiers `forall t1, forall t2 in F` has alternation.
     E.g., `forall a. exists b: F` gets transformed into
     two formulas: `forall a. F'` and `F' = exists b: F`.
 
