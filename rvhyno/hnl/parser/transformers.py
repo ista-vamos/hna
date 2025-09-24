@@ -66,7 +66,7 @@ class ProcessAST(Transformer):
 
     def const_false(self, items):
         assert not items, items
-        return Not(TrivialTrue())
+        return TrivialFalse()
 
     def quantifier(self, items):
         # our grammar assumes prenex form, so the quantifiers are just forall/exists and a name

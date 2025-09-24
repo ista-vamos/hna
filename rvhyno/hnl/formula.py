@@ -203,6 +203,15 @@ class Formula:
 
         return new_self
 
+    def negate(self) -> "Formula":
+        """
+        Return the negation of this formula.
+
+        This is the default implementation, sub-classes may optimize
+        this method.
+        """
+        return Not(self)
+
 
 class FormulaWithLookahead(Formula):
     def __init__(self, formula: Formula, lookahead: Formula) -> None:
@@ -347,7 +356,7 @@ class PrenexFormula(Formula):
 
     def negate(self):
         return PrenexFormula(
-            [q.swap() for q in self.quantifier_prefix], Not(self.formula)
+            [q.swap() for q in self.quantifier_prefix], self.formula.negate()
         )
 
     @cached_str
@@ -1130,9 +1139,36 @@ class TrivialTrue(IsPrefix):
     def rename_variables(self, v1, v2, t1=None, t2=None) -> Formula:
         pass
 
+    def negate(self) -> "Formula":
+        return TrivialFalse()
+
     @cached_str
     def __str__(self) -> str:
         return f"TRUE"
+
+
+class TrivialFalse(IsPrefix):
+    """Formula representing the trivial false comparison"""
+
+    def __init__(self):
+        super().__init__(EPSILON, EPSILON)
+
+    def is_simple(self) -> bool:
+        return True
+
+    def rename_traces(self, t1, t2) -> Formula:
+        pass
+
+    def rename_variables(self, v1, v2, t1=None, t2=None) -> Formula:
+        pass
+
+    def negate(self) -> "Formula":
+        return TrivialTrue()
+
+    @cached_str
+    def __str__(self) -> str:
+        return f"FALSE"
+
 
 
 class HLTLFormula(Formula):
