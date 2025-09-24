@@ -97,7 +97,7 @@ class CodeGenCpp(CodeGenCpp):
         print_args = '<< ", " <<'.join(
             (f"{q.var}->id()" for q in formula.quantifier_prefix)
         )
-        wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";')
+        wr(f'std::cerr << "{ns}::Instance[init, " << {print_args} << "]\\n";\n')
         wr("#endif /* !DEBUG_PRINTS */\n")
 
     def generate(self, formula):
