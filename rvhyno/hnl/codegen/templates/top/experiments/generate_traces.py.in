@@ -32,12 +32,18 @@ def generate_event(i, fl) -> None:
     fl.write(f'
 {%- for name, annot_ty in cg.args.data -%}
     {%- set ty, vals_range = annot_ty -%}
-    {%- if vals_range -%}
+    {%- if ty == 'bool' or ty == '_Bool' -%}
+    {%- set l, u = 0, 1 -%}
+    {%- elif vals_range -%}
     {%- set l, u = data_bounds(ty, vals_range[0], vals_range[1]) -%}
     {%- else -%}
     {%- set l, u = data_bounds(ty) -%}
     {%- endif -%}
+    {%- if ty == 'char' -%}
+    {chr(randint(32, 127))}
+    {%- else -%}
     {randint({{l}}, {{u}})}
+    {%- endif -%}
     {%- if not loop.last -%},{%- endif -%}
 {%- endfor -%}
     \n')

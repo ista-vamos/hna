@@ -79,7 +79,7 @@ def c_type_info(ty: str) -> Tuple[int, int]:
     elif ty == "int64_t":
         bw = ctypes.sizeof(ctypes.c_int64)
         signed = True
-    elif ty in ("uint", "unsigned int"):
+    elif ty in ("uint", "unsigned int", "unsigned"):
         bw = ctypes.sizeof(ctypes.c_uint)
     elif ty == "uint32_t":
         bw = ctypes.sizeof(ctypes.c_uint32)
@@ -128,6 +128,6 @@ def c_type_bounds(ty: str) -> Tuple[int, int]:
     """
     bw, s = c_type_info(ty)
     if s:
-        return -(2 << (8 * bw - 1)), 2 << (8 * bw - 1) - 1
+        return -(2 ** (8 * bw - 1)), 2 ** (8 * bw - 1) - 1
     else:
         return 0, (2 ** (8 * bw)) - 1
