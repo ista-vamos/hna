@@ -40,8 +40,9 @@ class TranslationData:
         # These are the original traces without renaming
         self.traces = sorted(
             list(t for t in self.automaton.traces if t not in renaming)
-        ) if self.automaton else None
-        self.atom_formula = bddnode.formula
+        ) if self.automaton else []
+        atom_formula = bddnode.formula
+        self.atom_formula = atom_formula
         self.num = bddnode.get_id()
 
         # if a trace appears in multiple projections, we have to keep track of
@@ -50,16 +51,18 @@ class TranslationData:
         # renamed to be unique -- as a list of pairs (unique_name, original_name).
         tmp = {}
         ltraces, rtraces = [], []
-        for t in (
-            p.trace
-            for p in self.atom_formula.children[0].program_variable_occurrences()
-        ):
-            ltraces.append((t, renaming.get(t, t)))
-        for t in (
-            p.trace
-            for p in self.atom_formula.children[1].program_variable_occurrences()
-        ):
-            rtraces.append((t, renaming.get(t, t)))
+        assert isinstance(atom_formula, Comparison), f'{type(atom_formula)}: {atom_formula}'
+        if atom_formula.children:
+            for t in (
+                p.trace
+                for p in atom_formula.children[0].program_variable_occurrences()
+            ):
+                ltraces.append((t, renaming.get(t, t)))
+            for t in (
+                p.trace
+                for p in atom_formula.children[1].program_variable_occurrences()
+            ):
+                rtraces.append((t, renaming.get(t, t)))
 
         self.traces_with_duplicates = ltraces + rtraces
         self.ltraces = ltraces
@@ -283,6 +286,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             raise NotImplementedError("Unknown BDD node")
 
         values = {
+            "cg": self,
             "monitor_name": self.name(),
             "formula": str(nd.formula),
             "verdict": result,
@@ -397,7 +401,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         traces_args = args_str(", ".join(f"{t.c_name()}({t.c_name()})" for t in traces))
         wrcpp(
             f"AtomMonitor{num}::AtomMonitor{num}(const Instance& instance, FormulaEvaluationState st {data.traces_as_args().comma_prefixed()}) \n  :"
-            f" RegularAtomMonitor({identifier}), {traces_args} {{\n\n"
+            f" RegularAtomMonitor({identifier}) {traces_args.comma_prefixed()} {{\n\n"
         )
         if (
             automaton
