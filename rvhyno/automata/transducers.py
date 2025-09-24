@@ -338,6 +338,10 @@ class Assignment:
 
 # TODO: rename to "TransitionLabel" after renaming "SymbolicTransducer" to "MST" ("Multi-trace symbolic transducer")
 class TransitionMultiLabel:
+    """
+    :param symbols: a dictionary mapping trace variables to symbols
+                    (names that refer to the even read from the trace)
+    """
     def __init__(self, symbols: dict, condition: list, assign: list, output: Value):
         assert all(isinstance(k, Var) for k in symbols.values()), symbols
         assert all(isinstance(k, TraceVariable) for k in symbols.keys()), symbols
@@ -939,8 +943,12 @@ def transducer_from_yaml(path, attrs):
     from yaml import safe_load
     from rvhyno.hna.parser.parser import parse_edge
 
+    # FIXME: we assume only a single-tape transducer atm
+    trace = TraceVariable("𝜏")
+
     attrs = set(x[0] for x in attrs)
     T = SymbolicTransducer(origin=path)
+
 
     with open(path, "r") as stream:
         data = safe_load(stream)
@@ -966,10 +974,10 @@ def transducer_from_yaml(path, attrs):
             T.add_transition(
                 Transition(
                     T.get(str(source)),
-                    TransitionLabel(
-                        var,
+                    TransitionMultiLabel(
+                        {trace: var},
                         parse_condition(edge.get("condition"), var, attrs),
-                        None,
+                        None, # FIXME: no assignment yet
                         output,
                     ),
                     T.get(str(target)),
