@@ -5,7 +5,7 @@ from pyeda.boolalg.bdd import bddvar
 
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue, HLTLFormula
+from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue, TrivialFalse, HLTLFormula
 from ..shared import CodeGenCpp as CodeGenCppShared
 
 
@@ -97,6 +97,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 if isinstance(F, TrivialTrue):
                     # turn the BDD node into TRUE
                     v = v | ~v
+                elif isinstance(F, TrivialFalse):
+                    # turn the BDD node into FALSE
+                    v = v & ~v
                 else:
                     nd = BDDNode(F, v)
                     self._bdd_nodes.append(nd)
@@ -116,11 +119,16 @@ class CodeGenCppAtoms(CodeGenCppShared):
                 f.write(BDD.to_dot())
 
         if BDD.is_one() or BDD.is_zero():
-            assert not self._bdd_nodes, self._bdd_nodes
-            # we have constructed no BDD nodes, because we have only the trivial BDD true/false.
-            # But even for true/false, we need to build the atom (a special one).
-            # Add this special BDDNode
-            self._bdd_nodes.append(ConstBDDNode(formula.formula, BDD))
+            if self._bdd_nodes:
+                # this means that the BDD evaluated to 0 or 1.
+                # It happens e.g., for formulas like `false & ...`
+                self._bdd_nodes = []
+
+            # Even when the BDD is only true/false, we need to build the atom (a special one).
+            # Add this special BDDNode for that.
+            # Also, rewrite the formula to TRUE or FALSE so that the code later knows
+            # what to do with that (e.g., that there are no traces)
+            self._bdd_nodes.append(ConstBDDNode(TrivialTrue() if BDD.is_one() else TrivialFalse(), BDD))
 
         self.BDD = BDD
 
