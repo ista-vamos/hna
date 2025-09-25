@@ -63,6 +63,7 @@ Verdict FormulaMonitor::updateInstance(Instance *instance, Verdict verdict) {
 
     if (action == RESULT_FALSE) {
         // The whole HNL formula evaluated to FALSE for the traces in `instance`.
+        buildCex(instance);
         return Verdict::FALSE;
     }
 
@@ -109,6 +110,8 @@ Verdict FormulaMonitor::step() {
 
           for (auto it = atom_monitor->used_by_begin(),
                     et = atom_monitor->used_by_end(); it != et; ++it) {
+              // NOTE: `updateInstance` can delete the instance, so do not use `*it`
+              // after calling it
               if (updateInstance(*it, verdict) == Verdict::FALSE) {
                   // FIXME: we leak memory (which is bad, because this FALSE may not be the final result
                   // and the monitors may run further)
@@ -271,6 +274,19 @@ void FormulaMonitor::condenseWbg() {
         }
     }
     _monitors_wbg.swap(tmp);
+}
+
+void FormulaMonitor::buildCex(const Instance *instance) {
+    /* variable traces */
+    {%- for q in formula.quantifier_prefix %}
+    _cex.push_back("{{q.var}} -> " + std::to_string(instance->{{q.var}}->id()));
+    {%- endfor %}
+
+    /* fixed traces */
+    {%- for q in cg._fixed_quantifiers or () %}
+    _cex.push_back("{{q.var}} -> " + std::to_string(instance->{{q.var}}->id()));
+    {%- endfor %}
+
 }
 
 {{cg.namespace_end()}}

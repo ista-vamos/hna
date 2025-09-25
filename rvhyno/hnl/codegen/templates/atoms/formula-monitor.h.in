@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <list>
+#include <string>
 #include <memory>
 
 #ifdef MEASURE_CPUTIME
@@ -45,6 +46,11 @@
 // (which is really an instance of an automaton, despite the name)
 // for each input tuple of traces.
 class FormulaMonitor : public ::Monitor {
+  // counter-example
+  std::vector<std::string> _cex;
+
+  void buildCex(const Instance *instance);
+
 protected:
   // the workbag of monitors to `step` -- they are either running or finished monitors
   std::vector<AtomMonitor *> _monitors_wbg;
@@ -92,6 +98,8 @@ public:
 
   AtomMonitor *createAtomMonitor(FormulaEvaluationState monitor_type, Instance&);
   void removeInstance(Instance *instance);
+
+  const std::vector<std::string>& cex() const { return _cex; }
 
   // statistics
   struct {

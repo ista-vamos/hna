@@ -36,7 +36,9 @@ class FormulaMonitor : public ::Monitor {
   {%- endif -%};
   {% endfor %}
 
-  // here we store the running monitors
+  // Here we store the instances of formula to process.
+  // Each instance has a reference to its monitor, so we do
+  // not store monitors explicitly anywhere.
   std::vector<std::unique_ptr<Instance>> _instances;
 
   void addNewTraces();
