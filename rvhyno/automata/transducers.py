@@ -883,7 +883,7 @@ def simplify_condition(cond):
     cond = remove_duplicates(cond)
     cond = remove_trivial(cond)
 
-    # TODO: do this properly with SMT solver?
+    # TODO: do this properly with SMT solver? Or SymPy?
     eq_classes = get_eq_classes(cond)
 
     consts = get_eq_constants(eq_classes)
@@ -898,7 +898,6 @@ def simplify_condition(cond):
             return None
 
     cond = propagate_constants(cond, consts)
-    # TODO: simplify the condition by constant propagation
 
     return cond
 
