@@ -257,7 +257,7 @@ class Formula2Transducer:
 
         fun_T = self._data_funs[fn.name]
         return compose_transducers(
-            trace_transducer(fn.traces[0]), fun_T, origin=formula
+            trace_transducer(fn.traces[0], fn.name), fun_T, on=fun_T.get_single_trace(), origin=formula
         )
 
 
