@@ -49,6 +49,12 @@ public:
   // container is being filled asynchronously by the input thread
   Verdict step();
 
+  {% if generate_cex %}
+  const std::vector<std::string>& cex() const {
+      return _monitor.cex();
+  }
+  {%- endif %}
+
   // statistics
   struct {
     // number of HNL configurations

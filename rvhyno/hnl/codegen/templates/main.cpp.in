@@ -61,10 +61,17 @@ int main(int argc, char *argv[]) {
 
   assert(verdict != Verdict::UNKNOWN);
   std::cout << " -- verdict --\n";
-  if (verdict == Verdict::TRUE)
+  if (verdict == Verdict::TRUE) {
       std::cout << "Formula is TRUE\n";
-  else if (verdict == Verdict::FALSE)
+  } else if (verdict == Verdict::FALSE) {
       std::cout << "Formula is FALSE\n";
+  {% if generate_cex %}
+      std::cout << "Counter-example:\n";
+      for (auto &ln : monitor.cex()) {
+          std::cout << ln << "\n";
+      }
+  {% endif %}
+  }
   std::cout << " -- stats --\n";
   std::cout << "  Total formula instances: " << monitor.stats.num_instances << "\n";
 {% if cg.args.logic == "ehl" %}

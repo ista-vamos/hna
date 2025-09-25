@@ -348,7 +348,6 @@ class CodeGenCppTopLevel(CodeGenCpp):
                 self._generate_csv_reader()
 
             self._generate_events()
-            self.generate_main()
 
         functions_instances = formula.functions()
         functions = list(set(functions_instances))
@@ -404,7 +403,9 @@ class CodeGenCppTopLevel(CodeGenCpp):
         codegen.generate(formula)
         log_indent_decr()
 
-        self.generate_monitor(formula)
+        generate_cex = not (has_submonitors or formula.is_hltl())
+        self.generate_monitor(formula, generate_cex)
+        self.generate_main(generate_cex)
 
         if not self._embedded:
             self.copy_files()
@@ -422,6 +423,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "README.md",
             {
                 "cg": self,
+                "generate_cex": generate_cex,
                 "formula": formula,
                 "cmd": [f"'{s}'" if " " in s else s for s in self.args.cmd],
             },
@@ -473,7 +475,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         ]
         return step, "\n".join(finished)
 
-    def generate_monitor(self, formula):
+    def generate_monitor(self, formula, generate_cex):
         functions_instances = formula.functions()
         functions = list(set(functions_instances))
 
@@ -499,6 +501,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "functions_step": funs_step,
             "functions_finished": funs_finished,
             "alltracesets_init": alltracesets_init,
+            "generate_cex": generate_cex
         }
 
         self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
@@ -572,11 +575,12 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "top/experiments/README.md.in", "experiments/README.md", {"cg": self}
         )
 
-    def generate_main(self):
+    def generate_main(self, generate_cex):
         self.gen_file(
             "main.cpp.in",
             "main.cpp",
             {
                 "cg": self,
+                "generate_cex": generate_cex
             },
         )

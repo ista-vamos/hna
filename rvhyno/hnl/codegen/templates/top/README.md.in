@@ -63,6 +63,15 @@ There are some runtime options that you can pass to the monitor:
 | `-open-traces-limit N` | Keep at most `N` files opened at the same time |
 | `-read-events-limit N` | Read at most `N` events from a file at once (then switch to another file) |
 
+## Counter-example reporting
+{% if generate_cex %}
+The built monitor can also generate counter-examples to the property if it is violated.
+This counter-example is shown automatically when a violation is found.
+{% else %}
+This monitor cannot generate counter-examples to the property if it is violated. At this moment, we can do this only
+with monitors for universally quantified formulas that use no generator functions (and that use hypernode logic,
+we cannot do counter-examples for HyperLTL yet).
+{% endif %}
 
 ## Re-building
 
