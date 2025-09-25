@@ -106,10 +106,10 @@ class CodeGenCpp(CodeGenCpp):
             wr("}\n")
 
     def _create_instance(self, formula, wr):
-        raise NotImplementedError("Must be overriden")
+        raise NotImplementedError(f"Must be overriden by {type(self)}")
 
     def _gen_create_instance_reduced(self, formula, wr):
-        raise NotImplementedError("Must be overriden")
+        raise NotImplementedError(f"Must be overriden by {type(self)}")
 
     def input_tracesets(self, formula):
         """Sort quantifiers from the formula for code generation
