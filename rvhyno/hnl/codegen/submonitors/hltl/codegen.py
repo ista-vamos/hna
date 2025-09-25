@@ -68,7 +68,6 @@ class CodeGenCpp(CodeGenCpp):
         msg("info", "Generating monitor code", section=3)
         # NOTE: this code must come after _gen_bdd_from_formula as it uses the nodes
         assert not formula.has_quantifier_alternation(), formula
-        inputs_finished = self._inputs_finished(formula)
 
         values = {
             "cg": self,
@@ -76,7 +75,6 @@ class CodeGenCpp(CodeGenCpp):
             "namespace": self.namespace(),
             "namespace_start": self.namespace_start(),
             "namespace_end": self.namespace_end(),
-            "inputs_finished": inputs_finished,
             "formula": formula,
         }
 
@@ -87,7 +85,7 @@ class CodeGenCpp(CodeGenCpp):
         """
         `embedded` is True if the HNL monitor is a subdirectory in some other project
         """
-        from config import vamos_buffers_DIR
+        #from config import vamos_buffers_DIR
 
         build_type = self.args.build_type
         if not build_type:
@@ -95,6 +93,7 @@ class CodeGenCpp(CodeGenCpp):
 
         values = {
             # "vamos-buffers_DIR": vamos_buffers_DIR,
+            "cg": self,
             "additional_sources": " ".join(
                 (
                     basename(f)

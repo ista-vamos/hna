@@ -98,7 +98,7 @@ def create_cmdargs_parser(out_dir):
 
     parser.add_argument(
         "--data-fun",
-        action="append",
+        action="append", default=[],
         help="User-defined functions to transform data (in the form of a transducer). The argument is a path to a YAML file describing the transducer.",
     )
 
@@ -154,6 +154,20 @@ def create_cmdargs_parser(out_dir):
         "--reduction",
         action="store",
         help="Comma-separated list of 'reflexive','symmetric','transitive'",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--rvhyper-dir",
+        action="store",
+        help="Specify where to find RVHyper (in case when using HyperLTL monitors). You may also need to specify --spot-dir.",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--spot-dir",
+        action="store",
+        help="Specify where to find SPOT (in case when using HyperLTL monitors). Usually needed with --rvhyper-dir.",
         default=None,
     )
 
