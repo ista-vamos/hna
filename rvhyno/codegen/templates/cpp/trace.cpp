@@ -86,8 +86,9 @@ size_t Trace::size() {
 }
 
 void Trace::setFinished() {
-  _finished = true;
+  _finished.store(true, std::memory_order_release);
 }
+
 bool Trace::finished() {
   return _finished.load(std::memory_order_acquire);
 }

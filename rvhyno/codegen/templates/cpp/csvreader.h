@@ -13,6 +13,7 @@
 #include "cmd.h"
 #include "events.h"
 #include "stream.h"
+#include "trace.h"
 
 ///
 // Stream of events created from a CSV file.
@@ -54,12 +55,35 @@ public:
   bool finished() const;
 };
 
+namespace {
+  // stream and its associated trace
+  template <typename StreamTy>
+  struct StreamWithTrace {
+      std::unique_ptr<StreamTy> stream;
+      Trace *trace;
+
+      StreamWithTrace(std::unique_ptr<StreamTy> &&stream, Trace *t)
+      : stream(std::move(stream)), trace(t) {}
+
+      void clear() {
+        stream.reset();
+        trace = nullptr;
+      }
+
+      operator bool() const {
+        assert(trace != nullptr || !stream);
+        assert(!stream || trace != nullptr);
+        return trace != nullptr;
+      }
+  };
+}
+
 template <typename StreamTy, typename MonitorTy, typename EventTy = Event>
 void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
   // std::cerr << "Reading CSV events\n";
 
-  std::vector<std::unique_ptr<StreamTy>> streams;
-  std::vector<std::unique_ptr<StreamTy>> tmp_streams;
+  std::vector<StreamWithTrace<StreamTy>> streams;
+  std::vector<StreamWithTrace<StreamTy>> tmp_streams;
 
   size_t num_open_files = 0;
   // next input argument to read
@@ -77,9 +101,9 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
         if (reading_directory) {
             const auto& entry = *di;
 
-            M.newTrace(++traces_num);
+            auto *t = M.newTrace(++traces_num);
             streams.emplace_back(
-                std::make_unique<StreamTy>(entry.path(), traces_num));
+                std::make_unique<StreamTy>(entry.path(), traces_num), t);
             ++num_open_files;
 
             ++di;
@@ -103,9 +127,9 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
 
           // this is a normal file
           assert(!reading_directory);
-          M.newTrace(++traces_num);
+          auto *t = M.newTrace(++traces_num);
           streams.emplace_back(
-              std::make_unique<StreamTy>(input, traces_num));
+              std::make_unique<StreamTy>(input, traces_num), t);
           ++num_open_files;
         }
     }
@@ -114,14 +138,15 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
     EventTy ev;
     bool removed = false;
     for (size_t i = 0; i < streams.size(); ++i) {
-      auto *stream = streams[i].get();
+      auto& stream_trace = streams[i];
+      auto *stream = stream_trace.stream.get();
 
       if (stream->template try_read<EventTy>(ev)) {
-        M.extendTrace(stream->id(), ev);
+        stream_trace.trace->append(ev);
       } else {
         if (stream->finished()) {
-          M.traceFinished(stream->id());
-          streams[i].reset();
+          stream_trace.trace->setFinished();
+          streams[i].clear();
           removed = true;
       	  --num_open_files;
         }
@@ -134,14 +159,14 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
       for (auto &stream : streams) {
         if (stream) {
           tmp_streams.push_back(std::move(stream));
-	}
+	      }
       }
       streams.swap(tmp_streams);
       tmp_streams.clear();
     }
 
     if (streams.empty()) {
-      M.noFutureUpdates();
+      M.setNoFutureUpdates();
       break;
     }
   }
