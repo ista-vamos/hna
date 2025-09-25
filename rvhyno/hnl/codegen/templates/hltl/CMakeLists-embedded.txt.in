@@ -2,6 +2,14 @@
 
 set(monitor_name "{{monitor_name}}")
 
+{% if cg.args.rvhyper_dir %}
+set(RVHYPER_DIR "{{cg.args.rvhyper_dir}}")
+{% endif %}
+
+{% if cg.args.spot_dir %}
+set(SPOT_DIR "{{cg.args.spot_dir}}")
+{% endif %}
+
 # add_library(hltl${monitor_name} STATIC {{sources}})
 # target_compile_definitions(hltl${monitor_name} PRIVATE {{additional_cflags}})
 # target_include_directories(hltl${monitor_name} PUBLIC ${CMAKE_SOURCE_DIR})
