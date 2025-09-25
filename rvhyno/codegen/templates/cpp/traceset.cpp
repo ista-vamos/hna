@@ -11,6 +11,7 @@ TraceSet::~TraceSet() {
   }
 }
 
+
 Trace *TraceSet::newTrace(unsigned trace_id) {
   Trace *t = new Trace(trace_id);
 
@@ -28,22 +29,6 @@ Trace *TraceSet::newTrace(unsigned trace_id) {
   return t;
 }
 
-void TraceSet::extendTrace(unsigned trace_id, const Event &e) {
-  lock();
-  Trace *trace = get(trace_id);
-  assert(trace && "Do not have such a trace");
-  unlock();
-
-  trace->append(e);
-}
-
-void TraceSet::traceFinished(unsigned trace_id) {
-  lock();
-  Trace *trace = get(trace_id);
-  assert(trace && "Do not have such a trace");
-  trace->setFinished();
-  unlock();
-}
 
 Trace *TraceSet::get(unsigned trace_id) {
   auto it = _traces.find(trace_id);
@@ -55,6 +40,7 @@ Trace *TraceSet::get(unsigned trace_id) {
   return nullptr;
 }
 
+
 bool TraceSet::hasTrace(unsigned trace_id) {
   bool ret;
   lock();
@@ -63,6 +49,7 @@ bool TraceSet::hasTrace(unsigned trace_id) {
 
   return ret;
 }
+
 
 size_t TraceSet::size() {
   size_t ret;

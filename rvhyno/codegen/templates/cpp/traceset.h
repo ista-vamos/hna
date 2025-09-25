@@ -33,14 +33,12 @@ public:
   // Create a new trace in this TraceSet.
   Trace *newTrace(unsigned trace_id);
 
-  void extendTrace(unsigned trace_id, const Event &e);
-  void traceFinished(unsigned trace_id);
-
   // set that there will be no new traces nor events in the future
-  void noFutureUpdates() {
+  void setNoFutureUpdates() {
     _traces_finished.store(true, std::memory_order_release);
   }
 
+  // are all the traces finished (no new traces and updates in the future)
   bool finished() override {
     return _traces_finished.load(std::memory_order_acquire);
   }
