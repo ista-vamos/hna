@@ -115,7 +115,7 @@ class Attr(Value):
     """Access an attribute of a variable, e.g., in(x)"""
 
     def __init__(self, var, attr):
-        assert isinstance(var, (Var, Reg)), var
+        assert isinstance(var, (Var, Reg)), f'{var}: {type(var)}'
         super().__init__((var, attr))
 
     @property
