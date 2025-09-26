@@ -1,6 +1,8 @@
 #ifndef STREAM_H_
 #define STREAM_H_
 
+#include <string>
+
 #include "events.h"
 
 ///
@@ -14,6 +16,10 @@ class Stream {
   using IDTy = unsigned;
   const IDTy _id;
 
+protected:
+
+  std::string _descr;
+
 public:
   Stream(IDTy trace_id) : _id(trace_id) {}
 
@@ -24,6 +30,8 @@ public:
   // but we do not plan to use this class to dispatch calls for subclasses.
   bool try_read(Event &ev);
   bool finished() const;
+
+  const std::string& descr() const { return _descr; }
 };
 
 #endif  // STREAM_H_

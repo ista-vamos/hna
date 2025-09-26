@@ -13,6 +13,8 @@ CSVEventsStream::CSVEventsStream(const std::string &file, unsigned trace_id)
     abort();
   }
   _stream.clear();
+
+  _descr = file;
 }
 
 CSVEventsStream::~CSVEventsStream() { _stream.close(); }

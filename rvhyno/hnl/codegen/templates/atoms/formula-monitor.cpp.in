@@ -279,12 +279,14 @@ void FormulaMonitor::condenseWbg() {
 void FormulaMonitor::buildCex(const Instance *instance) {
     /* variable traces */
     {%- for q in formula.quantifier_prefix %}
-    _cex.push_back("{{q.var}} -> " + std::to_string(instance->{{q.var}}->id()));
+    _cex.push_back("{{q.var}} -> trace " + std::to_string(instance->{{q.var}}->id()) +
+                   ": " + instance->{{q.var}}->descr());
     {%- endfor %}
 
     /* fixed traces */
     {%- for q in cg._fixed_quantifiers or () %}
-    _cex.push_back("{{q.var}} -> " + std::to_string(instance->{{q.var}}->id()));
+    _cex.push_back("{{q.var}} -> trace " + std::to_string(instance->{{q.var}}->id()) +
+                   ": " + instance->{{q.var}}->descr());
     {%- endfor %}
 
 }
