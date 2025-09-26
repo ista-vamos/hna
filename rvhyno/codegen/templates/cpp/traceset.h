@@ -11,6 +11,7 @@
 #include "tracesetview.h"
 #include "trace.h"
 
+class Stream;
 class TraceSetView;
 
 ///
@@ -31,7 +32,7 @@ public:
   ~TraceSet();
 
   // Create a new trace in this TraceSet.
-  Trace *newTrace(unsigned trace_id);
+  Trace *newTrace(unsigned trace_id, Stream *stream);
 
   // set that there will be no new traces nor events in the future
   void setNoFutureUpdates() {

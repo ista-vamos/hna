@@ -1,7 +1,7 @@
-#include <algorithm>
 #include <cassert>
 
 #include "traceset.h"
+
 
 TraceSet::~TraceSet() {
   // when a trace set is being destroyed, no new
@@ -12,8 +12,8 @@ TraceSet::~TraceSet() {
 }
 
 
-Trace *TraceSet::newTrace(unsigned trace_id) {
-  Trace *t = new Trace(trace_id);
+Trace *TraceSet::newTrace(unsigned trace_id, Stream *stream) {
+  Trace *t = new Trace(trace_id, stream);
 
   lock();
   _traces.emplace(trace_id, t);

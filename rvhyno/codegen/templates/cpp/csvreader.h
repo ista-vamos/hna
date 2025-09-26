@@ -101,9 +101,9 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
         if (reading_directory) {
             const auto& entry = *di;
 
-            auto *t = M.newTrace(++traces_num);
-            streams.emplace_back(
-                std::make_unique<StreamTy>(entry.path(), traces_num), t);
+            auto stream = std::make_unique<StreamTy>(entry.path(), traces_num);
+            auto *t = M.newTrace(++traces_num, stream.get());
+            streams.emplace_back(std::move(stream), t);
             ++num_open_files;
 
             ++di;
@@ -127,9 +127,9 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
 
           // this is a normal file
           assert(!reading_directory);
-          auto *t = M.newTrace(++traces_num);
-          streams.emplace_back(
-              std::make_unique<StreamTy>(input, traces_num), t);
+          auto stream = std::make_unique<StreamTy>(input, traces_num);
+          auto *t = M.newTrace(++traces_num, stream.get());
+          streams.emplace_back(std::move(stream), t);
           ++num_open_files;
         }
     }

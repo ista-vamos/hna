@@ -6,6 +6,7 @@
 #include <vector>
 #include <cassert>
 
+#include "stream.h"
 #include "events.h"
 
 enum class TraceQuery {
@@ -18,7 +19,13 @@ enum class TraceQuery {
 };
 
 class Trace {
+  // ID of the trace
   const size_t _id;
+  // the stream this traces reads from
+  // TODO: split Trace into multiple child classes, having a stream
+  // is just one option.
+  Stream *_stream;
+
   std::atomic<bool> _finished{false};
   std::vector<Event> _events;
   // the trace is being read and allocated at the same time,
@@ -32,7 +39,12 @@ class Trace {
   void unlock();
 
 public:
-  Trace(size_t id) : _id(id) { assert(id > 0); }
+  Trace(size_t id, Stream *stream) : _id(id), _stream(stream) {
+    assert(id > 0);
+    assert(stream != nullptr);
+  }
+
+  Stream *stream() const { return _stream; }
 
   size_t id() const { return _id; }
 
@@ -47,11 +59,13 @@ public:
 
   void swap(Trace *);
   void copyTo(Trace *);
- 
+
+
   // FIXME: remove
   std::vector<Event>& events() { return _events; }
   const std::vector<Event>& events() const { return _events; }
-  
+
+  const std::string descr() const { return _stream->descr(); }
 };
 
 #endif

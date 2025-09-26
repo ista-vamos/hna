@@ -5,6 +5,8 @@
 #include "events.h"
 #include "traceset.h"
 
+class Stream;
+
 ///
 // This is a monitor that holds also the traces. (There are also monitors
 // that only access the traces stored somewhere else).
@@ -13,9 +15,10 @@ protected:
   TraceSet _traces;
 
 public:
-  /// adding a new trace to the monitor with ID `id`.
-  Trace *newTrace(unsigned trace_id) {
-    return _traces.newTrace(trace_id);
+  /// adding a new trace to the monitor with ID `id` and with associated stream `stream`
+  // Not all traces have to have an associated stream, so this param can be nullptr.
+  Trace *newTrace(unsigned trace_id, Stream *stream=nullptr) {
+    return _traces.newTrace(trace_id, stream);
   }
 
   /// Notify that no new trace neither events can come in the future
