@@ -90,7 +90,8 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
   std::filesystem::directory_iterator di, di_end{};
 
   const size_t args_num = args.inputs.size();
-  // const size_t read_limit = args.read_events_limit;
+  const size_t read_limit = args.read_events_limit;
+  assert(read_limit > 0);
 
   while (running.load(std::memory_order_acquire)) {
     // if we have space for new files to open
@@ -131,25 +132,37 @@ void read_csv_files(CmdArgs &args, MonitorTy &M, std::atomic<bool> &running) {
         }
     }
 
-    // check if we can read from some of those files
+    // check if we can read from some of the streams
     EventTy ev;
     bool removed = false;
     for (size_t i = 0; i < streams.size(); ++i) {
       auto& stream_trace = streams[i];
       auto *stream = stream_trace.stream.get();
 
-      if (stream->template try_read<EventTy>(ev)) {
-        stream_trace.trace->append(ev);
-      } else {
-        if (stream->finished()) {
-          stream_trace.trace->setFinished();
-          streams[i].clear();
-          removed = true;
-      	  --num_open_files;
+      // try reading at most `read_limit` events from the stream.
+      // This is more efficient than reading just one event and
+      // switching to another stream, because all the memory is in CPU caches now
+      unsigned n = 0;
+      while (true) {
+        if (stream->template try_read<EventTy>(ev)) {
+          stream_trace.trace->append(ev);
+        } else {
+          if (stream->finished()) {
+            stream_trace.trace->setFinished();
+            streams[i].clear();
+            removed = true;
+            --num_open_files;
+          }
+          break;
+        }
+
+        if (++n <= read_limit) {
+            break;
         }
       }
     }
 
+    // Remove finished streams
     // FIXME: do this more efficiently
     if (removed) {
       tmp_streams.reserve(streams.size() - 1);
