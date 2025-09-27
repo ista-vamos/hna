@@ -38,10 +38,15 @@ class Trace {
   void lock();
   void unlock();
 
+  std::string _descr;
+
 public:
-  Trace(size_t id, Stream *stream) : _id(id), _stream(stream) {
+  Trace(size_t id, Stream *stream)
+  : _id(id), _stream(stream) {
     assert(id > 0);
     assert(stream != nullptr);
+
+    _descr = "Trace " + std::to_string(_id) + ": " + _stream->descr();
   }
 
   Stream *stream() const { return _stream; }
@@ -65,7 +70,7 @@ public:
   std::vector<Event>& events() { return _events; }
   const std::vector<Event>& events() const { return _events; }
 
-  const std::string descr() const { return _stream->descr(); }
+  const std::string& descr() const { return _descr; }
 };
 
 #endif
