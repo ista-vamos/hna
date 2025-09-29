@@ -5,7 +5,15 @@ from pyeda.boolalg.bdd import bddvar
 
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
-from rvhyno.hnl.formula import Comparison, And, Or, Not, TrivialTrue, TrivialFalse, HLTLFormula
+from rvhyno.hnl.formula import (
+    Comparison,
+    And,
+    Or,
+    Not,
+    TrivialTrue,
+    TrivialFalse,
+    HLTLFormula,
+)
 from ..shared import CodeGenCpp as CodeGenCppShared
 
 
@@ -128,7 +136,9 @@ class CodeGenCppAtoms(CodeGenCppShared):
             # Add this special BDDNode for that.
             # Also, rewrite the formula to TRUE or FALSE so that the code later knows
             # what to do with that (e.g., that there are no traces)
-            self._bdd_nodes.append(ConstBDDNode(TrivialTrue() if BDD.is_one() else TrivialFalse(), BDD))
+            self._bdd_nodes.append(
+                ConstBDDNode(TrivialTrue() if BDD.is_one() else TrivialFalse(), BDD)
+            )
 
         self.BDD = BDD
 

@@ -129,9 +129,9 @@ class CodeGenCpp(CodeGenCppAtoms):
     def _generate_automata_code(self, formula, alphabet):
         generated_automata = {}
         for nd in self._bdd_nodes:
-            msg('info', "Generating code for", nd.get_id(), ":", nd.formula)
+            msg("info", "Generating code for", nd.get_id(), ":", nd.formula)
             assert nd.automaton
-            
+
             num, F = nd.get_id(), nd.formula
             nd.lformula.trace_variables()
             l, r = F.children
@@ -141,9 +141,7 @@ class CodeGenCpp(CodeGenCppAtoms):
             lvar = l[0].name if l else None
             rvar = r[0].name if r else None
 
-            duplicate_num = generated_automata.get(
-                (lvar, rvar, nd.automaton.get_id())
-            )
+            duplicate_num = generated_automata.get((lvar, rvar, nd.automaton.get_id()))
             if duplicate_num is not None:
                 with self.new_file(f"atom-{num}.h") as fh, self.new_file(
                     f"atom-{num}.cpp"
@@ -870,7 +868,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         self._generate_monitor(formula, alphabet)
 
         values = {
-            'cg': self,
+            "cg": self,
             "monitor_name": self.name(),
             "formula": formula,
         }
@@ -878,6 +876,10 @@ class CodeGenCpp(CodeGenCppAtoms):
         self.gen_file("atom-monitor.h.in", "atom-monitor.h", values)
         self.gen_file("atoms/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("atoms/formula-monitor.cpp.in", "formula-monitor.cpp", values)
-        self.gen_file("atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values)
-        self.gen_file("atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values)
+        self.gen_file(
+            "atoms/finished-atom-monitor.h.in", "finished-atom-monitor.h", values
+        )
+        self.gen_file(
+            "atoms/regular-atom-monitor.h.in", "regular-atom-monitor.h", values
+        )
         self.gen_file("atoms/evaluation-state.h.in", "evaluation-state.h", values)

@@ -3,7 +3,8 @@ from os.path import abspath, dirname, islink, join as pathjoin, basename
 
 from rvhyno.codegen.codegen import CodeGen
 from rvhyno.codegen.utils import dump_codegen_position
-#from rvhyno.utils import FIXME
+
+# from rvhyno.utils import FIXME
 from rvhyno.hna.automaton import HyperNodeAutomaton
 from rvhyno.hnl.codegen import CodeGenCppTopLevel as HNLCodeGenCpp
 from rvhyno.hnl.formula import Constant
@@ -25,9 +26,7 @@ class CodeGenCpp(CodeGen):
         self.templates_path = pathjoin(self_dir, "templates/")
 
         if not self.args.data:
-            raise NotImplementedError(
-                "Give --data, other methods not supported yet"
-            )
+            raise NotImplementedError("Give --data, other methods not supported yet")
         self._event = [
             [s.strip() for s in event.split(":")]
             for event in self.args.csv_header.split(",")
