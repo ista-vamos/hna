@@ -13,6 +13,9 @@ class ProcessAST(Transformer):
     def progvar(self, items):
         return ProgramVariable(items[0].children[0], items[1])
 
+    def lang(self, items):
+        return Lang(items[0].children[0])
+
     def constant(self, items):
         return Constant(items[0])
 

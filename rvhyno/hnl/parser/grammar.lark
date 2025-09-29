@@ -44,7 +44,7 @@ const_false: "false"
 ?concat: iter_or_conc ("." iter_or_conc)*
 ?iter_or_conc: _conc "*" -> iter
               | _conc
-_conc: constant | seq | progvar | "(" traceformula")" | stutter_reduce | slice
+_conc: constant | seq | progvar | lang | "(" traceformula")" | stutter_reduce | slice
 // we use [] and also [[]] for stutter reduction in the case
 // that [] would be ambiguous with slicing
 stutter_reduce: "[" traceformula "]" | "[[" traceformula "]]"
@@ -55,6 +55,9 @@ seq: constant+
 
 progvar:  name "(" tracevar ")"
         | name "(" funcall ")"
+// this is a language given externally, not as a regular expression
+// (given as an automaton)
+lang: "{" name "}"
 funcall: fun "(" tracevar ("," tracevar)* ")"
 fun: name
 constant: /[a-zA-Z0-9]/

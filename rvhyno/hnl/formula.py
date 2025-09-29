@@ -533,6 +533,29 @@ class ProgramVariable(TraceFormula):
         return {self}
 
 
+class Lang(TraceFormula):
+    """
+    Regular language given as an automaton externally.
+    """
+    def __init__(self, name: str) -> None:
+        super().__init__()
+        self.name: str = name
+
+    def __eq__(self, other: Epsilon) -> bool:
+        return (
+            isinstance(other, Lang)
+            and self.name == other.name
+        )
+
+    def __hash__(self) -> int:
+        return self.name.__hash__()
+
+    @cached_str
+    def __str__(self) -> str:
+        return f"{{{self.name}}}"
+
+
+
 class Constant(TraceFormula):
     NO_MARK = 0
     # constants marked with `x` represent letters read from the trace
