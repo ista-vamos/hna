@@ -1,23 +1,65 @@
 from . import SymbolicTransducer
-from .labels import Constant, Var, Attr, Eps, Eq, NEq, TransitionMultiLabel
+from .labels import Constant, Var, Attr, Eps, Eq, NEq, TransitionMultiLabel, TraceFinished
 from rvhyno.automata.transition_system import State, Transition
 from rvhyno.hnl.formula import TraceVariable
+from re import compile as re_compile
 
 
-def parse_condition(cond, var, attrs):
-    if not cond:
+def parse_condition(terms, variables, traces, attrs):
+    if not terms:
         return []
 
-    terms = cond.split(",")
     cond = []
+
+    # match the end predicate
+    trace = '|'.join(traces.keys())
+    regex = f'end\(({trace})\)'
+    R_end = re_compile(regex)
+
+    # match equality conditions
+    attr='|'.join(attrs)
+    var='|'.join(variables.keys())
+    regex = f'(({attr})\(({var})\)|\d+)\s*(==|!=)\s*(({attr})\(({var})\)|\d+)'
+    R = re_compile(regex)
+
     for term in terms:
-        lhs, op, rhs = term.split()
-        lhs = Attr(var, lhs) if lhs in attrs else Constant(lhs)
-        rhs = Attr(var, rhs) if rhs in attrs else Constant(rhs)
+        res = R_end.match(term)
+        if res:
+            cond.append(TraceFinished(traces[res.group(1)]))
+            continue
+
+        res = R.match(term)
+        if not res:
+            raise RuntimeError(f"Failed parsing the term `{term}` in condition. "
+                               "This might not be your fault, this parser is not complete.")
+
+        op = res.group(4)
+
+        if res.group(1).isnumeric():
+            lhs = Constant(res.group(1))
+            assert res.group(2) is None, res.groups()
+            assert res.group(3) is None, res.groups()
+        else:
+            assert res.group(2) is not None, res.groups()
+            assert res.group(3) is not None, res.groups()
+            lhs = Attr(variables[res.group(3)], res.group(2))
+
+        if res.group(5).isnumeric():
+            rhs = Constant(res.group(5))
+            assert res.group(6) is None
+            assert res.group(7) is None
+        else:
+            assert res.group(6) is not None
+            assert res.group(7) is not None
+            rhs = Attr(variables[res.group(7)], res.group(6))
+
         if op in ("==", "="):
             Ctor = Eq
         elif op == "!=":
             Ctor = NEq
+        else:
+            raise RuntimeError(f"Failed parsing the operation `{op}` in `{term}` in condition. "
+                               "This might not be your fault, this parser is not complete.")
         cond.append(Ctor(lhs, rhs))
     return cond
 
@@ -26,48 +68,68 @@ def transducer_from_yaml(path, attrs):
     from yaml import safe_load
     from rvhyno.hna.parser.parser import parse_edge
 
-    # FIXME: we assume only a single-tape transducer atm
-    trace = TraceVariable("𝜏")
-
     attrs = set(x[0] for x in attrs)
     T = SymbolicTransducer(origin=path)
 
-    with open(path, "r") as stream:
+    with (open(path, "r") as stream):
         data = safe_load(stream)
-        for nd in data["transducer"]["nodes"]:
+        transducer = data['transducer']
+
+        traces = {t: TraceVariable(t) for t in transducer['traces']}
+        for nd in transducer["nodes"]:
             T.add_state(State(str(nd)))
-        for edge in data["transducer"]["edges"]:
+        for edge in transducer["edges"]:
             if edge.get("assignment"):
                 raise NotImplementedError(
                     "The code does not support assignments in user functions yet"
                 )
 
             source, target = parse_edge(edge["edge"])
-            symbol = edge["symbol"]
-            var = Var(symbol)
-            output = edge["output"]
-            if output == symbol:
-                output = var
-            elif output == r"\eps":
+            symbols = {}
+            variables = {}
+            reads = edge["reads"].items() if 'reads' in edge else ()
+            for tr, var in reads:
+                if tr in symbols:
+                    raise RuntimeError(f"An edge reads {tr} more than once: {edge}")
+                if var in variables:
+                    raise RuntimeError(f"Variable {var} read from multiple traces: {edge}")
+                if tr not in traces:
+                    raise RuntimeError(f"Unknown trace {tr} in `{edge}`")
+
+                v = Var(var)
+                variables[var] = v
+                symbols[traces[tr]] = v
+
+            output = edge.get("outputs")
+            if output is None or output == r"\eps":
                 output = Eps()
+            elif output in variables:
+                output = variables[output]
             else:
                 Constant(output)
 
+            cond = edge.get("condition")
+            if cond:
+                if not isinstance(cond, list):
+                    cond = [t.strip() for t in cond.split("&&")]
             T.add_transition(
                 Transition(
                     T.get(str(source)),
                     TransitionMultiLabel(
-                        {trace: var},
-                        parse_condition(edge.get("condition"), var, attrs),
-                        None,  # FIXME: no assignment yet
+                        symbols,
+                        parse_condition(cond, variables, traces, attrs),
+                        None, # FIXME: no assignment yet
                         output,
                     ),
                     T.get(str(target)),
                 )
             )
 
-        T.add_init(T.get(str(data["transducer"]["init"])))
-        for nd in data["transducer"]["accept"]:
-            T.add_accepting(T.get(str(nd)))
+        init = T.get(str(transducer["init"]))
+        acc = T.get(str(transducer["accept"]))
+        assert init
+        assert acc
+        T.add_init(init)
+        T.add_accepting(acc)
 
-        return str(data["transducer"]["name"]), T
+        return str(transducer["name"]), T
