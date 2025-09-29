@@ -106,7 +106,7 @@ def transducer_from_yaml(path, attrs):
             elif output in variables:
                 output = variables[output]
             else:
-                Constant(output)
+                output = Constant(output)
 
             cond = edge.get("condition")
             if cond:
