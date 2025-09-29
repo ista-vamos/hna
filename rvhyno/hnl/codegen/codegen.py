@@ -311,7 +311,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         if not self.args.data_fun:
             return
 
-        from rvhyno.automata.transducers import transducer_from_yaml
+        from rvhyno.automata.transducers.helpers import transducer_from_yaml
 
         data_funs = {}
         for fn in self.args.data_fun:
@@ -501,7 +501,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "functions_step": funs_step,
             "functions_finished": funs_finished,
             "alltracesets_init": alltracesets_init,
-            "generate_cex": generate_cex
+            "generate_cex": generate_cex,
         }
 
         self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
@@ -561,8 +561,11 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.gen_file(
             "top/experiments/generate_traces.py.in",
             "experiments/generate_traces.py",
-            {"cg": self, "data_bounds": self._event_data_bounds,
-             'explicit_alphabet': isinstance(self.args.alphabet, list)},
+            {
+                "cg": self,
+                "data_bounds": self._event_data_bounds,
+                "explicit_alphabet": isinstance(self.args.alphabet, list),
+            },
             creation_header="py",
         )
         self.gen_file(
@@ -579,8 +582,5 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.gen_file(
             "main.cpp.in",
             "main.cpp",
-            {
-                "cg": self,
-                "generate_cex": generate_cex
-            },
+            {"cg": self, "generate_cex": generate_cex},
         )

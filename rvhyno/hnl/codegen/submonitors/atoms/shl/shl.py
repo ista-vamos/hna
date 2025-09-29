@@ -1,15 +1,15 @@
 from os import makedirs
 from random import randrange
 
-from rvhyno.automata.transducers import (
+from rvhyno.automata.transducers.labels import (
     Var,
     Reg,
     Value,
     TraceFinished,
     BinaryPredicate,
-    Transition,
     Attr,
 )
+from rvhyno.automata.transition_system import Transition
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.codegen.bdd import BDDNode, ConstBDDNode
 from rvhyno.hnl.formula import (
@@ -38,9 +38,11 @@ class TranslationData:
         # A list of traces.
         # We create it here to have a fixed order on them in the generated code
         # These are the original traces without renaming
-        self.traces = sorted(
-            list(t for t in self.automaton.traces if t not in renaming)
-        ) if self.automaton else []
+        self.traces = (
+            sorted(list(t for t in self.automaton.traces if t not in renaming))
+            if self.automaton
+            else []
+        )
         atom_formula = bddnode.formula
         self.atom_formula = atom_formula
         self.num = bddnode.get_id()
@@ -51,16 +53,16 @@ class TranslationData:
         # renamed to be unique -- as a list of pairs (unique_name, original_name).
         tmp = {}
         ltraces, rtraces = [], []
-        assert isinstance(atom_formula, Comparison), f'{type(atom_formula)}: {atom_formula}'
+        assert isinstance(
+            atom_formula, Comparison
+        ), f"{type(atom_formula)}: {atom_formula}"
         if atom_formula.children:
             for t in (
-                p.trace
-                for p in atom_formula.children[0].program_variable_occurrences()
+                p.trace for p in atom_formula.children[0].program_variable_occurrences()
             ):
                 ltraces.append((t, renaming.get(t, t)))
             for t in (
-                p.trace
-                for p in atom_formula.children[1].program_variable_occurrences()
+                p.trace for p in atom_formula.children[1].program_variable_occurrences()
             ):
                 rtraces.append((t, renaming.get(t, t)))
 

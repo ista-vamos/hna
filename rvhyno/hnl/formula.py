@@ -1170,7 +1170,6 @@ class TrivialFalse(IsPrefix):
         return f"FALSE"
 
 
-
 class HLTLFormula(Formula):
     """
     We allow to embed HLTL formulas that we send to RVHyper.

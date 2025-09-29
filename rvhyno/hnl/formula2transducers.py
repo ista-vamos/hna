@@ -16,21 +16,23 @@ from .formula2automata import TupleLabel
 from ..automata.transducers import (
     SymbolicTransducer,
     concat_transducers,
+    iterate_transducer,
+    union_transducers,
+    compose_transducers,
+)
+from ..automata.transducers.labels import (
+    TransitionMultiLabel,
     Constant,
     Attr,
     Eps,
-    iterate_transducer,
-    union_transducers,
     Var,
-    TransitionMultiLabel,
     TraceFinished,
-    compose_transducers,
     Reg,
     Assignment,
     Eq,
     NEq,
-    simplify_condition,
 )
+from ..automata.transducers.operations import simplify_condition
 from ..automata.transition_system import State, Transition
 
 
@@ -257,7 +259,10 @@ class Formula2Transducer:
 
         fun_T = self._data_funs[fn.name]
         return compose_transducers(
-            trace_transducer(fn.traces[0], fn.name), fun_T, on=fun_T.get_single_trace(), origin=formula
+            trace_transducer(fn.traces[0], fn.name),
+            fun_T,
+            on=fun_T.get_single_trace(),
+            origin=formula,
         )
 
 

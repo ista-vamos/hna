@@ -98,7 +98,8 @@ def create_cmdargs_parser(out_dir):
 
     parser.add_argument(
         "--data-fun",
-        action="append", default=[],
+        action="append",
+        default=[],
         help="User-defined functions to transform data (in the form of a transducer). The argument is a path to a YAML file describing the transducer.",
     )
 
@@ -292,6 +293,8 @@ def process_args(args):
     args.cmd = argv[:]
 
     if args.formula_check not in ("err", "warn", "none"):
-        raise RuntimeError("--formula-check expects one of 'err', 'warn', 'none', but got '{args.formula_check}'")
+        raise RuntimeError(
+            "--formula-check expects one of 'err', 'warn', 'none', but got '{args.formula_check}'"
+        )
 
     return args
