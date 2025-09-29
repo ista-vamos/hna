@@ -1,3 +1,5 @@
+from copy import copy
+
 from rvhyno.automata.transducers import SymbolicTransducer
 from rvhyno.automata.transducers.labels import (
     TransitionMultiLabel,
@@ -113,28 +115,36 @@ def merge_transducers(left, right):
 
 def remove_epsilon_steps(eT: SymbolicTransducer) -> SymbolicTransducer:
     """Return the transducer `eT` without epsilon steps"""
-    T = SymbolicTransducer(
+
+    transitions = []
+    accepting = []
+    for trans in eT.transitions():
+        if not trans.label.is_eps():
+            transitions.append(trans)
+            continue
+
+        TT = eT.transitions(trans.target)
+        TT = TT.items() if TT else ()
+        for _, target_out in TT:
+            for trans_out in target_out:
+                assert isinstance(trans_out, Transition), trans_out
+                if trans.source == trans_out.target and trans_out.label.is_eps():
+                    # don't add \eps self-loops
+                    continue
+
+                transitions.append(Transition(trans.source, trans_out.label, trans_out.target))
+                if eT.is_accepting(trans.target):
+                    accepting.append(trans.source)
+
+    return SymbolicTransducer(
         states=eT.states(),
         registers=eT.registers(),
-        transitions=[],
+        transitions=transitions,
         init_states=eT.initial_states(),
-        accepting_states=eT.accepting_states(),
+        accepting_states=eT.accepting_states() + accepting,
         origin=eT.origin(),
     )
 
-    for trans in eT.transitions():
-        if not trans.is_eps():
-            T.add_transition(trans)
-            continue
-
-        for target_out in eT.transitions(trans.target):
-            new = target_out.copy()
-            new.source = trans.source
-            T.add_transition(new)
-            if eT.is_accepting(trans.target):
-                T.add_accepting(trans.source)
-
-    return T
 
 
 def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:

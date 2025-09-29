@@ -9,7 +9,7 @@ from .formula import (
     ProgramVariable,
     TraceVariable,
     Plus,
-    Slice,
+    Slice, Lang,
 )
 from .formula2automata import TupleLabel
 from ..automata.transducers import (
@@ -32,7 +32,7 @@ from ..automata.transducers.labels import (
     Eq,
     NEq,
 )
-from ..automata.transducers.operations import simplify_condition
+from ..automata.transducers.operations import simplify_condition, remove_epsilon_steps
 from ..automata.transition_system import State, Transition
 
 
@@ -201,6 +201,10 @@ class Formula2Transducer:
                 self.formula_to_transducer(formula.children[0]), formula
             )
 
+        if isinstance(formula, Lang):
+            return self.data_fun_transducer(formula)
+
+
         raise NotImplementedError(f"Unhandled formula: {formula}")
 
     def stutter_reduce_transducer(self, T: SymbolicTransducer, formula):
@@ -253,7 +257,12 @@ class Formula2Transducer:
 
         T = self._data_funs[fun]
 
-        if len(T.traces) != 1:
+        if len(T.traces) == 0:
+            assert isinstance(formula, Lang), formula
+            # This is just a regular expression as an automaton
+            return T
+
+        if len(T.traces) > 1:
             raise RuntimeError(f"Data function transducer used in situation where it needs to have exactly one trace, "
                                "but it has {len(T.traces)} traces.")
         return substitute_trace(T, next(iter(T.traces)), formula.trace)
@@ -440,7 +449,7 @@ def automaton_for_comparison(
     else:
         raise NotImplementedError("Unknown type of comparison")
 
-    return SymbolicTransducer(
+    return remove_epsilon_steps(SymbolicTransducer(
         states=list(states.values()),
         registers=registers or None,
         transitions=[Transition(states[t[0]], t[1], states[t[2]]) for t in transitions],
@@ -451,4 +460,4 @@ def automaton_for_comparison(
         ],
         accepting_states=accepting_states,
         origin=(left, right),
-    )
+    ))
