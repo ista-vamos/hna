@@ -1203,5 +1203,8 @@ class HLTLFormula(Formula):
         super().__init__([])
         self.formula = formula
 
+    def negate(self) -> "HLTLFormula":
+        return HLTLFormula(f'~({self.formula})')
+
     def __str__(self):
         return f"hltl[{self.formula}]"
