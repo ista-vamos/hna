@@ -1,4 +1,5 @@
 from copy import copy
+from rvhyno.hnl.formula import TraceVariable
 
 
 class Value:
@@ -233,6 +234,9 @@ class TraceFinished:
 
     def __str__(self) -> str:
         return f"END({self.trace})"
+
+    def __repr__(self) -> str:
+        return f"TraceFinished({self.trace})"
 
 
 class BinaryPredicate(Condition):
