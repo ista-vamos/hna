@@ -423,3 +423,30 @@ def get_eq_classes(cond):
 
 def substitute_lst(lst, subst):
     return [x.subst(subst) for x in lst]
+
+
+def substitute_trace(eT: SymbolicTransducer, old: TraceVariable, new: TraceVariable) -> SymbolicTransducer:
+    """Return the transducer `eT` where trace variable `old` has been replaced by `new`"""
+
+    transitions=[]
+    for trans in eT.transitions():
+        label = trans.label
+        symbols = label.symbols.copy()
+        if old in symbols:
+            symbols[new] = symbols[old]
+            del symbols[old]
+        condition = [c.subst((old, new)) for c in label.condition]
+        transitions.append(Transition(trans.source,
+                                      TransitionMultiLabel(symbols, condition, label.assignment, label.output),
+                                      trans.target)
+        )
+    T = SymbolicTransducer(
+        states=eT.states(),
+        registers=eT.registers(),
+        transitions=transitions,
+        init_states=eT.initial_states(),
+        accepting_states=eT.accepting_states(),
+        origin=eT.origin(),
+    )
+
+    return T

@@ -8,7 +8,6 @@ from .formula import (
     Iter,
     ProgramVariable,
     TraceVariable,
-    Function,
     Plus,
     Slice,
 )
@@ -19,6 +18,7 @@ from ..automata.transducers import (
     iterate_transducer,
     union_transducers,
     compose_transducers,
+    substitute_trace
 )
 from ..automata.transducers.labels import (
     TransitionMultiLabel,
@@ -55,7 +55,7 @@ def constant_transducer(formula):
     )
 
 
-def trace_transducer(trace, projection: str):
+def attr_transducer(trace, projection: str):
     states = [State("v0"), State("vf")]
     out = Var("x") if projection is None else Attr(Var("x"), projection)
     return SymbolicTransducer(
@@ -191,9 +191,9 @@ class Formula2Transducer:
             return constant_transducer(formula)
 
         if isinstance(formula, ProgramVariable):
-            if isinstance(formula.trace, Function):
-                return self.projection_transducer(formula)
-            return trace_transducer(formula.trace, formula.name)
+            if formula.name in self._data_funs:
+                return self.data_fun_transducer(formula)
+            return attr_transducer(formula.trace, formula.name)
 
         if isinstance(formula, Slice):
             assert len(formula.children) == 1, formula
@@ -241,29 +241,28 @@ class Formula2Transducer:
             ST = positive_slice_transducer(interval)
         elif interval[0] == interval[1] == -1:
             ST = last_elem_transducer()
-            with open("/tmp/t.dot", "w") as f:
-                ST.to_dot(f)
         else:
             raise NotImplementedError(f"This slicing is not implemented: {formula}")
 
         return compose_transducers(T, ST, ST.get_single_trace(), origin=formula)
 
-    def projection_transducer(self, formula):
-        fn = formula.trace
-        assert isinstance(fn, Function), formula
-        if fn.name not in self._data_funs:
-            raise RuntimeError(f"Unknown data function: {fn}")
+    def data_fun_transducer(self, formula):
+        fun = formula.name
+        if fun not in self._data_funs:
+            raise RuntimeError(f"Unknown data function: {fun}")
 
-        if len(fn.traces) != 1:
-            raise RuntimeError("Multiple input traces to data function")
+        T = self._data_funs[fun]
 
-        fun_T = self._data_funs[fn.name]
-        return compose_transducers(
-            trace_transducer(fn.traces[0], fn.name),
-            fun_T,
-            on=fun_T.get_single_trace(),
-            origin=formula,
-        )
+        if len(T.traces) != 1:
+            raise RuntimeError(f"Data function transducer used in situation where it needs to have exactly one trace, "
+                               "but it has {len(T.traces)} traces.")
+        return substitute_trace(T, next(iter(T.traces)), formula.trace)
+    #return compose_transducers(
+    #    attr_transducer(formula.trace, fun),
+    #    fun_T,
+    #    on=fun_T.get_single_trace(),
+    #    origin=formula,
+    #)
 
 
 def compose_transitions(left_t, right_t, reg_map):

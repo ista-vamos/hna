@@ -10,7 +10,7 @@ SharedTraceSet::~SharedTraceSet() {
 }
 
 Trace *SharedTraceSet::newTrace(unsigned trace_id) {
-  Trace *t = _traces.emplace(trace_id, new Trace(trace_id)).first->second.get();
+  Trace *t = _traces.emplace(trace_id, new Trace(trace_id, /* stream = */nullptr)).first->second.get();
 
   // update views with the new trace
   for (auto *view : _views) {
