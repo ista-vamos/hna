@@ -44,9 +44,14 @@ public:
   Trace(size_t id, Stream *stream)
   : _id(id), _stream(stream) {
     assert(id > 0);
-    assert(stream != nullptr);
 
-    _descr = "Trace " + std::to_string(_id) + ": " + _stream->descr();
+    // TODO: create classes for trace with and without stream
+    //assert(stream != nullptr);
+
+    _descr = "Trace " + std::to_string(_id);
+    if (stream) {
+        _descr += ": " + _stream->descr();
+    }
   }
 
   Stream *stream() const { return _stream; }

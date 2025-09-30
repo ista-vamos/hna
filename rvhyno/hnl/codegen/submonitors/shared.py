@@ -64,7 +64,7 @@ class CodeGenCpp(CodeGenCpp):
                         f"if (auto *t_new = traces_{traceset.c_name()}.getNewTrace()) {{\n"
                     )
 
-                if self.args.reduction:
+                if self.args.reduction and len(formula.quantifier_prefix) >= 2:
                     self._gen_create_instance_reduced(formula, wr)
                 else:
                     self._gen_create_instance(formula, traceset, q2set, wr)

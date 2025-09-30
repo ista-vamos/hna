@@ -1,10 +1,10 @@
-from itertools import chain
 from os.path import basename
 
 from rvhyno.codegen.utils import dump_codegen_position
 from rvhyno.hnl.formula import PrenexFormula
-from ..shared import CodeGenCpp
 from rvhyno.utils import msg
+
+from ..shared import CodeGenCpp
 
 
 class CodeGenCpp(CodeGenCpp):
@@ -72,9 +72,6 @@ class CodeGenCpp(CodeGenCpp):
         values = {
             "cg": self,
             "monitor_name": self.name(),
-            "namespace": self.namespace(),
-            "namespace_start": self.namespace_start(),
-            "namespace_end": self.namespace_end(),
             "formula": formula,
         }
 

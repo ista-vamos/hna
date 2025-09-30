@@ -9,7 +9,8 @@ from .formula import (
     ProgramVariable,
     TraceVariable,
     Plus,
-    Slice, Lang,
+    Slice,
+    Lang,
 )
 from .formula2automata import TupleLabel
 from ..automata.transducers import (
@@ -18,7 +19,7 @@ from ..automata.transducers import (
     iterate_transducer,
     union_transducers,
     compose_transducers,
-    substitute_trace
+    substitute_trace,
 )
 from ..automata.transducers.labels import (
     TransitionMultiLabel,
@@ -204,7 +205,6 @@ class Formula2Transducer:
         if isinstance(formula, Lang):
             return self.data_fun_transducer(formula)
 
-
         raise NotImplementedError(f"Unhandled formula: {formula}")
 
     def stutter_reduce_transducer(self, T: SymbolicTransducer, formula):
@@ -263,15 +263,18 @@ class Formula2Transducer:
             return T
 
         if len(T.traces) > 1:
-            raise RuntimeError(f"Data function transducer used in situation where it needs to have exactly one trace, "
-                               "but it has {len(T.traces)} traces.")
+            raise RuntimeError(
+                f"Data function transducer used in situation where it needs to have exactly one trace, "
+                "but it has {len(T.traces)} traces."
+            )
         return substitute_trace(T, next(iter(T.traces)), formula.trace)
-    #return compose_transducers(
+
+    # return compose_transducers(
     #    attr_transducer(formula.trace, fun),
     #    fun_T,
     #    on=fun_T.get_single_trace(),
     #    origin=formula,
-    #)
+    # )
 
 
 def compose_transitions(left_t, right_t, reg_map):
@@ -449,15 +452,19 @@ def automaton_for_comparison(
     else:
         raise NotImplementedError("Unknown type of comparison")
 
-    return remove_epsilon_steps(SymbolicTransducer(
-        states=list(states.values()),
-        registers=registers or None,
-        transitions=[Transition(states[t[0]], t[1], states[t[2]]) for t in transitions],
-        init_states=[
-            states[s]
-            for s in states.keys()
-            if left.is_initial(s[0]) and right.is_initial(s[1])
-        ],
-        accepting_states=accepting_states,
-        origin=(left, right),
-    ))
+    return remove_epsilon_steps(
+        SymbolicTransducer(
+            states=list(states.values()),
+            registers=registers or None,
+            transitions=[
+                Transition(states[t[0]], t[1], states[t[2]]) for t in transitions
+            ],
+            init_states=[
+                states[s]
+                for s in states.keys()
+                if left.is_initial(s[0]) and right.is_initial(s[1])
+            ],
+            accepting_states=accepting_states,
+            origin=(left, right),
+        )
+    )
