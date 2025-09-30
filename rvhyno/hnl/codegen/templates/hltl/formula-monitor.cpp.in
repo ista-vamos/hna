@@ -14,7 +14,7 @@
 #include <rvhyper/NoLiveMonitoring.h>
 #include <rvhyper/VectorTrace.h>
 
-{{namespace_start}}
+{{cg.namespace_start()}}
 
 {% set fixed, set2q, _ = cg.input_tracesets(formula) %}
 FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
@@ -23,10 +23,9 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
 {%- endfor -%}
 ):
 {%- for q in fixed -%}
-{%- if not loop.first -%}, {%- endif -%}
 {{q}}({{q}})
+{%- if not loop.last -%}, {%- endif -%}
 {%- endfor -%}
-{%- if fixed -%}, {%- endif -%}
 {%- for traceset, _ in set2q.items() -%}
 {%- if not traceset -%}
     {%- if not loop.first -%}, {%- endif -%}
@@ -41,8 +40,11 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
   using namespace rvhyper;
 
   Lexer *lexer = new Lexer("
+  {%- for q in fixed -%}
+  forall {{q}}.
+  {%- endfor -%}
   {%- for q in formula.quantifiers() -%}
-  {{q.type_keyword()}} {{q.var}}.
+  forall {{q.var}}.
   {%- endfor -%}
   {{formula.formula.formula}}");
   Parser parser = Parser(lexer);
@@ -64,12 +66,24 @@ FormulaMonitor::FormulaMonitor(const AllTraceSets& TS
   );
 
   _monitor = std::make_unique<NoLiveMonitoring>(_formula);
+
+  {%- for q in fixed -%}
+  _online_traces.push_back({{q}});
+  {%- endfor -%}
 }
 
 void FormulaMonitor::addNewTraces() {
-  if (auto *t_new = traces.getNewTrace()) {
+{%- for traceset, _ in set2q.items() -%}
+  if (auto *t_new =
+{%- if not traceset -%}
+    traces.getNewTrace()
+{%- else -%}
+    traces_{{traceset.c_name()}}.getNewTrace()
+{%- endif -%}
+  ) {
     _online_traces.push_back(t_new);
   }
+{%- endfor -%}
 }
 
 bool FormulaMonitor::handleTrace(Trace *trace) {
@@ -97,7 +111,6 @@ bool FormulaMonitor::handleTrace(Trace *trace) {
 }
 
 Verdict FormulaMonitor::step() {
-  Verdict verdict;
 
 #ifdef MEASURE_CPUTIME
     struct timespec start, end;
@@ -162,4 +175,4 @@ bool FormulaMonitor::inputs_finished() {
     return true;
 }
 
-{{namespace_end}}
+{{cg.namespace_end()}}

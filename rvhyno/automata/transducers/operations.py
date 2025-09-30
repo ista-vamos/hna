@@ -132,7 +132,9 @@ def remove_epsilon_steps(eT: SymbolicTransducer) -> SymbolicTransducer:
                     # don't add \eps self-loops
                     continue
 
-                transitions.append(Transition(trans.source, trans_out.label, trans_out.target))
+                transitions.append(
+                    Transition(trans.source, trans_out.label, trans_out.target)
+                )
                 if eT.is_accepting(trans.target):
                     accepting.append(trans.source)
 
@@ -144,7 +146,6 @@ def remove_epsilon_steps(eT: SymbolicTransducer) -> SymbolicTransducer:
         accepting_states=eT.accepting_states() + accepting,
         origin=eT.origin(),
     )
-
 
 
 def iterate_transducer(T1: SymbolicTransducer) -> SymbolicTransducer:
@@ -435,10 +436,12 @@ def substitute_lst(lst, subst):
     return [x.subst(subst) for x in lst]
 
 
-def substitute_trace(eT: SymbolicTransducer, old: TraceVariable, new: TraceVariable) -> SymbolicTransducer:
+def substitute_trace(
+    eT: SymbolicTransducer, old: TraceVariable, new: TraceVariable
+) -> SymbolicTransducer:
     """Return the transducer `eT` where trace variable `old` has been replaced by `new`"""
 
-    transitions=[]
+    transitions = []
     for trans in eT.transitions():
         label = trans.label
         symbols = label.symbols.copy()
@@ -446,9 +449,14 @@ def substitute_trace(eT: SymbolicTransducer, old: TraceVariable, new: TraceVaria
             symbols[new] = symbols[old]
             del symbols[old]
         condition = [c.subst((old, new)) for c in label.condition]
-        transitions.append(Transition(trans.source,
-                                      TransitionMultiLabel(symbols, condition, label.assignment, label.output),
-                                      trans.target)
+        transitions.append(
+            Transition(
+                trans.source,
+                TransitionMultiLabel(
+                    symbols, condition, label.assignment, label.output
+                ),
+                trans.target,
+            )
         )
     T = SymbolicTransducer(
         states=eT.states(),

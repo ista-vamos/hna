@@ -4,5 +4,5 @@ from .operations import (
     iterate_transducer,
     union_transducers,
     compose_transducers,
-    substitute_trace
+    substitute_trace,
 )

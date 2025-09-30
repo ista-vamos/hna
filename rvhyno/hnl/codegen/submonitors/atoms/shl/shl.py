@@ -971,7 +971,7 @@ class CodeGenCpp(CodeGenCppAtoms):
         # Needed when generating formula-monitor.cpp
         self._generate_create_instances(formula)
 
-        msg("info", "Generating stuctures for registers", section=3)
+        msg("info", "Generating structures for registers", section=3)
         self._generate_registers()
         msg("info", "Generating code for instances", section=3)
         self._generate_hnlinstances(formula)
