@@ -4,20 +4,16 @@ This tools generates monitors for hypernode logic and hypernode automata specifi
 
 ## Setup
 
-#### Setup python virtual environment (required on newer systems)
-
-```
-python3 -mvenv venv
-```
-
 #### Install python dependencies
 
 ```
-# If you use Python virtual environment, this command
-# must be run in every terminal in which you work with this project.
-source venv/bin/activate
+uv sync
+```
 
-pip install -r requirements.txt
+Then activate the virtual environment (required in every terminal you work in):
+
+```
+source .venv/bin/activate
 ```
 
 #### Configure and build
@@ -136,6 +132,24 @@ and `--debug`.
 
 - Bartocci, Ezio and Henzinger, Thomas A. and Nickovic, Dejan and Oliveira da Costa, Ana (2023).
  [Hypernode Automata](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CONCUR.2023.21). ArXiv.
+
+## Setup without uv (legacy)
+
+#### Setup python virtual environment (required on newer systems)
+
+```
+python3 -mvenv venv
+```
+
+#### Install python dependencies
+
+```
+# If you use Python virtual environment, this command
+# must be run in every terminal in which you work with this project.
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
 
 ## Troubleshooting
 
