@@ -68,7 +68,7 @@ The `./hnl.py` script generates a C++ monitor for the given formula
 and automatically compiles it. An example:
 
 ```sh
-./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
+uv run ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]'
 ```
 
 If you want to browse the generated files, the output is generated to `/tmp/hnl`.
@@ -93,7 +93,7 @@ through `--data` and possibly the alphabet (values that can appear in the
 events -- this is necessary only for the eHL logic):
 
 ```sh
-./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --data='x: char, y: char'
+uv run ./hnl.py 'forall t1, t2: (a+b).y(t1) <= [a.x(t2)]' --alphabet='a,b,c,d' --data='x: char, y: char'
 ```
 
 The switch data is more flexible. You can specify that the data are atomic propositions.
@@ -170,9 +170,8 @@ Before using scripts, always activate the virtual environment (required in every
 if it hasn't been done yet:
 
 ```sh
-source .venv/bin/activate
+source venv/bin/activate
 ```
-
 
 ## Troubleshooting
 
@@ -180,4 +179,4 @@ source .venv/bin/activate
 
 The code generator is filled with different assertions, some of them are pretty
 expensive. If you experience a problem with the speed of the code generation,
-try running the scripts with `python -OO` or using PyPy.
+try running the scripts with `python -OO` or using PyPy or Codon.
