@@ -1,6 +1,7 @@
 """
 Code generation for hypernode logic -- the top-level codegen class.
 """
+
 from __future__ import annotations
 
 from itertools import chain
@@ -40,7 +41,7 @@ def _check_functions(functions) -> None:
                 )
 
 
-def _get_num_range(data: list) -> tuple[int, int]:
+def _get_num_range(data: list) -> tuple[int, int] | None:
     """Get the minimum and maximum number that can be stored in the data fields of events.
 
     In other words, find if there are some bounds on the alphabet or if the alphabet
@@ -49,7 +50,7 @@ def _get_num_range(data: list) -> tuple[int, int]:
     """
     min_n, max_n = None, None
     for name, ty in data:
-        rng = ty[1]
+        rng: int | None = ty[1]
         if rng is None:
             return None
         if min_n is None or rng[0] < min_n:
@@ -57,6 +58,8 @@ def _get_num_range(data: list) -> tuple[int, int]:
         if max_n is None or rng[1] > max_n:
             max_n = rng[1]
 
+    assert min_n is not None
+    assert max_n is not None
     return min_n, max_n
 
 
@@ -195,7 +198,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
             "top_monitor_dir": self._out_dir,
             "submonitors_libs": " ".join((d["name"] for d in self._submonitors)),
             "submonitors": "\n".join(
-                (f'add_subdirectory({d["out_dir_rel"]})' for d in self._submonitors)
+                (f"add_subdirectory({d['out_dir_rel']})" for d in self._submonitors)
             ),
         }
         if overwrite_keys:
@@ -431,7 +434,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.gen_file("top/HACKING.md.in", "HACKING.md", {"cg": self})
 
         if self.args.debug:
-            with self.new_dbg_file(f"args.txt") as f:
+            with self.new_dbg_file("args.txt") as f:
                 f.write("".join(f"{k} : {v}\n" for k, v in vars(self.args).items()))
 
         self.format_generated_code()

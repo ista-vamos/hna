@@ -38,7 +38,7 @@ def compile_monitor(args):
         ["cmake", "."] + build_system_args + [f"-D{x}" for x in args.cmake_defs],
         cwd=args.out_dir,
     )
-    run(["cmake", "--build", ".", f"-j{int(2*cpu_count()) + 2}"], cwd=args.out_dir)
+    run(["cmake", "--build", ".", f"-j{int(2 * cpu_count()) + 2}"], cwd=args.out_dir)
 
 
 def main(args):
@@ -79,7 +79,9 @@ def main(args):
                 msg(msgty, problem)
             if problems:
                 if args.formula_check == "err":
-                    raise RuntimeError("Ran into problems, bailing out (use --formula-check=warn or --formula-check=none to suppress)...")
+                    raise RuntimeError(
+                        "Ran into problems, bailing out (use --formula-check=warn or --formula-check=none to suppress)..."
+                    )
 
     msg("info", "Generating monitor code", section=2)
     codegen = CodeGenCpp(args, ctx)
@@ -118,6 +120,6 @@ def parse_arguments():
 
 if __name__ == "__main__":
     with open_log("/tmp/hnl-log.md"):
-        msg("info", f"Parsing arguments", section=2, log_only=True)
+        msg("info", "Parsing arguments", section=2, log_only=True)
         args = parse_arguments()
         main(args)
