@@ -2,8 +2,10 @@
 This file defines classes representing formulas of hypernode logic.
 """
 
+from __future__ import annotations
+
 from copy import copy
-from typing import Any, Callable, List, Optional, Set, Union
+from typing import Any, Callable
 
 from lark.lexer import Token
 
@@ -62,7 +64,7 @@ class Formula:
     :type children: list of :class:`Formula`
     """
 
-    def __init__(self, children: Optional[List["Formula"]] = None) -> None:
+    def __init__(self, children: list["Formula"] | None = None) -> None:
         self.children = children or []
         all(map(lambda x: isinstance(x, Formula), self.children)), children
         # the __str__() often calls __str__() of subformulas recursively, which is expensive.
@@ -75,42 +77,42 @@ class Formula:
     def __eq__(self, other: "Formula") -> bool:
         return str(self) == str(other)
 
-    def quantifiers(self) -> List["Quantifier"]:
+    def quantifiers(self) -> list["Quantifier"]:
         """Return all quantifiers in the formula"""
         return [t for c in self.children for t in c.quantifiers()]
 
-    def trace_variables(self) -> List["TraceVariable"]:
+    def trace_variables(self) -> list["TraceVariable"]:
         """Get all trace variables from this formula
 
         :rtype: list of :class:`TraceVariable`
         """
         return list(set((t for c in self.children for t in c.trace_variables())))
 
-    def program_variable_occurrences(self) -> List["ProgramVariable"]:
+    def program_variable_occurrences(self) -> list["ProgramVariable"]:
         """
         Get all occurrences of program variables from this formula
         """
         return [t for c in self.children for t in c.program_variable_occurrences()]
 
-    def program_variables(self) -> List["ProgramVariable"]:
+    def program_variables(self) -> list["ProgramVariable"]:
         """
         Get all trace variables from this formula
         """
         return list(set((t for c in self.children for t in c.program_variables())))
 
-    def functions(self) -> List["Function"]:
+    def functions(self) -> list["Function"]:
         """
         Get all functions from this formula
         """
         return list((t for c in self.children for t in c.functions()))
 
-    def constants(self) -> List["Constant"]:
+    def constants(self) -> list["Constant"]:
         """
         Get all constants used in this formula
         """
         return list(set((t for c in self.children for t in c.constants())))
 
-    def problems(self) -> List[str]:
+    def problems(self) -> list[str]:
         """
         Perform some checks if the formula is well-defined
         and return a list of problems that were found if any.
@@ -285,7 +287,7 @@ class PrenexFormula(Formula):
             self.formula.quantifiers() == []
         ), f"Quantifier-free part of prenex formula contains quantifiers: {self.formula}"
 
-    def problems(self) -> List[str]:
+    def problems(self) -> list[str]:
         problems = []
         if self.formula.quantifiers():
             problems.append(
@@ -324,7 +326,7 @@ class PrenexFormula(Formula):
             self.quantifier_prefix, self.formula.remove_stutter_reductions()
         )
 
-    def functions(self) -> List["Function"]:
+    def functions(self) -> list["Function"]:
         return [
             q.fun
             for q in self.quantifiers()
@@ -381,7 +383,7 @@ class TraceFormula(Formula):
         """
         return False
 
-    def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
+    def first(self) -> set["Constant" | "ProgramVariable"]:
         """
         Set of symbols that can be the first symbol in a word represented by this formula.
         NOTE: since we do not keep the alphabet with each formula,
@@ -411,7 +413,7 @@ class TraceVariable(TraceFormula):
     def __lt__(self, other: "TraceVariable") -> bool:
         return isinstance(other, TraceVariable) and self.name < other.name
 
-    def trace_variables(self) -> List["TraceVariable"]:
+    def trace_variables(self) -> list["TraceVariable"]:
         return [self]
 
     def uniq_name(self) -> str:
@@ -454,7 +456,7 @@ class Function(TraceFormula):
     def functions(self):
         return [self]
 
-    def trace_variables(self) -> List[TraceVariable]:
+    def trace_variables(self) -> list[TraceVariable]:
         return self.traces
 
     def uniq_name(self) -> str:
@@ -477,7 +479,7 @@ class Epsilon(TraceFormula):
     def nullable(self) -> bool:
         return True
 
-    def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
+    def first(self) -> set["Constant" | "ProgramVariable"]:
         return set()
 
 
@@ -501,15 +503,15 @@ class ProgramVariable(TraceFormula):
     def __hash__(self) -> int:
         return (self.name, self.trace).__hash__()
 
-    def trace_variables(self) -> List[TraceVariable]:
+    def trace_variables(self) -> list[TraceVariable]:
         if isinstance(self.trace, Function):
             return self.trace.trace_variables()
         return [self.trace]
 
-    def program_variables(self) -> List["ProgramVariable"]:
+    def program_variables(self) -> list["ProgramVariable"]:
         return [self]
 
-    def program_variable_occurrences(self) -> List["ProgramVariable"]:
+    def program_variable_occurrences(self) -> list["ProgramVariable"]:
         return [self]
 
     def derivative(self, wrt: "Constant") -> DerivativesSet:
@@ -524,7 +526,7 @@ class ProgramVariable(TraceFormula):
     def __str__(self) -> str:
         return f"{self.name}({self.trace})"
 
-    def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
+    def first(self) -> set["Constant" | "ProgramVariable"]:
         """
         Because we do not keep the alphabet with each formula,
         first() returns not only constants, but it can return also program variables that stand
@@ -627,7 +629,7 @@ class Constant(TraceFormula):
         assert isinstance(other, Constant), (other, type(other))
         return self.value == other.value
 
-    def constants(self) -> List["Constant"]:
+    def constants(self) -> list["Constant"]:
         return [self]
 
     def derivative(self, wrt: "Constant") -> DerivativesSet:
@@ -641,7 +643,7 @@ class Constant(TraceFormula):
     def __str__(self) -> str:
         return f"{self.value}{'⊕' if self.is_rep() else ''}{'ₓ' if self.is_x() else ''}"
 
-    def first(self) -> Set[Union["Constant", "ProgramVariable"]]:
+    def first(self) -> set["Constant" | "ProgramVariable"]:
         return {self}
 
     def is_epsilon(self) -> bool:
@@ -765,7 +767,7 @@ class Concat(TraceFormula):
             else DerivativesSet()
         )
 
-    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+    def first(self) -> set[Constant | ProgramVariable]:
         return (
             self.children[0]
             .first()
@@ -798,7 +800,7 @@ class Plus(TraceFormula):
     def derivative(self, wrt: Constant) -> DerivativesSet:
         return self.children[0].derivative(wrt) + self.children[1].derivative(wrt)
 
-    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+    def first(self) -> set[Constant | ProgramVariable]:
         return self.children[0].first().union(self.children[1].first())
 
 
@@ -824,7 +826,7 @@ class Iter(TraceFormula):
     def simplify(self) -> Formula:
         return Iter(self.children[0].simplify())
 
-    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+    def first(self) -> set[Constant | ProgramVariable]:
         return self.children[0].first()
 
 
@@ -874,7 +876,7 @@ class StutterReduce(TraceFormula):
             )
         )
 
-    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+    def first(self) -> set[Constant | ProgramVariable]:
         return self.children[0].first()
 
 
@@ -898,7 +900,7 @@ class Slice(TraceFormula):
     def derivative(self, wrt: Constant) -> DerivativesSet:
         raise NotImplementedError("Slice does not support this")
 
-    def first(self) -> Set[Union[Constant, ProgramVariable]]:
+    def first(self) -> set[Constant | ProgramVariable]:
         raise NotImplementedError("Slice does not support this")
 
 
@@ -918,7 +920,7 @@ def derivatives_fixpoint(formula: TraceFormula, wrt: Constant) -> DerivativesSet
 
 
 class Quantifier(Formula):
-    def __init__(self, var: TraceVariable, formula: Formula = None) -> None:
+    def __init__(self, var: TraceVariable, formula: Formula | None = None) -> None:
         """
         If the HNL formula is in prenex form, `formula` is None here.
         Otherwise, formula is an arbitrary, possibly quantified, formula.
@@ -937,15 +939,15 @@ class Quantifier(Formula):
         # will contain '@', '(', and ')', there should be no conflict
         return (self.type_symbol(), "T")
 
-    def quantifiers(self) -> List["Quantifier"]:
+    def quantifiers(self) -> list["Quantifier"]:
         return [self]
 
-    def trace_variables(self) -> List[TraceVariable]:
+    def trace_variables(self) -> list[TraceVariable]:
         return [self.var]
 
 
 class ForAll(Quantifier):
-    def __init__(self, var: TraceVariable, formula: Formula = None) -> None:
+    def __init__(self, var: TraceVariable, formula: Formula | None = None) -> None:
         super().__init__(var, formula)
 
     def type_symbol(self) -> str:
@@ -970,7 +972,7 @@ class ForAll(Quantifier):
 
 
 class Exists(Quantifier):
-    def __init__(self, var: TraceVariable, formula: Formula = None):
+    def __init__(self, var: TraceVariable, formula: Formula | None = None):
         super().__init__(var, formula)
 
     def swap(self):
@@ -995,7 +997,7 @@ class Exists(Quantifier):
 
 
 class ExistsFromFun(Exists):
-    def __init__(self, var: TraceVariable, fun: Function, formula: Formula = None):
+    def __init__(self, var: TraceVariable, fun: Function, formula: Formula | None = None):
         super().__init__(var, formula)
         self.fun = fun
 
@@ -1016,12 +1018,12 @@ class ExistsFromFun(Exists):
             return f"∃{self.var}∈{self.fun}({self.children[0]})"
         return f"∃{self.var}∈{self.fun}"
 
-    def functions(self) -> List["Function"]:
+    def functions(self) -> list["Function"]:
         return [self.fun]
 
 
 class ForAllFromFun(ForAll):
-    def __init__(self, var: TraceVariable, fun: Function, formula: Formula = None):
+    def __init__(self, var: TraceVariable, fun: Function, formula: Formula | None = None):
         super().__init__(var, formula)
         self.fun = fun
 
@@ -1042,7 +1044,7 @@ class ForAllFromFun(ForAll):
             return f"∀{self.var}∈{self.fun}({self.children[0]})"
         return f"∀{self.var}∈{self.fun}"
 
-    def functions(self) -> List["Function"]:
+    def functions(self) -> list["Function"]:
         return [self.fun]
 
 

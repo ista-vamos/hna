@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from sys import stdout
+from typing import Any
 
 
 class State:
@@ -6,34 +9,34 @@ class State:
     State of an automaton
     """
 
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         # assert isinstance(name, str), (name, type(name))
         self._name = name
 
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     def __eq__(self, other: "State") -> bool:
         assert isinstance(other, State), other
         return self._name == other._name
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._name.__hash__()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"State({self._name})"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self._name)
 
-    def dot_name(self):
+    def dot_name(self) -> str:
         return str(self._name)
 
 
 class Transition:
     """Transition of an automaton"""
 
-    def __init__(self, source, label, target, priority=0):
+    def __init__(self, source: State, label: Any, target: State, priority: int = 0) -> None:
         assert isinstance(source, State), source
         assert isinstance(target, State), target
         self._source = source
@@ -47,23 +50,23 @@ class Transition:
         self._hash = hash((source, target, label, priority))
 
     @property
-    def source(self):
+    def source(self) -> State:
         return self._source
 
     @property
-    def target(self):
+    def target(self) -> State:
         return self._target
 
     @property
-    def label(self):
+    def label(self) -> Any:
         return self._label
 
     @property
-    def priority(self):
+    def priority(self) -> int:
         return self._priority
 
-    def __eq__(self, other):
-        return self._str == other._str
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Transition) and self._str == other._str
 
     # return (
     #    self._source == other._source
@@ -72,13 +75,13 @@ class Transition:
     #    and self._priority == other._priority
     # )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._str
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._hash
 
-    def dot_label(self):
+    def dot_label(self) -> str:
         return str(self._label)
 
 
@@ -89,10 +92,10 @@ class TransitionSystem:
 
     def __init__(
         self,
-        states: list = None,
-        transitions: list = None,
-        labeling: dict = None,
-        origin=None,
+        states: list | None = None,
+        transitions: list | None = None,
+        labeling: dict | None = None,
+        origin: Any = None,
     ):
         TransitionSystem._id_cnt += 1
         self._id = TransitionSystem._id_cnt
@@ -119,10 +122,10 @@ class TransitionSystem:
     def __getitem__(self, item):
         return self._states[item]
 
-    def get_id(self):
+    def get_id(self) -> int:
         return self._id
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         raise RuntimeError(
             f"Class {self} have no __eq__, you can try use get_id() where suitable"
         )
@@ -139,17 +142,17 @@ class TransitionSystem:
     def get_state_id(self, item: State) -> int:
         return self._state_to_id[item]
 
-    def has_label(self, state, label):
+    def has_label(self, state: State, label: str) -> bool:
         """Check if a given state has assigned a given label (label is not the same as the name of the state)"""
         states_with_label = self.states_with_label(label)
         if states_with_label is None:
             return False
         return state in states_with_label
 
-    def states_with_label(self, label):
+    def states_with_label(self, label: str) -> list["State"] | None:
         return self._labeling.get(label)
 
-    def add_state(self, state):
+    def add_state(self, state: State) -> None:
         assert isinstance(state, State), (state, type(state))
         assert (
             state not in self._states.values()
@@ -159,14 +162,14 @@ class TransitionSystem:
         self._state_to_id[state] = self._last_id
         self._last_id += 1
 
-    def get_or_create_state(self, label):
+    def get_or_create_state(self, label: str) -> State:
         state = self._states.get(label)
         if state is None:
             state = State(label)
             self.add_state(state)
         return state
 
-    def add_transition(self, t):
+    def add_transition(self, t: Transition) -> None:
         assert isinstance(t, Transition), (t, type(t))
         assert (
             t not in self._transitions
@@ -177,7 +180,7 @@ class TransitionSystem:
         )
         self._transitions_to.setdefault(t.target, {}).setdefault(t.label, []).append(t)
 
-    def transitions(self, state: State = None, a=None, default=None):
+    def transitions(self, state: "State | None" = None, a: Any = None, default: Any = None):
         """
         Return transitions from the automaton.
 
@@ -197,38 +200,38 @@ class TransitionSystem:
             return M
         return M.get(a) or default
 
-    def transitions_to(self, state: State):
+    def transitions_to(self, state: State) -> list[Transition]:
         T = self._transitions_to.get(state)
         if T is None:
             return []
         return [t for vals in T.values() for t in vals]
 
-    def transitions_from(self, state: State):
+    def transitions_from(self, state: State) -> list[Transition]:
         T = self._transitions_from.get(state)
         if T is None:
             return []
         return [t for vals in T.values() for t in vals]
 
-    def clear_transitions(self):
+    def clear_transitions(self) -> tuple[list[Transition], dict]:
         t, tm = self._transitions, self._transitions_from
         self._transitions, self._transitions_from = [], {}
         return t, tm
 
-    def states(self):
+    def states(self) -> list[State]:
         return list(self._states.values())
 
-    def origin(self):
+    def origin(self) -> Any:
         return self._origin
 
 
 class AccInitTransitionSystem(TransitionSystem):
     def __init__(
         self,
-        states: list = None,
-        transitions: list = None,
-        init_states: list = None,
-        acc_states: list = None,
-        origin=None,
+        states: list | None = None,
+        transitions: list | None = None,
+        init_states: list | None = None,
+        acc_states: list | None = None,
+        origin: Any = None,
     ):
         super().__init__(
             states,
@@ -237,29 +240,29 @@ class AccInitTransitionSystem(TransitionSystem):
             origin=origin,
         )
 
-    def initial_states(self):
+    def initial_states(self) -> list[State]:
         return self.states_with_label("initial")
 
-    def add_init(self, state):
+    def add_init(self, state: State) -> None:
         assert isinstance(state, State), (state, type(state))
         assert state in self._states.values()
         if state not in self.initial_states():
             self.initial_states().append(state)
 
-    def is_initial(self, state):
+    def is_initial(self, state: State) -> bool:
         assert isinstance(state, State), (state, type(state))
         return self.has_label(state, "initial")
 
-    def accepting_states(self):
+    def accepting_states(self) -> list[State]:
         return self.states_with_label("accepting")
 
-    def add_accepting(self, state):
+    def add_accepting(self, state: State) -> None:
         assert isinstance(state, State), (state, type(state))
         assert state in self._states.values()
         if state not in self.accepting_states():
             self.accepting_states().append(state)
 
-    def is_accepting(self, state):
+    def is_accepting(self, state: State) -> bool:
         assert isinstance(state, State), (state, type(state))
         return self.has_label(state, "accepting")
 
@@ -303,7 +306,7 @@ class AccInitTransitionSystem(TransitionSystem):
 
         return states, transitions, initial_states, accepting_states
 
-    def to_dot(self, output=stdout):
+    def to_dot(self, output=stdout) -> None:
         print("digraph {", file=output)
         for _, state in self._states.items():
             attrs = ", color=darkgreen" if self.is_accepting(state) else ""
@@ -325,15 +328,14 @@ class AccInitTransitionSystem(TransitionSystem):
         # dump stats
         self.dump_stats(output)
 
-    # dump stats
-    def dump_stats(self, output=stdout):
+    def dump_stats(self, output=stdout) -> None:
         print("\n/* -- statistics -- */", file=output)
         print(f"//  # states: {len(self._states)}", file=output)
         print(f"//  # transitions: {len(self._transitions)}", file=output)
         print(f"//  # init. states: {len(self.initial_states())}", file=output)
         print(f"//  # acc. states: {len(self.accepting_states())}", file=output)
 
-    def to_json(self, output=stdout):
+    def to_json(self, output=stdout) -> None:
         print("{", file=output)
         print("  nodes: [", file=output)
         for label, state in self._states.items():

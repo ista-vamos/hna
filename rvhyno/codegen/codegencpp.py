@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rvhyno.codegen.codegen import CodeGen
 
 
@@ -14,10 +16,10 @@ class CodeGenCpp(CodeGen):
     def __init__(
         self,
         args,
-        out_dir: str = None,
-        namespace: str = None,
-        name="monitor",
-        embedded=False,
+        out_dir: str | None = None,
+        namespace: str | None = None,
+        name: str = "monitor",
+        embedded: bool = False,
     ):
         super().__init__(name=name, args=args, out_dir=out_dir, embedded=embedded)
         self._namespace = namespace

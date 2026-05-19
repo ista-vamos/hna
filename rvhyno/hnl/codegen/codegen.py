@@ -1,8 +1,8 @@
 """
 Code generation for hypernode logic -- the top-level codegen class.
 """
+from __future__ import annotations
 
-from typing import Tuple
 from itertools import chain
 from os import readlink, makedirs
 from os.path import abspath, dirname, islink, join as pathjoin, basename
@@ -40,7 +40,7 @@ def _check_functions(functions) -> None:
                 )
 
 
-def _get_num_range(data: list) -> Tuple[int, int]:
+def _get_num_range(data: list) -> tuple[int, int]:
     """Get the minimum and maximum number that can be stored in the data fields of events.
 
     In other words, find if there are some bounds on the alphabet or if the alphabet
@@ -112,8 +112,8 @@ class CodeGenCppTopLevel(CodeGenCpp):
     def __init__(
         self,
         args,
-        out_dir: str = None,
-        namespace: str = None,
+        out_dir: str | None = None,
+        namespace: str | None = None,
         name="monitor",
         embedded=False,
     ):
@@ -507,7 +507,7 @@ class CodeGenCppTopLevel(CodeGenCpp):
         self.gen_file("top/formula-monitor.h.in", "formula-monitor.h", values)
         self.gen_file("top/formula-monitor.cpp.in", "formula-monitor.cpp", values)
 
-    def _event_data_bounds(self, ty: str, min_b=None, max_b=None) -> Tuple[int, int]:
+    def _event_data_bounds(self, ty: str, min_b=None, max_b=None) -> tuple[int, int]:
         """
         Compute the minumum and maximum value that can be stored in a given data filed of an event.
         This is based on its type, the required alphabet and bounds taken from `--data`.

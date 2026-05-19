@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rvhyno.automata.transition_system import (
     AccInitTransitionSystem,
 )
@@ -12,10 +14,10 @@ class Automaton(AccInitTransitionSystem):
 
     def __init__(
         self,
-        states: list = None,
-        transitions: list = None,
-        init_states: list = None,
-        acc_states: list = None,
+        states: list | None = None,
+        transitions: list | None = None,
+        init_states: list | None = None,
+        acc_states: list | None = None,
         origin=None,
     ):
         super().__init__(states, transitions, init_states, acc_states, origin=origin)

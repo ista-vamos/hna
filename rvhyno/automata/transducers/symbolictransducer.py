@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .labels import Reg
 
 from rvhyno.automata.transition_system import AccInitTransitionSystem, Transition, State
@@ -10,10 +12,10 @@ class Transducer(AccInitTransitionSystem):
 
     def __init__(
         self,
-        states: list = None,
-        transitions: list = None,
-        init_states: list = None,
-        acc_states: list = None,
+        states: list | None = None,
+        transitions: list | None = None,
+        init_states: list | None = None,
+        acc_states: list | None = None,
         origin=None,
     ):
         super().__init__(states, transitions, init_states, acc_states, origin=origin)
@@ -24,11 +26,11 @@ class SymbolicTransducer(Transducer):
 
     def __init__(
         self,
-        states: list = None,
-        registers: list = None,
-        transitions: list = None,
-        init_states: list = None,
-        accepting_states: list = None,
+        states: list | None = None,
+        registers: list | None = None,
+        transitions: list | None = None,
+        init_states: list | None = None,
+        accepting_states: list | None = None,
         origin=None,
     ):
         assert states is None or all(isinstance(s, State) for s in states), states
@@ -56,11 +58,11 @@ class SymbolicTransducer(Transducer):
         super().__init__(states, transitions, init_states, accepting_states, origin)
 
     # FIXME: turn into a property
-    def registers(self):
+    def registers(self) -> list | None:
         return self._registers
 
     @property
-    def traces(self):
+    def traces(self) -> set:
         return self._traces
 
     def get_single_trace(self):
@@ -72,7 +74,7 @@ class SymbolicTransducer(Transducer):
             return next(iter(T))
         return None
 
-    def copy(self, new_origin=None):
+    def copy(self, new_origin=None) -> "SymbolicTransducer":
         return SymbolicTransducer(
             states=self.states(),
             registers=[Reg(reg.value) for reg in self.registers() or ()],
@@ -82,15 +84,15 @@ class SymbolicTransducer(Transducer):
             origin=new_origin or self.origin(),
         )
 
-    def has_eps_transitions(self):
+    def has_eps_transitions(self) -> bool:
         return any((t.label.is_eps() for t in self.transitions()))
 
-    def add_transition(self, t):
+    def add_transition(self, t) -> None:
         for tr in t.label.symbols.keys():
             self._traces.add(tr)
         super().add_transition(t)
 
-    def remove_redundant_states_once(self):
+    def remove_redundant_states_once(self) -> "SymbolicTransducer":
         states, trans, init, acc = self.get_usable_part()
         return SymbolicTransducer(
             states=list(states.values()),

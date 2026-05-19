@@ -1,5 +1,4 @@
 import ctypes
-from typing import Tuple
 
 from rvhyno.utils import log
 from rvhyno.hnl.formula import PrenexFormula, Constant
@@ -55,7 +54,7 @@ def _split_formula(formula: PrenexFormula):
     return F1, F2, same
 
 
-def c_type_info(ty: str) -> Tuple[int, int]:
+def c_type_info(ty: str) -> tuple[int, bool]:
     """
     Get information about system's C type: signess and byte-width.
 
@@ -120,7 +119,7 @@ def c_type_info(ty: str) -> Tuple[int, int]:
     return bw, signed
 
 
-def c_type_bounds(ty: str) -> Tuple[int, int]:
+def c_type_bounds(ty: str) -> tuple[int, int]:
     """
     Get C type's minimum and maximum value.
 

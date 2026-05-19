@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import mkdir, listdir
 from os import readlink
 from os.path import islink
@@ -47,8 +49,8 @@ class CodeGen:
         self,
         name: str,
         args,
-        out_dir: str = None,
-        embedded=False,
+        out_dir: str | None = None,
+        embedded: bool = False,
     ):
         self._out_dir = abspath(out_dir or args.out_dir)
 
@@ -87,7 +89,7 @@ class CodeGen:
             except OSError:
                 pass  # exists
 
-    def create_out_dir(self, overwrite_if_exists: bool = False):
+    def create_out_dir(self, overwrite_if_exists: bool = False) -> None:
         try:
             mkdir(self._out_dir)
         except OSError:
@@ -100,7 +102,7 @@ class CodeGen:
                 rmtree(self._out_dir)
                 mkdir(self._out_dir)
 
-    def copy_file(self, name: str, to: str = None, from_dir: str = None):
+    def copy_file(self, name: str, to: str | None = None, from_dir: str | None = None) -> None:
         """
         Copy the file `name` into `out_dir`. If `name` is not an absolute path,
         it is looked for in `from_dir` if given, otherwise in `self.templates_path`.
@@ -161,10 +163,10 @@ class CodeGen:
         """
         return f"sub{self._name}"
 
-    def submonitors(self):
+    def submonitors(self) -> list:
         return self._submonitors
 
-    def gen_file(self, template, outfile, values, creation_header="c++"):
+    def gen_file(self, template: str, outfile: str, values: dict, creation_header: str = "c++") -> None:
         """
         Generate a file from a template `template` and writing the resulting
         file into `outfile`.
@@ -208,7 +210,7 @@ class CodeGen:
             for line in infl:
                 write(line)
 
-    def format_generated_code(self, dir_path=None):
+    def format_generated_code(self, dir_path: str | None = None) -> None:
         # format the files if we have clang-format
         # FIXME: check clang-format properly instead of catching the exception
         try:

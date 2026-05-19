@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os.path import basename
 
 from rvhyno.codegen.utils import dump_codegen_position
@@ -18,8 +20,8 @@ class CodeGenCpp(CodeGenCpp):
         name,
         args,
         fixed_quantifiers=None,
-        out_dir: str = None,
-        namespace: str = None,
+        out_dir: str | None = None,
+        namespace: str | None = None,
         embedded: bool = False,
     ):
         super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)

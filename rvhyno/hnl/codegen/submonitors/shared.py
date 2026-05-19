@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from os import readlink
 from os.path import abspath, dirname, islink, join as pathjoin
 
@@ -23,8 +25,8 @@ class CodeGenCpp(CodeGenCpp):
         name,
         args,
         fixed_quantifiers=None,
-        out_dir: str = None,
-        namespace: str = None,
+        out_dir: str | None = None,
+        namespace: str | None = None,
         embedded: bool = False,
     ):
         super().__init__(

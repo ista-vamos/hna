@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from itertools import chain
 from os.path import basename
 
@@ -35,8 +37,8 @@ class CodeGenCppAtoms(CodeGenCppShared):
         name,
         args,
         fixed_quantifiers=None,
-        out_dir: str = None,
-        namespace: str = None,
+        out_dir: str | None = None,
+        namespace: str | None = None,
         embedded: bool = False,
     ):
         super().__init__(name, args, fixed_quantifiers, out_dir, namespace, embedded)
