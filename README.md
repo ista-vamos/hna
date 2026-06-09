@@ -27,7 +27,7 @@ error: command '/usr/bin/cc' failed with exit code 1
 If that happens, run instead:
 
 ```sh
-CFLAGS="-Wno-incompatible-function-pointer-types" uv sync
+CFLAGS="-Wno-incompatible-function-pointer-types -Wno-incompatible-pointer-types" uv sync
 ```
 
 #### Configure and build
